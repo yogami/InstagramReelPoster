@@ -1,0 +1,67 @@
+[
+    {
+        "id": "track-001",
+        "url": "https://example.com/music/indian-flute-meditation.mp3",
+        "title": "Indian Flute Meditation",
+        "tags": [
+            "indian",
+            "flute",
+            "meditation",
+            "ambient",
+            "peaceful"
+        ],
+        "durationSeconds": 180
+    },
+    {
+        "id": "track-002",
+        "url": "https://example.com/music/tibetan-bowls.mp3",
+        "title": "Tibetan Singing Bowls",
+        "tags": [
+            "tibetan",
+            "bowls",
+            "meditation",
+            "spiritual",
+            "ambient"
+        ],
+        "durationSeconds": 240
+    },
+    {
+        "id": "track-003",
+        "url": "https://example.com/music/zen-garden.mp3",
+        "title": "Zen Garden Ambience",
+        "tags": [
+            "japanese",
+            "zen",
+            "ambient",
+            "nature",
+            "peaceful"
+        ],
+        "durationSeconds": 120
+    },
+    {
+        "id": "track-004",
+        "url": "https://example.com/music/sitar-drone.mp3",
+        "title": "Sitar Drone Meditation",
+        "tags": [
+            "indian",
+            "sitar",
+            "drone",
+            "ambient",
+            "eastern"
+        ],
+        "durationSeconds": 300
+    },
+    {
+        "id": "track-005",
+        "url": "https://example.com/music/bansuri-morning.mp3",
+        "title": "Bansuri Morning Raga",
+        "tags": [
+            "indian",
+            "flute",
+            "bansuri",
+            "spiritual",
+            "calm"
+        ],
+        "durationSeconds": 150
+    }
+]
