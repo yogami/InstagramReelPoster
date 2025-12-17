@@ -1,3 +1,4 @@
+import axios from 'axios';
 import {
     ReelJob,
     updateJobStatus,
@@ -124,6 +125,8 @@ export class ReelOrchestrator {
             this.updateJobStatus(jobId, 'rendering', 'Rendering final video...');
             const { videoUrl } = await this.deps.videoRenderer.render(manifest);
 
+
+
             // Complete the job
             const completedJob = this.deps.jobManager.updateJob(jobId, {
                 status: 'completed',
@@ -131,10 +134,24 @@ export class ReelOrchestrator {
                 currentStep: undefined,
             });
 
+            // Notify callback if present
+            if (completedJob && completedJob.callbackUrl) {
+                await this.notifyCallback(completedJob);
+            }
+
             return completedJob!;
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
             this.deps.jobManager.failJob(jobId, errorMessage);
+
+            // Notify callback of failure
+            if (job.callbackUrl) {
+                const failedJob = this.deps.jobManager.getJob(jobId);
+                if (failedJob) {
+                    await this.notifyCallback(failedJob);
+                }
+            }
+
             throw error;
         }
     }
@@ -230,5 +247,30 @@ export class ReelOrchestrator {
     private updateJobStatus(jobId: string, status: ReelJob['status'], step: string): void {
         console.log(`[${jobId}] ${status}: ${step}`);
         this.deps.jobManager.updateStatus(jobId, status, step);
+    }
+
+    /**
+     * Sends a webhook notification to the callbackUrl.
+     */
+    private async notifyCallback(job: ReelJob): Promise<void> {
+        if (!job.callbackUrl) return;
+
+        try {
+            console.log(`[${job.id}] Notifying callback: ${job.callbackUrl}`);
+            await axios.post(job.callbackUrl, {
+                jobId: job.id,
+                status: job.status,
+                videoUrl: job.finalVideoUrl,
+                error: job.error,
+                metadata: {
+                    duration: job.voiceoverDurationSeconds,
+                    createdAt: job.createdAt,
+                    completedAt: job.updatedAt
+                }
+            });
+        } catch (error) {
+            console.error(`[${job.id}] Failed to notify callback:`, error);
+            // We don't throw here to avoid failing the job processing just because the callback failed
+        }
     }
 }

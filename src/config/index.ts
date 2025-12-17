@@ -20,6 +20,10 @@ export interface Config {
     fishAudioBaseUrl: string;
     fishAudioVoiceId: string;
 
+    // Telegram & Callbacks
+    telegramBotToken: string;
+    makeWebhookUrl: string;
+
     // Music Catalog
     musicCatalogApiKey: string;
     musicCatalogBaseUrl: string;
@@ -96,6 +100,10 @@ export function loadConfig(): Config {
         musicCatalogBaseUrl: getEnvVar('MUSIC_CATALOG_BASE_URL', ''),
         internalMusicCatalogPath: getEnvVar('INTERNAL_MUSIC_CATALOG_PATH', './data/internal_music_catalog.json'),
 
+        // Telegram & Callbacks
+        telegramBotToken: getEnvVar('TELEGRAM_BOT_TOKEN', ''),
+        makeWebhookUrl: getEnvVar('MAKE_WEBHOOK_URL', ''),
+
         // Kie.ai
         kieApiKey: getEnvVar('KIE_API_KEY', ''),
         kieApiBaseUrl: getEnvVar('KIE_API_BASE_URL', 'https://api.kie.ai/suno'),
@@ -143,6 +151,8 @@ export function validateConfig(config: Config): string[] {
             errors.push('Cloudinary credentials are required when videoRenderer is "ffmpeg"');
         }
     }
+
+
 
     return errors;
 }

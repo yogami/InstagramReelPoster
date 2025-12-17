@@ -31,6 +31,8 @@ export interface ReelJobInput {
     };
     /** Optional mood overrides for the reel */
     moodOverrides?: string[];
+    /** Optional callback URL for webhook notification */
+    callbackUrl?: string;
 }
 
 /**
@@ -45,6 +47,8 @@ export interface ReelJob {
     currentStep?: string;
     /** URL to the source audio file */
     sourceAudioUrl: string;
+    /** Callback URL for webhook notification */
+    callbackUrl?: string;
     /** Target duration range in seconds */
     targetDurationRange: {
         min: number;
@@ -116,6 +120,7 @@ export function createReelJob(
         sourceAudioUrl: input.sourceAudioUrl.trim(),
         targetDurationRange: durationRange,
         moodOverrides: input.moodOverrides,
+        callbackUrl: input.callbackUrl,
         createdAt: now,
         updatedAt: now,
     };
