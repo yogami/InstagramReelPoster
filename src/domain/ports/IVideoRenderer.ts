@@ -11,12 +11,12 @@ export interface RenderResult {
 }
 
 /**
- * IShortstackClient - Port for video rendering services.
- * Implementations: ShortstackClient
+ * IVideoRenderer - Port for video rendering services.
+ * Implementations: ShortstackVideoRenderer, FFmpegVideoRenderer
  */
-export interface IShortstackClient {
+export interface IVideoRenderer {
     /**
-     * Submits a manifest for video rendering and waits for completion.
+     * Renders a video based on the manifest.
      * @param manifest The reel manifest with all assets
      * @returns Rendered video URL
      */

@@ -29,6 +29,9 @@ export interface Config {
     kieApiKey: string;
     kieApiBaseUrl: string;
 
+    // Video Renderer
+    videoRenderer: 'shortstack' | 'ffmpeg';
+
     // Shotstack
     shotstackApiKey: string;
     shotstackBaseUrl: string;
@@ -97,6 +100,9 @@ export function loadConfig(): Config {
         kieApiKey: getEnvVar('KIE_API_KEY', ''),
         kieApiBaseUrl: getEnvVar('KIE_API_BASE_URL', 'https://api.kie.ai/suno'),
 
+        // Video Renderer
+        videoRenderer: getEnvVar('VIDEO_RENDERER', 'shortstack') as 'shortstack' | 'ffmpeg',
+
         // Shotstack
         shotstackApiKey: getEnvVar('SHOTSTACK_API_KEY'),
         shotstackBaseUrl: getEnvVar('SHOTSTACK_BASE_URL', 'https://api.shotstack.io/v1'),
@@ -128,8 +134,14 @@ export function validateConfig(config: Config): string[] {
     if (!config.fishAudioVoiceId) {
         errors.push('FISH_AUDIO_VOICE_ID is required for TTS');
     }
-    if (!config.shotstackApiKey) {
-        errors.push('SHOTSTACK_API_KEY is required for video rendering');
+    if (config.videoRenderer === 'shortstack' && !config.shotstackApiKey) {
+        errors.push('SHOTSTACK_API_KEY is required when videoRenderer is "shortstack"');
+    }
+
+    if (config.videoRenderer === 'ffmpeg') {
+        if (!config.cloudinaryCloudName || !config.cloudinaryApiKey || !config.cloudinaryApiSecret) {
+            errors.push('Cloudinary credentials are required when videoRenderer is "ffmpeg"');
+        }
     }
 
     return errors;

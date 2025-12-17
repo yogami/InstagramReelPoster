@@ -12,8 +12,10 @@ import { InMemoryMusicCatalogClient } from '../infrastructure/music/InMemoryMusi
 import { KieMusicGeneratorClient } from '../infrastructure/music/KieMusicGeneratorClient';
 import { OpenAIImageClient } from '../infrastructure/images/OpenAIImageClient';
 import { OpenAISubtitlesClient } from '../infrastructure/subtitles/OpenAISubtitlesClient';
-import { ShotstackClient } from '../infrastructure/shortstack/ShortstackClient';
+import { ShortstackVideoRenderer } from '../infrastructure/video/ShortstackVideoRenderer';
+import { FFmpegVideoRenderer } from '../infrastructure/video/FFmpegVideoRenderer';
 import { CloudinaryStorageClient } from '../infrastructure/storage/CloudinaryStorageClient';
+import { IVideoRenderer } from '../domain/ports/IVideoRenderer';
 
 // Route imports
 import { createReelRoutes } from './routes/reelRoutes';
@@ -72,12 +74,8 @@ function createDependencies(config: Config): {
     );
     const imageClient = new OpenAIImageClient(config.openaiApiKey);
     const subtitlesClient = new OpenAISubtitlesClient(config.openaiApiKey);
-    const shotstackClient = new ShotstackClient(
-        config.shotstackApiKey,
-        config.shotstackBaseUrl
-    );
 
-    // Cloudinary storage client (optional, but recommended for production)
+    // Cloudinary storage client
     const cloudinaryClient = config.cloudinaryCloudName && config.cloudinaryApiKey
         ? new CloudinaryStorageClient(
             config.cloudinaryCloudName,
@@ -89,7 +87,25 @@ function createDependencies(config: Config): {
     if (cloudinaryClient) {
         console.log('✅ Cloudinary storage configured');
     } else {
-        console.log('⚠️  Cloudinary not configured, using data URLs for subtitles');
+        console.log('⚠️  Cloudinary not configured. Warning: Subtitles and FFmpeg rendering require cloud storage.');
+    }
+
+    // Video Renderer Selection
+    let videoRenderer: IVideoRenderer;
+    if (config.videoRenderer === 'ffmpeg') {
+        if (!cloudinaryClient) {
+            console.error('❌ FFmpeg renderer requires Cloudinary for hosting the result. Falling back to Shortstack (if configured) or erroring.');
+            // Fallback logic could go here, but strict failure is better for debugging
+            throw new Error('FFmpeg renderer requires Cloudinary configuration (CLOUDINARY_CLOUD_NAME, etc.)');
+        }
+        console.log('🎥 Using FFmpeg Video Renderer (Local)');
+        videoRenderer = new FFmpegVideoRenderer(cloudinaryClient);
+    } else {
+        console.log('🎥 Using Shotstack Video Renderer (Cloud)');
+        videoRenderer = new ShortstackVideoRenderer(
+            config.shotstackApiKey,
+            config.shotstackBaseUrl
+        );
     }
 
     // Music clients
@@ -118,7 +134,7 @@ function createDependencies(config: Config): {
         ttsClient,
         imageClient,
         subtitlesClient,
-        shortstackClient: shotstackClient,
+        videoRenderer,
         musicSelector,
         jobManager,
     };

@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { IShortstackClient, RenderResult } from '../../domain/ports/IShortstackClient';
+import { IVideoRenderer, RenderResult } from '../../domain/ports/IVideoRenderer';
 import { ReelManifest } from '../../domain/entities/ReelManifest';
 
 /**
@@ -97,7 +97,7 @@ interface ShotstackOutput {
  * Shotstack video rendering client.
  * API Reference: https://shotstack.io/docs/api/
  */
-export class ShotstackClient implements IShortstackClient {
+export class ShortstackVideoRenderer implements IVideoRenderer {
     private readonly apiKey: string;
     private readonly baseUrl: string;
     private readonly pollIntervalMs: number;

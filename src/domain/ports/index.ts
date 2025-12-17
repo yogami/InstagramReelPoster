@@ -5,4 +5,4 @@ export * from './IMusicCatalogClient';
 export * from './IMusicGeneratorClient';
 export * from './IImageClient';
 export * from './ISubtitlesClient';
-export * from './IShortstackClient';
+export * from './IVideoRenderer';

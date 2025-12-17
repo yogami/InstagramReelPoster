@@ -18,7 +18,7 @@ import { ILLMClient, ReelPlan, SegmentContent } from '../domain/ports/ILLMClient
 import { ITTSClient } from '../domain/ports/ITTSClient';
 import { IImageClient } from '../domain/ports/IImageClient';
 import { ISubtitlesClient } from '../domain/ports/ISubtitlesClient';
-import { IShortstackClient } from '../domain/ports/IShortstackClient';
+import { IVideoRenderer } from '../domain/ports/IVideoRenderer';
 import { MusicSelector, MusicSource } from './MusicSelector';
 import { JobManager } from './JobManager';
 
@@ -28,7 +28,7 @@ export interface OrchestratorDependencies {
     ttsClient: ITTSClient;
     imageClient: IImageClient;
     subtitlesClient: ISubtitlesClient;
-    shortstackClient: IShortstackClient;
+    videoRenderer: IVideoRenderer;
     musicSelector: MusicSelector;
     jobManager: JobManager;
 }
@@ -122,7 +122,7 @@ export class ReelOrchestrator {
 
             // Step 10: Render video
             this.updateJobStatus(jobId, 'rendering', 'Rendering final video...');
-            const { videoUrl } = await this.deps.shortstackClient.render(manifest);
+            const { videoUrl } = await this.deps.videoRenderer.render(manifest);
 
             // Complete the job
             const completedJob = this.deps.jobManager.updateJob(jobId, {
