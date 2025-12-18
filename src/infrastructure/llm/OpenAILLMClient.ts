@@ -86,9 +86,9 @@ For music, prefer: eastern, spiritual, ambient, meditation, indian, flute, bells
         const secondsPerSegment = plan.targetDurationSeconds / plan.segmentCount;
         const wordsPerSegment = Math.round(secondsPerSegment * 2.3); // ~2.3 words per second
 
-        const prompt = `Create ${plan.segmentCount} segments for this reel with ADVANCED VISUAL specifications.
+        const prompt = `You MUST create EXACTLY ${plan.segmentCount} segments for this reel.
 
-Original idea:
+Original transcript:
 """
 ${transcript}
 """
@@ -97,10 +97,25 @@ Reel concept: ${plan.summary}
 Mood: ${plan.mood}
 Target: ~${wordsPerSegment} words per segment (${secondsPerSegment.toFixed(1)}s each)
 
+CRITICAL REQUIREMENTS:
+1. Return a JSON ARRAY of EXACTLY ${plan.segmentCount} objects
+2. DO NOT wrap the array in any outer object
+3. DO NOT return fewer than ${plan.segmentCount} segments
+4. DO NOT return more than ${plan.segmentCount} segments
+
+Expected format (MUST be a JSON array):
+[
+  { segment 1 },
+  { segment 2 },
+  { segment 3 }
+]
+
+Each segment object MUST have these fields:
+
 CRITICAL: For each segment, provide a JSON object with these EXACT fields:
 
 {
-  "commentary": "1-2 punchy sentences (~${wordsPerSegment} words)",
+  "commentary": "1-2 punchy sentences (~${wordsPerSegment} words) - MUST reference 2-3 visual elements from imagePrompt",
   "imagePrompt": "100-140 word detailed visual description (see rules below)",
   "caption": "optional short subtitle",
   "visualSpecs": {
@@ -120,6 +135,25 @@ CRITICAL: For each segment, provide a JSON object with these EXACT fields:
   },
   "deltaSummary": "10-16 words: Because X, the scene now Y (cause→effect)"
 }
+
+COMMENTARY-IMAGE LINKAGE (CRITICAL):
+★ Generate imagePrompt FIRST with all visual details
+★ THEN write commentary that explicitly describes what the viewer SEES
+★ Reference 2-3 specific visual elements from the imagePrompt:
+  - If image has "golden hour" → commentary says "warm sunset glow" or "amber light"
+  - If image has "wooden deck" → commentary says "this peaceful platform" or "natural setting"
+  - If image has "meditation pose" → commentary says "stillness" or "centered presence"
+  - If image has "misty mountains" → commentary says "distant peaks" or "mountain backdrop"
+
+GOOD Example:
+imagePrompt: "wooden deck at golden hour with person meditating, warm amber tones, mountains"
+commentary: "Notice the warm amber glow bathing this peaceful deck, where stillness meets nature's mountain backdrop"
+(References: golden hour→amber glow, deck→this deck, meditation→stillness, mountains→backdrop)
+
+BAD Example:
+imagePrompt: "wooden deck at golden hour with person meditating"
+commentary: "Mindfulness reduces stress and brings peace"
+(NO visual references - viewer hears abstract concept while seeing concrete scene!)
 
 IMAGE PROMPT RULES (100-140 words each):
 
