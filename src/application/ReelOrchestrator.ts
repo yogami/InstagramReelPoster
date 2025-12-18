@@ -47,11 +47,17 @@ export class ReelOrchestrator {
         this.deps = deps;
     }
 
+    private logMemoryUsage(step: string) {
+        const used = process.memoryUsage().rss / 1024 / 1024;
+        console.log(`[Memory] ${step}: ${Math.round(used * 100) / 100} MB`);
+    }
+
     /**
      * Processes a reel job asynchronously.
      * Updates job status at each step.
      */
     async processJob(jobId: string): Promise<ReelJob> {
+        this.logMemoryUsage('Start processJob');
         const job = this.deps.jobManager.getJob(jobId);
         if (!job) {
             throw new Error(`Job not found: ${jobId}`);
@@ -72,6 +78,7 @@ export class ReelOrchestrator {
                 this.updateJobStatus(jobId, 'transcribing', 'Transcribing voice note...');
                 transcript = await this.deps.transcriptionClient.transcribe(job.sourceAudioUrl);
                 this.deps.jobManager.updateJob(jobId, { transcript });
+                this.logMemoryUsage('Step 1: Transcription');
             }
 
             // Step 2: Plan reel
@@ -86,6 +93,7 @@ export class ReelOrchestrator {
             if (!targetDurationSeconds) {
                 this.deps.jobManager.updateJob(jobId, { targetDurationSeconds: plan.targetDurationSeconds });
             }
+            this.logMemoryUsage('Step 2: Planning');
 
             // Step 3: Generate commentary
             let segments = job.segments;
@@ -113,6 +121,7 @@ export class ReelOrchestrator {
                 // Step 5: Build segments with timing
                 segments = this.buildSegments(segmentContent, voiceoverDuration);
                 this.deps.jobManager.updateJob(jobId, { segments });
+                this.logMemoryUsage('Steps 3-5: Content & Voiceover');
             }
 
             // Refresh job object
@@ -131,6 +140,7 @@ export class ReelOrchestrator {
                 );
                 musicUrl = track.audioUrl;
                 this.deps.jobManager.updateJob(jobId, { musicUrl, musicSource });
+                this.logMemoryUsage('Step 6: Music');
             }
 
             // Step 7: Generate images
@@ -140,6 +150,7 @@ export class ReelOrchestrator {
                 this.updateJobStatus(jobId, 'generating_images', 'Creating visuals...');
                 segments = await this.generateImages(segments);
                 this.deps.jobManager.updateJob(jobId, { segments });
+                this.logMemoryUsage('Step 7: Images');
             }
 
             // Step 8: Generate subtitles
@@ -149,6 +160,7 @@ export class ReelOrchestrator {
                 const result = await this.deps.subtitlesClient.generateSubtitles(voiceoverUrl);
                 subtitlesUrl = result.subtitlesUrl;
                 this.deps.jobManager.updateJob(jobId, { subtitlesUrl });
+                this.logMemoryUsage('Step 8: Subtitles');
             }
 
             // Step 9: Build manifest
@@ -167,7 +179,9 @@ export class ReelOrchestrator {
 
             // Step 10: Render video
             this.updateJobStatus(jobId, 'rendering', 'Rendering final video...');
+            this.logMemoryUsage('Starting Step 10: Rendering');
             const { videoUrl } = await this.deps.videoRenderer.render(manifest);
+            this.logMemoryUsage('Step 10: Finished Rendering');
 
 
 
