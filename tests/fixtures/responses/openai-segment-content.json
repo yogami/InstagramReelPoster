@@ -1,17 +1,65 @@
 [
     {
-        "commentary": "Mindfulness is the practice of being present in the moment, fully aware without judgment.",
-        "imagePrompt": "A person meditating peacefully in a serene environment with soft golden lighting, calm atmosphere, zen garden setting",
-        "caption": "Be Present"
+        "commentary": "Mindfulness is the practice of being present in the moment.",
+        "imagePrompt": "A medium shot with 50mm lens showing a person in peaceful meditation pose, sitting cross-legged on a wooden deck overlooking misty mountains at golden hour. Soft warm lighting bathes the scene, creating a serene atmosphere. The composition uses rule of thirds, placing the subject slightly off-center. Rich natural color grading enhances the warm sunset tones. Background shows gentle mist rolling through distant peaks, adding depth. Person wears simple earth-toned clothing, hands resting gently on knees in classic mudra position. Hero prop: meditation cushion with subtle texture. The scene evokes tranquility and inner peace through careful attention to lighting quality and environmental calm.",
+        "caption": "Be present",
+        "visualSpecs": {
+            "shot": "medium",
+            "lens": "50mm",
+            "framing": "rule-of-thirds",
+            "angle": "eye-level",
+            "lighting": "soft-warm",
+            "colorGrade": "warm-filmic"
+        },
+        "continuityTags": {
+            "location": "wooden deck overlooking mountains",
+            "timeOfDay": "golden-hour",
+            "dominantColor": "warm amber and earth tones",
+            "heroProp": "meditation cushion",
+            "wardrobeDetail": "earth-toned simple clothing"
+        },
+        "deltaSummary": "Scene establishes peaceful mountain setting, introducing meditation practice foundation"
     },
     {
-        "commentary": "It reduces stress and anxiety, creating space for genuine peace in our lives.",
-        "imagePrompt": "Peaceful nature scene with flowing water and green trees, tranquil setting, morning mist, soft sunlight through leaves",
-        "caption": "Find Peace"
+        "commentary": "It reduces stress and brings clarity to our chaotic lives.",
+        "imagePrompt": "Continuation of previous scene: maintaining the wooden deck overlooking mountains and warm amber tones. Now a close-up shot with 85mm lens captures the subject's serene face in profile, eyes gently closed. The same soft warm golden-hour lighting continues, creating a glow on peaceful features. Composition centers the face using centered framing for intimacy. The meditation cushion remains visible but softly blurred in foreground. Warm filmic color grading preserves the sunset palette. Background mountains fade into gentle bokeh, emphasizing inner calm. Person's earth-toned clothing drapes naturally, hands still in mudra. Fine details emerge: subtle smile, relaxed brow, sense of release.",
+        "caption": "Find calm",
+        "visualSpecs": {
+            "shot": "close-up",
+            "lens": "85mm",
+            "framing": "centered",
+            "angle": "eye-level",
+            "lighting": "soft-warm",
+            "colorGrade": "warm-filmic"
+        },
+        "continuityTags": {
+            "location": "wooden deck overlooking mountains",
+            "timeOfDay": "golden-hour",
+            "dominantColor": "warm amber and earth tones",
+            "heroProp": "meditation cushion (blurred)",
+            "wardrobeDetail": "earth-toned clothing, relaxed posture"
+        },
+        "deltaSummary": "Because practice deepens, the scene now reveals inner transformation through peaceful expression"
     },
     {
-        "commentary": "Even just five minutes of daily meditation can transform how we experience each moment.",
-        "imagePrompt": "Close-up of hands in meditation mudra pose, peaceful expression, warm natural light, spiritual atmosphere",
-        "caption": "Start Small"
+        "commentary": "Even five minutes a day can transform your mental state.",
+        "imagePrompt": "Continuation of previous scene: maintaining the wooden deck and warm amber palette from golden hour. Now a wide shot with 35mm lens reveals the full environment - the meditating figure small but centered against vast mountain panorama. The soft warm lighting now casts longer shadows as the sun dips lower, adding drama while preserving the peaceful mood. Leading lines framing draws the eye from the meditation cushion through the deck's planks toward the horizon. Rich natural color grading deepens, showing twilight approaching. Mountains layer in atmospheric perspective, multiple ridges fading into violet distance. The earth-toned clothing blends harmoniously with the natural setting. Hero prop: meditation cushion grounds the composition. Scene suggests sustainable practice within daily rhythm.",
+        "caption": "Start today",
+        "visualSpecs": {
+            "shot": "wide",
+            "lens": "35mm",
+            "framing": "leading-lines",
+            "angle": "eye-level",
+            "lighting": "soft-warm",
+            "colorGrade": "rich-natural"
+        },
+        "continuityTags": {
+            "location": "wooden deck overlooking mountains",
+            "timeOfDay": "golden-hour transitioning to dusk",
+            "dominantColor": "warm amber deepening to violet",
+            "heroProp": "meditation cushion",
+            "wardrobeDetail": "earth-toned clothing harmonizing with nature"
+        },
+        "deltaSummary": "Because commitment forms, the scene now shows integration of practice within vast natural cycles"
     }
 ]
