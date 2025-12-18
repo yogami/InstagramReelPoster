@@ -1,0 +1,7 @@
+{
+    "response": {
+        "id": "mock-render-id-123",
+        "status": "done",
+        "url": "https://mock-storage.example.com/final-video.mp4"
+    }
+}

@@ -1,0 +1,6 @@
+{
+    "response": {
+        "id": "mock-render-id-123",
+        "status": "queued"
+    }
+}

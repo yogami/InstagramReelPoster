@@ -1,0 +1,12 @@
+{
+    "targetDurationSeconds": 30,
+    "segmentCount": 3,
+    "musicTags": [
+        "calm",
+        "meditation",
+        "ambient"
+    ],
+    "musicPrompt": "Calm ambient meditation music with soft tones",
+    "mood": "peaceful and contemplative",
+    "summary": "A mindful exploration of presence and meditation"
+}
