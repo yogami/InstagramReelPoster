@@ -25,6 +25,11 @@ export interface Config {
     telegramWebhookSecret: string;
     makeWebhookUrl: string;
 
+    // OpenRouter (Primary Image Generation)
+    openrouterApiKey: string;
+    openrouterBaseUrl: string;
+    openrouterModel: string;
+
     // Music Catalog
     musicCatalogApiKey: string;
     musicCatalogBaseUrl: string;
@@ -105,6 +110,11 @@ export function loadConfig(): Config {
         telegramBotToken: getEnvVar('TELEGRAM_BOT_TOKEN', ''),
         telegramWebhookSecret: getEnvVar('TELEGRAM_WEBHOOK_SECRET', ''),
         makeWebhookUrl: getEnvVar('MAKE_WEBHOOK_URL', ''),
+
+        // OpenRouter
+        openrouterApiKey: getEnvVar('OPENROUTER_API_KEY', ''),
+        openrouterBaseUrl: getEnvVar('OPENROUTER_BASE_URL', 'https://openrouter.ai/api/v1'),
+        openrouterModel: getEnvVar('OPENROUTER_MODEL', 'google/gemini-flash-1.5'),
 
         // Kie.ai
         kieApiKey: getEnvVar('KIE_API_KEY', ''),

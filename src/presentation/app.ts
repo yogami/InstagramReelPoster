@@ -10,6 +10,7 @@ import { OpenAILLMClient } from '../infrastructure/llm/OpenAILLMClient';
 import { FishAudioTTSClient } from '../infrastructure/tts/FishAudioTTSClient';
 import { InMemoryMusicCatalogClient } from '../infrastructure/music/InMemoryMusicCatalogClient';
 import { KieMusicGeneratorClient } from '../infrastructure/music/KieMusicGeneratorClient';
+import { OpenRouterImageClient } from '../infrastructure/images/OpenRouterImageClient';
 import { OpenAIImageClient } from '../infrastructure/images/OpenAIImageClient';
 import { OpenAISubtitlesClient } from '../infrastructure/subtitles/OpenAISubtitlesClient';
 import { ShortstackVideoRenderer } from '../infrastructure/video/ShortstackVideoRenderer';
@@ -74,7 +75,16 @@ function createDependencies(config: Config): {
         config.fishAudioVoiceId,
         config.fishAudioBaseUrl
     );
-    const imageClient = new OpenAIImageClient(config.openaiApiKey);
+    // Image clients - OpenRouter primary, DALL-E fallback
+    const primaryImageClient = config.openrouterApiKey
+        ? new OpenRouterImageClient(
+            config.openrouterApiKey,
+            config.openrouterModel,
+            config.openrouterBaseUrl
+        )
+        : undefined;
+
+    const fallbackImageClient = new OpenAIImageClient(config.openaiApiKey);
     const subtitlesClient = new OpenAISubtitlesClient(config.openaiApiKey);
 
     // Cloudinary storage client
@@ -142,7 +152,8 @@ function createDependencies(config: Config): {
         transcriptionClient,
         llmClient,
         ttsClient,
-        imageClient,
+        primaryImageClient,
+        fallbackImageClient,
         subtitlesClient,
         videoRenderer,
         musicSelector,

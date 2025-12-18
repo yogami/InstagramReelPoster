@@ -28,7 +28,8 @@ export interface OrchestratorDependencies {
     transcriptionClient: ITranscriptionClient;
     llmClient: ILLMClient;
     ttsClient: ITTSClient;
-    imageClient: IImageClient;
+    primaryImageClient?: IImageClient; // OpenRouter (optional)
+    fallbackImageClient: IImageClient; // DALL-E (required)
     subtitlesClient: ISubtitlesClient;
     videoRenderer: IVideoRenderer;
     musicSelector: MusicSelector;
@@ -256,13 +257,28 @@ export class ReelOrchestrator {
      * Generates images for all segments.
      */
     private async generateImages(segments: Segment[]): Promise<Segment[]> {
+        console.log(`Generating images for ${segments.length} segments...`);
+
+        // Reset OpenRouter sequence for new job
+        if (this.deps.primaryImageClient && 'resetSequence' in this.deps.primaryImageClient) {
+            (this.deps.primaryImageClient as any).resetSequence();
+        }
+
         const results = await Promise.all(
-            segments.map(async (segment) => {
-                const { imageUrl } = await this.deps.imageClient.generateImage(segment.imagePrompt);
-                return {
-                    ...segment,
-                    imageUrl,
-                };
+            segments.map(async (segment, index) => {
+                try {
+                    // Try primary image client (OpenRouter) first
+                    if (this.deps.primaryImageClient) {
+                        const { imageUrl } = await this.deps.primaryImageClient.generateImage(segment.imagePrompt);
+                        return { ...segment, imageUrl };
+                    }
+                } catch (error) {
+                    console.warn(`Primary image client failed for segment ${index}, falling back to DALL-E:`, error);
+                }
+
+                // Fallback to DALL-E
+                const { imageUrl } = await this.deps.fallbackImageClient.generateImage(segment.imagePrompt);
+                return { ...segment, imageUrl };
             })
         );
         return results;
