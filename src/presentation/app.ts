@@ -20,6 +20,8 @@ import { TelegramService } from './services/TelegramService';
 import { TelegramNotificationClient } from '../infrastructure/notifications/TelegramNotificationClient';
 import { IVideoRenderer } from '../domain/ports/IVideoRenderer';
 
+import { OpenAITTSClient } from '../infrastructure/tts/OpenAITTSClient';
+
 // Route imports
 import { createReelRoutes } from './routes/reelRoutes';
 import { createJobRoutes } from './routes/jobRoutes';
@@ -92,6 +94,7 @@ function createDependencies(config: Config): {
 
     const fallbackImageClient = new OpenAIImageClient(config.openaiApiKey);
     const subtitlesClient = new OpenAISubtitlesClient(config.openaiApiKey);
+    const fallbackTTSClient = new OpenAITTSClient(config.openaiApiKey);
 
     // Cloudinary storage client
     const cloudinaryClient = config.cloudinaryCloudName && config.cloudinaryApiKey
@@ -169,6 +172,7 @@ function createDependencies(config: Config): {
         musicSelector,
         jobManager,
         notificationClient,
+        fallbackTTSClient,
     };
 
     const orchestrator = new ReelOrchestrator(deps);

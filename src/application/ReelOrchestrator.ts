@@ -28,6 +28,7 @@ export interface OrchestratorDependencies {
     transcriptionClient: ITranscriptionClient;
     llmClient: ILLMClient;
     ttsClient: ITTSClient;
+    fallbackTTSClient?: ITTSClient;
     primaryImageClient?: IImageClient; // OpenRouter (optional)
     fallbackImageClient: IImageClient; // DALL-E (required)
     subtitlesClient: ISubtitlesClient;
@@ -260,15 +261,35 @@ export class ReelOrchestrator {
         targetDuration: number
     ): Promise<{ voiceoverUrl: string; voiceoverDuration: number; speed: number }> {
         // First pass at normal speed
-        let result = await this.deps.ttsClient.synthesize(text);
+        let result: any;
         let speed = 1.0;
+
+        try {
+            result = await this.deps.ttsClient.synthesize(text);
+        } catch (error) {
+            if (this.deps.fallbackTTSClient) {
+                console.warn('Primary TTS failed, trying fallback:', error);
+                result = await this.deps.fallbackTTSClient.synthesize(text);
+            } else {
+                throw error;
+            }
+        }
 
         // Check if we need speed adjustment
         const diff = Math.abs(result.durationSeconds - targetDuration);
         if (diff > 1.5) {
             speed = calculateSpeedAdjustment(result.durationSeconds, targetDuration);
             if (speed !== 1.0) {
-                result = await this.deps.ttsClient.synthesize(text, { speed });
+                try {
+                    result = await this.deps.ttsClient.synthesize(text, { speed });
+                } catch (error) {
+                    if (this.deps.fallbackTTSClient) {
+                        console.warn('Primary TTS adjustment failed, trying fallback:', error);
+                        result = await this.deps.fallbackTTSClient.synthesize(text, { speed });
+                    } else {
+                        throw error;
+                    }
+                }
             }
         }
 
