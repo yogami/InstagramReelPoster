@@ -15,6 +15,8 @@ import { OpenAISubtitlesClient } from '../infrastructure/subtitles/OpenAISubtitl
 import { ShortstackVideoRenderer } from '../infrastructure/video/ShortstackVideoRenderer';
 import { FFmpegVideoRenderer } from '../infrastructure/video/FFmpegVideoRenderer';
 import { CloudinaryStorageClient } from '../infrastructure/storage/CloudinaryStorageClient';
+import { TelegramService } from './services/TelegramService';
+import { TelegramNotificationClient } from '../infrastructure/notifications/TelegramNotificationClient';
 import { IVideoRenderer } from '../domain/ports/IVideoRenderer';
 
 // Route imports
@@ -128,6 +130,14 @@ function createDependencies(config: Config): {
     // Application layer
     const jobManager = new JobManager(config.minReelSeconds, config.maxReelSeconds);
 
+    // Notification client (optional)
+    const telegramService = config.telegramBotToken
+        ? new TelegramService(config.telegramBotToken)
+        : null;
+    const notificationClient = telegramService
+        ? new TelegramNotificationClient(telegramService)
+        : undefined;
+
     const deps: OrchestratorDependencies = {
         transcriptionClient,
         llmClient,
@@ -137,6 +147,7 @@ function createDependencies(config: Config): {
         videoRenderer,
         musicSelector,
         jobManager,
+        notificationClient,
     };
 
     const orchestrator = new ReelOrchestrator(deps);

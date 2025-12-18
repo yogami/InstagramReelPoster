@@ -33,6 +33,8 @@ export interface ReelJobInput {
     moodOverrides?: string[];
     /** Optional callback URL for webhook notification */
     callbackUrl?: string;
+    /** Optional Telegram chat ID for user notifications */
+    telegramChatId?: number;
 }
 
 /**
@@ -49,6 +51,8 @@ export interface ReelJob {
     sourceAudioUrl: string;
     /** Callback URL for webhook notification */
     callbackUrl?: string;
+    /** Telegram chat ID for user notifications */
+    telegramChatId?: number;
     /** Target duration range in seconds */
     targetDurationRange: {
         min: number;
@@ -121,6 +125,7 @@ export function createReelJob(
         targetDurationRange: durationRange,
         moodOverrides: input.moodOverrides,
         callbackUrl: input.callbackUrl,
+        telegramChatId: input.telegramChatId,
         createdAt: now,
         updatedAt: now,
     };

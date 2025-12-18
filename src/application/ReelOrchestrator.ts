@@ -20,6 +20,7 @@ import { ITTSClient } from '../domain/ports/ITTSClient';
 import { IImageClient } from '../domain/ports/IImageClient';
 import { ISubtitlesClient } from '../domain/ports/ISubtitlesClient';
 import { IVideoRenderer } from '../domain/ports/IVideoRenderer';
+import { INotificationClient } from '../domain/ports/INotificationClient';
 import { MusicSelector, MusicSource } from './MusicSelector';
 import { JobManager } from './JobManager';
 
@@ -32,6 +33,7 @@ export interface OrchestratorDependencies {
     videoRenderer: IVideoRenderer;
     musicSelector: MusicSelector;
     jobManager: JobManager;
+    notificationClient?: INotificationClient;
 }
 
 /**
@@ -52,6 +54,14 @@ export class ReelOrchestrator {
         const job = this.deps.jobManager.getJob(jobId);
         if (!job) {
             throw new Error(`Job not found: ${jobId}`);
+        }
+
+        // Send initial notification
+        if (job.telegramChatId && this.deps.notificationClient) {
+            await this.deps.notificationClient.sendNotification(
+                job.telegramChatId,
+                '🎬 *Starting your reel creation!*\n\nI\'ll notify you when it\'s ready. This usually takes 2-5 minutes.'
+            );
         }
 
         try {
@@ -139,10 +149,27 @@ export class ReelOrchestrator {
                 await this.notifyCallback(completedJob);
             }
 
+            // Send success notification to Telegram
+            if (completedJob && completedJob.telegramChatId && this.deps.notificationClient) {
+                await this.deps.notificationClient.sendNotification(
+                    completedJob.telegramChatId,
+                    `✅ *Your reel is ready!*\n\nProcessing took ${Math.round((completedJob.updatedAt.getTime() - completedJob.createdAt.getTime()) / 1000)}s.\n\nThe video has been sent to your automation workflow.`
+                );
+            }
+
             return completedJob!;
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
             this.deps.jobManager.failJob(jobId, errorMessage);
+
+            // Send error notification to Telegram
+            if (job.telegramChatId && this.deps.notificationClient) {
+                const friendlyError = this.getFriendlyErrorMessage(errorMessage);
+                await this.deps.notificationClient.sendNotification(
+                    job.telegramChatId,
+                    `❌ *Oops! Something went wrong*\n\n${friendlyError}\n\nPlease try again or contact support if the issue persists.`
+                );
+            }
 
             // Notify callback of failure
             if (job.callbackUrl) {
@@ -239,6 +266,31 @@ export class ReelOrchestrator {
             })
         );
         return results;
+    }
+
+    /**
+     * Converts technical error messages to user-friendly ones.
+     */
+    private getFriendlyErrorMessage(error: string): string {
+        if (error.includes('transcribe') || error.includes('Whisper')) {
+            return 'I could not understand the audio. Please try recording again with less background noise.';
+        }
+        if (error.includes('OpenAI') || error.includes('API key')) {
+            return 'There was an issue connecting to our AI services. Please try again in a moment.';
+        }
+        if (error.includes('music') || error.includes('track')) {
+            return 'I could not find suitable background music. Please try again.';
+        }
+        if (error.includes('image') || error.includes('DALL-E')) {
+            return 'I had trouble generating images for your reel. Please try again.';
+        }
+        if (error.includes('render') || error.includes('video')) {
+            return 'The video rendering failed. Please try again.';
+        }
+        if (error.includes('duration') || error.includes('too short') || error.includes('too long')) {
+            return 'Your voice note is either too short or too long. Please keep it between 10-90 seconds.';
+        }
+        return 'An unexpected error occurred. Our team has been notified.';
     }
 
     /**

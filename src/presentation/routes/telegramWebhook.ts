@@ -107,6 +107,7 @@ async function processUpdate(
             targetDurationRange: { min: 10, max: 90 }, // Defaults from app config usually, but hardcoded here for simplicity or passed via config
             moodOverrides,
             callbackUrl: makeWebhookUrl,
+            telegramChatId: chatId,
         });
 
         const jobId = job.id;

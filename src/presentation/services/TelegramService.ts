@@ -38,4 +38,25 @@ export class TelegramService {
             throw new Error(`Failed to resolve Telegram file: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
     }
+
+    /**
+     * Sends a text message to a Telegram chat.
+     */
+    async sendMessage(chatId: number, text: string): Promise<void> {
+        if (!this.botToken) {
+            console.warn('Telegram bot token not configured, skipping message send');
+            return;
+        }
+
+        try {
+            await axios.post(`${this.baseUrl}/sendMessage`, {
+                chat_id: chatId,
+                text,
+                parse_mode: 'Markdown'
+            });
+        } catch (error) {
+            console.error(`Failed to send Telegram message to chat ${chatId}:`, error);
+            // Don't throw - we don't want to fail the job just because notification failed
+        }
+    }
 }
