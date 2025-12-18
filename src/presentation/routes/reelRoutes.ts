@@ -3,6 +3,7 @@ import { ReelJobInput } from '../../domain/entities/ReelJob';
 import { JobManager } from '../../application/JobManager';
 import { ReelOrchestrator } from '../../application/ReelOrchestrator';
 import { asyncHandler, BadRequestError } from '../middleware/errorHandler';
+import { getConfig } from '../../config';
 
 /**
  * Creates reel routes with dependency injection.
@@ -11,6 +12,7 @@ export function createReelRoutes(
     jobManager: JobManager,
     orchestrator: ReelOrchestrator
 ): Router {
+    const config = getConfig();
     const router = Router();
 
     /**
@@ -51,6 +53,7 @@ export function createReelRoutes(
                 sourceAudioUrl,
                 targetDurationRange,
                 moodOverrides,
+                callbackUrl: req.body.callbackUrl || config.makeWebhookUrl,
             };
             const job = jobManager.createJob(input);
 
