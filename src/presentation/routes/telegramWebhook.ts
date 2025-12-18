@@ -1,10 +1,31 @@
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { JobManager } from '../../application/JobManager';
 import { ReelOrchestrator } from '../../application/ReelOrchestrator';
-import { asyncHandler } from '../middleware/errorHandler';
+import { asyncHandler, UnauthorizedError } from '../middleware/errorHandler';
 import { TelegramService } from '../services/TelegramService';
 import { getConfig } from '../../config';
+
+/**
+ * Middleware to validate Telegram webhook secret token.
+ */
+function validateTelegramSecret(secretToken: string) {
+    return (req: Request, res: Response, next: NextFunction) => {
+        if (!secretToken) {
+            // If no secret is configured, skip validation (dev mode)
+            return next();
+        }
+
+        const receivedToken = req.headers['x-telegram-bot-api-secret-token'];
+
+        if (receivedToken !== secretToken) {
+            console.warn('Invalid Telegram webhook secret token received');
+            throw new UnauthorizedError('Invalid webhook secret');
+        }
+
+        next();
+    };
+}
 
 /**
  * Creates Telegram webhook routes.
@@ -22,9 +43,11 @@ export function createTelegramWebhookRoutes(
      * POST /telegram-webhook
      * 
      * Receives Telegram updates and processes voice messages.
+     * Protected by secret token validation.
      */
     router.post(
         '/telegram-webhook',
+        validateTelegramSecret(config.telegramWebhookSecret),
         asyncHandler(async (req: Request, res: Response) => {
             const update = req.body;
 

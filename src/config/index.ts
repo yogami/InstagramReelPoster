@@ -22,6 +22,7 @@ export interface Config {
 
     // Telegram & Callbacks
     telegramBotToken: string;
+    telegramWebhookSecret: string;
     makeWebhookUrl: string;
 
     // Music Catalog
@@ -102,6 +103,7 @@ export function loadConfig(): Config {
 
         // Telegram & Callbacks
         telegramBotToken: getEnvVar('TELEGRAM_BOT_TOKEN', ''),
+        telegramWebhookSecret: getEnvVar('TELEGRAM_WEBHOOK_SECRET', ''),
         makeWebhookUrl: getEnvVar('MAKE_WEBHOOK_URL', ''),
 
         // Kie.ai

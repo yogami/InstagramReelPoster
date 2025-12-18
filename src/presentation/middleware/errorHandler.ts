@@ -34,6 +34,16 @@ export class BadRequestError extends AppError {
 }
 
 /**
+ * Unauthorized error (401).
+ */
+export class UnauthorizedError extends AppError {
+    constructor(message: string = 'Unauthorized') {
+        super(401, message);
+        this.name = 'UnauthorizedError';
+    }
+}
+
+/**
  * Error response structure.
  */
 interface ErrorResponse {
