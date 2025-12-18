@@ -43,23 +43,36 @@ export class FishAudioTTSClient implements ITTSClient {
                         Authorization: `Bearer ${this.apiKey}`,
                         'Content-Type': 'application/json',
                     },
-                    // Expect audio data in response
-                    responseType: 'json',
+                    // Expect audio data or JSON in response
+                    responseType: 'arraybuffer',
                 }
             );
 
-            // The response structure may vary - adapt based on actual Fish Audio API
-            // Expected response: { audio_url: string, duration_seconds: number }
-            const audioUrl = response.data.audio_url || response.data.url;
-            const durationSeconds = response.data.duration_seconds || response.data.duration;
+            // Check if response is actually JSON (some proxies/versions return JSON)
+            const contentType = response.headers['content-type'] || '';
+            if (contentType.includes('application/json')) {
+                const data = JSON.parse(Buffer.from(response.data).toString('utf-8'));
+                const audioUrl = data.audio_url || data.url;
+                const durationSeconds = data.duration_seconds || data.duration;
 
-            if (!audioUrl) {
-                throw new Error('No audio URL in TTS response');
+                if (!audioUrl) {
+                    throw new Error('No audio URL in TTS JSON response');
+                }
+
+                return {
+                    audioUrl,
+                    durationSeconds: durationSeconds || await this.estimateDuration(text, options?.speed),
+                };
             }
+
+            // Treat as binary audio data
+            const buffer = Buffer.from(response.data);
+            const base64 = buffer.toString('base64');
+            const audioUrl = `data:audio/${options?.format || 'mp3'};base64,${base64}`;
 
             return {
                 audioUrl,
-                durationSeconds: durationSeconds || await this.estimateDuration(text, options?.speed),
+                durationSeconds: await this.estimateDuration(text, options?.speed),
             };
         } catch (error) {
             if (axios.isAxiosError(error)) {
