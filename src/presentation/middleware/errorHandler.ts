@@ -63,9 +63,13 @@ export function errorHandler(
     res: Response,
     next: NextFunction
 ): void {
-    console.error(`[ERROR] ${err.name}: ${err.message}`);
-    if (err.stack) {
-        console.error(err.stack);
+    if (err instanceof NotFoundError) {
+        console.warn(`[WARN] ${err.name}: ${err.message} (${req.method} ${req.path})`);
+    } else {
+        console.error(`[ERROR] ${err.name}: ${err.message}`);
+        if (err.stack) {
+            console.error(err.stack);
+        }
     }
 
     if (err instanceof AppError) {
