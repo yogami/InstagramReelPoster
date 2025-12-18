@@ -10,6 +10,7 @@ export class OpenRouterImageClient implements IImageClient {
     private readonly baseUrl: string;
     private readonly model: string;
     private previousPrompt?: string; // Track for sequential prompting
+    private sequenceIndex: number = 0; // Track position in sequence
 
     constructor(
         apiKey: string,
@@ -58,6 +59,7 @@ export class OpenRouterImageClient implements IImageClient {
 
             // Store this prompt for the next image
             this.previousPrompt = prompt;
+            this.sequenceIndex++;
 
             return { imageUrl };
         } catch (error) {
@@ -71,7 +73,8 @@ export class OpenRouterImageClient implements IImageClient {
 
     /**
      * Builds a sequential prompt that references the previous image.
-     * Uses continuity tags if available for precise narrative coherence.
+     * CRITICAL: Includes the ACTUAL previous prompt so the model has real context.
+     * Without this, "continuation" is meaningless since each API call is stateless.
      */
     private buildSequentialPrompt(currentPrompt: string): string {
         if (!this.previousPrompt) {
@@ -79,11 +82,27 @@ export class OpenRouterImageClient implements IImageClient {
             return `Generate an image: ${currentPrompt}\n\nStyle: Cinematic, high quality, visually striking for Instagram reel. Use vibrant colors and dramatic lighting.`;
         }
 
-        // Subsequent images - build on previous with explicit continuation
-        // The LLM prompt already includes "Continuation of previous scene:" 
-        // and references continuity tags, so we enhance that with additional context
-        return `${currentPrompt}\n\nIMPORTANT CONTEXT: This image continues from the previous scene. Maintain strong visual continuity:\n- Keep similar lighting quality and direction\n- Preserve the color palette and mood\n- Ensure temporal/spatial coherence\n- Progress the narrative while keeping aesthetic consistency\n\nStyle: Cinematic, high quality, visually striking for Instagram reel.`;
+        // Subsequent images - provide ACTUAL previous prompt for real continuity
+        // The LLM already says "Continuation of previous scene:" but we need to tell 
+        // the image model what that previous scene actually WAS
+        return `You are generating image #${this.sequenceIndex + 1} in a visual sequence.
+
+PREVIOUS IMAGE (for reference):
+${this.previousPrompt}
+
+CURRENT IMAGE (what you should generate now):
+${currentPrompt}
+
+CRITICAL INSTRUCTIONS:
+- This image must visually continue from the previous scene described above
+- Maintain the same lighting quality, color palette, and visual style
+- Keep the same location/setting unless the prompt explicitly changes it
+- Preserve any ongoing visual motifs or subjects
+- Show clear narrative progression while maintaining aesthetic coherence
+
+Style: Cinematic, high quality, visually striking for Instagram reel.`;
     }
+
 
     /**
      * Extracts image URL from Gemini response.
@@ -121,5 +140,6 @@ export class OpenRouterImageClient implements IImageClient {
      */
     resetSequence(): void {
         this.previousPrompt = undefined;
+        this.sequenceIndex = 0;
     }
 }
