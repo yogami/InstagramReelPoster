@@ -122,12 +122,14 @@ CRITICAL REQUIREMENTS:
 3. DO NOT return fewer than ${plan.segmentCount} segments
 4. DO NOT return more than ${plan.segmentCount} segments
 
-Expected format (MUST be a JSON array):
-[
-  { segment 1 },
-  { segment 2 },
-  { segment 3 }
-]
+Expected format (MUST be a JSON object):
+{
+  "segments": [
+    { segment 1 },
+    { segment 2 },
+    { segment 3 }
+  ]
+}
 
 Each segment object MUST have these fields:
 
@@ -198,7 +200,23 @@ VISUAL LANGUAGE:
 Respond with a JSON array of ${plan.segmentCount} objects matching the structure above exactly.`;
 
         const response = await this.callOpenAI(prompt, true);
-        return this.parseJSON<SegmentContent[]>(response);
+        const parsed = this.parseJSON<any>(response);
+
+        // Handle both {"segments": [...]} and direct array [...] formats
+        if (parsed.segments && Array.isArray(parsed.segments)) {
+            return parsed.segments;
+        }
+        if (Array.isArray(parsed)) {
+            return parsed;
+        }
+
+        // Extreme resilience: if it returned a single object but we wanted an array
+        if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
+            console.warn('LLM returned single object instead of array, wrapping in array for resilience');
+            return [parsed] as SegmentContent[];
+        }
+
+        throw new Error('LLM failed to return a valid segments array or object');
     }
 
     /**

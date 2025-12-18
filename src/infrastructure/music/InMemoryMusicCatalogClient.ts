@@ -38,17 +38,31 @@ export class InMemoryMusicCatalogClient implements IMusicCatalogClient {
         }
 
         try {
-            const absolutePath = path.isAbsolute(this.catalogPath)
-                ? this.catalogPath
-                : path.resolve(process.cwd(), this.catalogPath);
+            const possiblePaths = [
+                path.isAbsolute(this.catalogPath) ? this.catalogPath : path.resolve(process.cwd(), this.catalogPath),
+                path.resolve(process.cwd(), 'assets/music_catalog.json'),
+                path.join(__dirname, '../../../../assets/music_catalog.json'),
+                '/app/assets/music_catalog.json',
+                '/app/data/music_catalog.json',
+                '/app/data/internal_music_catalog.json'
+            ];
 
-            if (!fs.existsSync(absolutePath)) {
-                console.warn(`Music catalog file not found: ${absolutePath}`);
+            let absolutePath = '';
+            for (const p of possiblePaths) {
+                if (fs.existsSync(p)) {
+                    absolutePath = p;
+                    break;
+                }
+            }
+
+            if (!absolutePath) {
+                console.warn(`Music catalog file not found in any expected location. Searched: ${possiblePaths.join(', ')}`);
                 this.tracks = [];
                 this.loaded = true;
                 return;
             }
 
+            console.log(`Loading music catalog from: ${absolutePath}`);
             const data = fs.readFileSync(absolutePath, 'utf-8');
             const rawTracks: RawTrackData[] = JSON.parse(data);
 

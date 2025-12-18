@@ -1,6 +1,7 @@
 import axios from 'axios';
 import FormData from 'form-data';
 import { ISubtitlesClient, SubtitlesResult } from '../../domain/ports/ISubtitlesClient';
+import { CloudinaryStorageClient } from '../storage/CloudinaryStorageClient';
 
 /**
  * OpenAI-based subtitles client that transcribes audio with timestamps.
@@ -8,13 +9,19 @@ import { ISubtitlesClient, SubtitlesResult } from '../../domain/ports/ISubtitles
 export class OpenAISubtitlesClient implements ISubtitlesClient {
     private readonly apiKey: string;
     private readonly baseUrl: string;
+    private readonly storageClient: CloudinaryStorageClient;
 
-    constructor(apiKey: string, baseUrl: string = 'https://api.openai.com') {
+    constructor(
+        apiKey: string,
+        storageClient: CloudinaryStorageClient,
+        baseUrl: string = 'https://api.openai.com'
+    ) {
         if (!apiKey) {
             throw new Error('OpenAI API key is required');
         }
         this.apiKey = apiKey;
         this.baseUrl = baseUrl;
+        this.storageClient = storageClient;
     }
 
     /**
@@ -58,10 +65,17 @@ export class OpenAISubtitlesClient implements ISubtitlesClient {
 
             const srtContent = transcriptionResponse.data;
 
-            // For now, we return the SRT content inline
-            // In production, you'd upload this to storage and return a URL
+            // Upload SRT to Cloudinary instead of using data URL
+            // This prevents "Payload Too Large" errors in video renderers
+            const jobId = this.extractJobId(audioUrl);
+            const uploadResult = await this.storageClient.uploadRawContent(
+                srtContent,
+                `subtitles_${jobId || Date.now()}.srt`,
+                { folder: 'instagram-reels/subtitles' }
+            );
+
             return {
-                subtitlesUrl: this.createDataUrl(srtContent),
+                subtitlesUrl: uploadResult.url,
                 srtContent,
                 format: 'srt',
             };
@@ -74,13 +88,9 @@ export class OpenAISubtitlesClient implements ISubtitlesClient {
         }
     }
 
-    /**
-     * Creates a data URL for the SRT content.
-     * In production, you'd upload to S3/GCS and return a real URL.
-     */
-    private createDataUrl(srtContent: string): string {
-        const base64 = Buffer.from(srtContent).toString('base64');
-        return `data:text/srt;base64,${base64}`;
+    private extractJobId(url: string): string | null {
+        const match = url.match(/voiceover_(job_[^.]+)/);
+        return match ? match[1] : null;
     }
 
     private getExtensionFromUrl(url: string): string | null {

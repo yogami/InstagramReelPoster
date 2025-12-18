@@ -130,7 +130,12 @@ describe('ReelOrchestrator E2E - Happy Path', () => {
         // No primary image client for tests - use DALL-E fallback only
         const fallbackImageClient = new OpenAIImageClient('test-key', 'https://api.openai.com');
 
-        const subtitlesClient = new OpenAISubtitlesClient('test-key', 'https://api.openai.com');
+        const mockStorageClient = {
+            uploadRawContent: jest.fn().mockResolvedValue({ url: 'https://mock-storage.example.com/subtitles.srt', publicId: 'srt_1' }),
+            uploadImage: jest.fn().mockResolvedValue({ url: 'https://mock-storage.example.com/image.jpg', publicId: 'img_1' }),
+        } as any;
+
+        const subtitlesClient = new OpenAISubtitlesClient('test-key', mockStorageClient, 'https://api.openai.com');
         const videoRenderer = new ShortstackVideoRenderer('test-key', 'https://api.shotstack.io/stage');
 
         // Create music catalog with test track
@@ -143,12 +148,14 @@ describe('ReelOrchestrator E2E - Happy Path', () => {
             transcriptionClient,
             llmClient,
             ttsClient,
-            primaryImageClient: undefined, // No OpenRouter in tests
+            fallbackTTSClient: undefined,
+            primaryImageClient: undefined,
             fallbackImageClient,
             subtitlesClient,
             videoRenderer,
             musicSelector,
             jobManager,
+            storageClient: mockStorageClient,
         };
 
         orchestrator = new ReelOrchestrator(deps);
@@ -160,7 +167,7 @@ describe('ReelOrchestrator E2E - Happy Path', () => {
 
     it('should generate reel end-to-end successfully', async () => {
         // Create a job (10-15s range → (10+15)/2/5 = 2.5 → 3 segments)
-        const job = jobManager.createJob({
+        const job = await jobManager.createJob({
             sourceAudioUrl: 'https://example.com/voice-note.mp3',
             targetDurationRange: { min: 10, max: 15 },
         });
@@ -188,7 +195,7 @@ describe('ReelOrchestrator E2E - Happy Path', () => {
         expect(result.manifest?.segments).toHaveLength(3);
         expect(result.manifest?.voiceoverUrl).toBe('https://mock-storage.example.com/voiceover.mp3');
         expect(result.manifest?.musicUrl).toBe('https://mock-storage.example.com/music.mp3');
-        expect(result.manifest?.subtitlesUrl).toContain('data:text/srt;base64'); // Subtitles are base64 encoded
+        expect(result.manifest?.subtitlesUrl).toContain('https://mock-storage.example.com/subtitles.srt'); // Subtitles are hosted on storage
 
         // Verify timestamps
         expect(result.createdAt).toBeDefined();
@@ -200,7 +207,7 @@ describe('ReelOrchestrator E2E - Happy Path', () => {
     }, 30000); // 30s timeout for E2E test
 
     it('should update job status through all stages', async () => {
-        const job = jobManager.createJob({
+        const job = await jobManager.createJob({
             sourceAudioUrl: 'https://example.com/voice-note.mp3',
             targetDurationRange: { min: 10, max: 15 },  // 3 segments
         });
@@ -230,7 +237,7 @@ describe('ReelOrchestrator E2E - Happy Path', () => {
     }, 30000);
 
     it('should call all external APIs exactly once (except images)', async () => {
-        const job = jobManager.createJob({
+        const job = await jobManager.createJob({
             sourceAudioUrl: 'https://example.com/voice-note.mp3',
             targetDurationRange: { min: 10, max: 15 },  // 3 segments
         });

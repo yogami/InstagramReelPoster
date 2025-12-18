@@ -75,6 +75,21 @@ function createDependencies(config: Config): {
     orchestrator: ReelOrchestrator;
     cloudinaryClient: CloudinaryStorageClient | null;
 } {
+    // Cloudinary storage client
+    const cloudinaryClient = config.cloudinaryCloudName && config.cloudinaryApiKey
+        ? new CloudinaryStorageClient(
+            config.cloudinaryCloudName,
+            config.cloudinaryApiKey,
+            config.cloudinaryApiSecret
+        )
+        : null;
+
+    if (cloudinaryClient) {
+        console.log('✅ Cloudinary storage configured');
+    } else {
+        console.log('⚠️  Cloudinary not configured. Warning: Subtitles and FFmpeg rendering require cloud storage.');
+    }
+
     // Infrastructure clients
     const transcriptionClient = new OpenAITranscriptionClient(config.openaiApiKey);
     const llmClient = new OpenAILLMClient(config.openaiApiKey, config.openaiModel);
@@ -93,23 +108,8 @@ function createDependencies(config: Config): {
         : undefined;
 
     const fallbackImageClient = new OpenAIImageClient(config.openaiApiKey);
-    const subtitlesClient = new OpenAISubtitlesClient(config.openaiApiKey);
+    const subtitlesClient = new OpenAISubtitlesClient(config.openaiApiKey, cloudinaryClient!);
     const fallbackTTSClient = new OpenAITTSClient(config.openaiApiKey);
-
-    // Cloudinary storage client
-    const cloudinaryClient = config.cloudinaryCloudName && config.cloudinaryApiKey
-        ? new CloudinaryStorageClient(
-            config.cloudinaryCloudName,
-            config.cloudinaryApiKey,
-            config.cloudinaryApiSecret
-        )
-        : null;
-
-    if (cloudinaryClient) {
-        console.log('✅ Cloudinary storage configured');
-    } else {
-        console.log('⚠️  Cloudinary not configured. Warning: Subtitles and FFmpeg rendering require cloud storage.');
-    }
 
     // Video Renderer Selection
     let videoRenderer: IVideoRenderer;
@@ -173,6 +173,9 @@ function createDependencies(config: Config): {
         jobManager,
         notificationClient,
         fallbackTTSClient,
+        storageClient: cloudinaryClient || undefined,
+        callbackToken: config.callbackToken,
+        callbackHeader: config.callbackHeader,
     };
 
     const orchestrator = new ReelOrchestrator(deps);

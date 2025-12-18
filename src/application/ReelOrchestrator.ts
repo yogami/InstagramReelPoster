@@ -23,6 +23,7 @@ import { IVideoRenderer } from '../domain/ports/IVideoRenderer';
 import { INotificationClient } from '../domain/ports/INotificationClient';
 import { MusicSelector, MusicSource } from './MusicSelector';
 import { JobManager } from './JobManager';
+import { CloudinaryStorageClient } from '../infrastructure/storage/CloudinaryStorageClient';
 
 export interface OrchestratorDependencies {
     transcriptionClient: ITranscriptionClient;
@@ -35,6 +36,9 @@ export interface OrchestratorDependencies {
     videoRenderer: IVideoRenderer;
     musicSelector: MusicSelector;
     jobManager: JobManager;
+    storageClient?: CloudinaryStorageClient;
+    callbackToken?: string;
+    callbackHeader?: string;
     notificationClient?: INotificationClient;
 }
 
@@ -142,7 +146,8 @@ export class ReelOrchestrator {
                     plan.musicPrompt
                 );
                 musicUrl = track.audioUrl;
-                await this.deps.jobManager.updateJob(jobId, { musicUrl, musicSource });
+                const musicDurationSeconds = track.durationSeconds;
+                await this.deps.jobManager.updateJob(jobId, { musicUrl, musicSource, musicDurationSeconds });
                 this.logMemoryUsage('Step 6: Music');
             }
 
@@ -151,7 +156,7 @@ export class ReelOrchestrator {
             const needsImages = segments.some(s => !s.imageUrl);
             if (needsImages) {
                 await this.updateJobStatus(jobId, 'generating_images', 'Creating visuals...');
-                segments = await this.generateImages(segments);
+                segments = await this.generateImages(segments, jobId);
                 await this.deps.jobManager.updateJob(jobId, { segments });
                 this.logMemoryUsage('Step 7: Images');
             }
@@ -175,6 +180,7 @@ export class ReelOrchestrator {
                     segments: segments,
                     voiceoverUrl,
                     musicUrl: musicUrl!,
+                    musicDurationSeconds: (await this.deps.jobManager.getJob(jobId))?.musicDurationSeconds || voiceoverDuration,
                     subtitlesUrl,
                 });
                 await this.deps.jobManager.updateJob(jobId, { manifest });
@@ -322,7 +328,7 @@ export class ReelOrchestrator {
     /**
      * Generates images for all segments.
      */
-    private async generateImages(segments: Segment[]): Promise<Segment[]> {
+    private async generateImages(segments: Segment[], jobId: string): Promise<Segment[]> {
         console.log(`Generating images for ${segments.length} segments...`);
 
         // Reset OpenRouter sequence for new job
@@ -336,19 +342,42 @@ export class ReelOrchestrator {
             const index = i;
 
             try {
-                // Try primary image client (OpenRouter) first
-                if (this.deps.primaryImageClient) {
-                    const { imageUrl } = await this.deps.primaryImageClient.generateImage(segment.imagePrompt);
-                    results.push({ ...segment, imageUrl });
-                    continue;
-                }
-            } catch (error) {
-                console.warn(`Primary image client failed for segment ${index}, falling back to DALL-E:`, error);
-            }
+                let finalImageUrl = '';
 
-            // Fallback to DALL-E
-            const { imageUrl } = await this.deps.fallbackImageClient.generateImage(segment.imagePrompt);
-            results.push({ ...segment, imageUrl });
+                // Try primary image client (OpenRouter) first, with fallback to DALL-E
+                if (this.deps.primaryImageClient) {
+                    try {
+                        const { imageUrl } = await this.deps.primaryImageClient.generateImage(segment.imagePrompt);
+                        finalImageUrl = imageUrl;
+                    } catch (primaryError) {
+                        console.warn(`Primary image client failed for segment ${index}, falling back to DALL-E:`, primaryError);
+                        const { imageUrl } = await this.deps.fallbackImageClient.generateImage(segment.imagePrompt);
+                        finalImageUrl = imageUrl;
+                    }
+                } else {
+                    // No primary client, use DALL-E directly
+                    const { imageUrl } = await this.deps.fallbackImageClient.generateImage(segment.imagePrompt);
+                    finalImageUrl = imageUrl;
+                }
+
+                // IMPORTANT: Upload to Cloudinary to avoid "Payload Too Large" and ensure permanent URLs
+                if (this.deps.storageClient && finalImageUrl) {
+                    try {
+                        const uploadResult = await this.deps.storageClient.uploadImage(finalImageUrl, {
+                            folder: `instagram-reels/images/${jobId}`,
+                            publicId: `seg_${index}_${Date.now()}`
+                        });
+                        finalImageUrl = uploadResult.url;
+                    } catch (uploadError) {
+                        console.warn('Failed to upload image to Cloudinary, using original URL:', uploadError);
+                    }
+                }
+
+                results.push({ ...segment, imageUrl: finalImageUrl });
+            } catch (error) {
+                console.error(`Image generation failed for segment ${index} (both primary and fallback):`, error);
+                throw error; // Only throw if BOTH primary and fallback failed
+            }
         }
 
         return results;
@@ -395,6 +424,15 @@ export class ReelOrchestrator {
 
         try {
             console.log(`[${job.id}] Notifying callback: ${job.callbackUrl}`);
+            const headers: Record<string, string> = {};
+            if (this.deps.callbackToken && this.deps.callbackHeader) {
+                if (this.deps.callbackHeader.toLowerCase() === 'authorization') {
+                    headers[this.deps.callbackHeader] = `Bearer ${this.deps.callbackToken}`;
+                } else {
+                    headers[this.deps.callbackHeader] = this.deps.callbackToken;
+                }
+            }
+
             await axios.post(job.callbackUrl, {
                 jobId: job.id,
                 status: job.status,
@@ -405,6 +443,8 @@ export class ReelOrchestrator {
                     createdAt: job.createdAt,
                     completedAt: job.updatedAt
                 }
+            }, {
+                headers
             });
         } catch (error) {
             console.error(`[${job.id}] Failed to notify callback:`, error);

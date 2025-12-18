@@ -192,20 +192,35 @@ export class ShortstackVideoRenderer implements IVideoRenderer {
             length: manifest.durationSeconds,
         };
 
+        // Track 4: Background Music (bottom layer, but above images)
+        const musicClipCount = Math.ceil(manifest.durationSeconds / manifest.musicDurationSeconds);
+        const musicClips: ShotstackClip[] = [];
+        for (let i = 0; i < musicClipCount; i++) {
+            const start = i * manifest.musicDurationSeconds;
+            const length = Math.min(manifest.musicDurationSeconds, manifest.durationSeconds - start);
+            if (length > 0) {
+                musicClips.push({
+                    asset: {
+                        type: 'audio' as const,
+                        src: manifest.musicUrl,
+                        volume: 0.25, // Subtle background
+                        effect: i === 0 ? 'fadeIn' : (i === musicClipCount - 1 ? 'fadeOut' : undefined),
+                    },
+                    start,
+                    length,
+                });
+            }
+        }
+
         return {
             timeline: {
-                // Background music as soundtrack (separate from tracks)
-                soundtrack: {
-                    src: manifest.musicUrl,
-                    effect: 'fadeInFadeOut',
-                    volume: 0.3, // Lower than voiceover
-                },
                 background: '#000000',
                 tracks: [
                     // Tracks are rendered back-to-front (first track is on top)
                     { clips: [captionClip] },    // Top: Subtitles
                     { clips: [voiceoverClip] },  // Middle: Voiceover audio
-                    { clips: imageClips },        // Bottom: Images
+                    { clips: musicClips },       // Lower-Middle: Music (looped)
+                    { clips: imageClips },       // Bottom: Images
                 ],
             },
             output: {

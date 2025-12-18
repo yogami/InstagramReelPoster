@@ -139,7 +139,7 @@ export class FFmpegVideoRenderer implements IVideoRenderer {
             cmd.input(assets.voiceoverPath);
 
             // Input 1: Audio (Music)
-            cmd.input(assets.musicPath);
+            cmd.input(assets.musicPath).inputOptions('-stream_loop -1');
 
             // Inputs 2...N: Images
             assets.imagePaths.forEach((imgPath) => {

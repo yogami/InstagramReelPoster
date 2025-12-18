@@ -303,6 +303,7 @@ describe('Integration: Shotstack Render + Polling', () => {
             ],
             voiceoverUrl: 'https://example.com/voice.mp3',
             musicUrl: 'https://example.com/music.mp3',
+            musicDurationSeconds: 30,
             subtitlesUrl: 'https://example.com/subs.srt',
         });
 
@@ -331,6 +332,7 @@ describe('Integration: Shotstack Render + Polling', () => {
             segments: [{ index: 0, start: 0, end: 15, imageUrl: 'https://example.com/1.jpg' }],
             voiceoverUrl: 'https://example.com/voice.mp3',
             musicUrl: 'https://example.com/music.mp3',
+            musicDurationSeconds: 30,
             subtitlesUrl: 'https://example.com/subs.srt',
         })).rejects.toThrow();
     });

@@ -133,21 +133,23 @@ describe('MusicSelector', () => {
             expect(result.track.id).toBe('ai-generated');
         });
 
-        it('should throw when all sources fail or empty and no generator', async () => {
+        it('should return backup track when all sources fail or empty and no generator', async () => {
             const emptyCatalog = createMockCatalog([]);
             const selector = new MusicSelector(emptyCatalog, null, null);
 
-            await expect(selector.selectMusic(['ambient'], 30, 'calm music'))
-                .rejects.toThrow('No music sources available');
+            const result = await selector.selectMusic(['ambient'], 30, 'calm music');
+            expect(result.track.id).toBe('backup-safety-track');
+            expect(result.source).toBe('internal');
         });
 
-        it('should throw when all sources including generator fail', async () => {
+        it('should return backup track when all sources including generator fail', async () => {
             const emptyCatalog = createMockCatalog([]);
             const failingGenerator = createFailingGenerator();
             const selector = new MusicSelector(emptyCatalog, null, failingGenerator);
 
-            await expect(selector.selectMusic(['ambient'], 30, 'calm music'))
-                .rejects.toThrow();
+            const result = await selector.selectMusic(['ambient'], 30, 'calm music');
+            expect(result.track.id).toBe('backup-safety-track');
+            expect(result.source).toBe('internal');
         });
     });
 });
@@ -179,6 +181,7 @@ describe('ReelManifest', () => {
                 segments,
                 voiceoverUrl: 'https://example.com/voiceover.mp3',
                 musicUrl: 'https://example.com/music.mp3',
+                musicDurationSeconds: 30,
                 subtitlesUrl: 'https://example.com/subtitles.srt',
             });
 
@@ -195,6 +198,7 @@ describe('ReelManifest', () => {
                 segments,
                 voiceoverUrl: 'https://example.com/v.mp3',
                 musicUrl: 'https://example.com/m.mp3',
+                musicDurationSeconds: 30,
                 subtitlesUrl: 'https://example.com/s.srt',
             })).toThrow('durationSeconds must be positive');
         });
@@ -205,6 +209,7 @@ describe('ReelManifest', () => {
                 segments: [],
                 voiceoverUrl: 'https://example.com/v.mp3',
                 musicUrl: 'https://example.com/m.mp3',
+                musicDurationSeconds: 30,
                 subtitlesUrl: 'https://example.com/s.srt',
             })).toThrow('at least one segment');
         });
@@ -217,6 +222,7 @@ describe('ReelManifest', () => {
                 segments,
                 voiceoverUrl: '',
                 musicUrl: 'https://example.com/m.mp3',
+                musicDurationSeconds: 30,
                 subtitlesUrl: 'https://example.com/s.srt',
             })).toThrow('voiceoverUrl cannot be empty');
         });
@@ -232,6 +238,7 @@ describe('ReelManifest', () => {
                 segments,
                 voiceoverUrl: 'https://example.com/v.mp3',
                 musicUrl: 'https://example.com/m.mp3',
+                musicDurationSeconds: 30,
                 subtitlesUrl: 'https://example.com/s.srt',
             })).toThrow('missing imageUrl');
         });
@@ -250,6 +257,7 @@ describe('ReelManifest', () => {
                 segments,
                 voiceoverUrl: 'https://example.com/v.mp3',
                 musicUrl: 'https://example.com/m.mp3',
+                musicDurationSeconds: 30,
                 subtitlesUrl: 'https://example.com/s.srt',
             });
 
@@ -269,6 +277,7 @@ describe('ReelManifest', () => {
                 segments,
                 voiceoverUrl: '  https://example.com/v.mp3  ',
                 musicUrl: '  https://example.com/m.mp3  ',
+                musicDurationSeconds: 30,
                 subtitlesUrl: '  https://example.com/s.srt  ',
             });
 

@@ -76,6 +76,8 @@ export interface ReelJob {
     voiceoverDurationSeconds?: number;
     /** URL to the selected/generated music */
     musicUrl?: string;
+    /** Duration of the selected music in seconds */
+    musicDurationSeconds?: number;
     /** Source of the music: 'catalog', 'internal', or 'ai' */
     musicSource?: 'catalog' | 'internal' | 'ai';
     /** URL to the generated subtitles file */

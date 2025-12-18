@@ -25,6 +25,8 @@ export interface ReelManifest {
     voiceoverUrl: string;
     /** URL to the background music file */
     musicUrl: string;
+    /** Duration of the background music in seconds */
+    musicDurationSeconds: number;
     /** URL to the subtitles file (SRT or VTT) */
     subtitlesUrl: string;
 }
@@ -37,6 +39,7 @@ export function createReelManifest(params: {
     segments: Segment[];
     voiceoverUrl: string;
     musicUrl: string;
+    musicDurationSeconds: number;
     subtitlesUrl: string;
 }): ReelManifest {
     if (params.durationSeconds <= 0) {
@@ -75,6 +78,7 @@ export function createReelManifest(params: {
         segments: manifestSegments,
         voiceoverUrl: params.voiceoverUrl.trim(),
         musicUrl: params.musicUrl.trim(),
+        musicDurationSeconds: params.musicDurationSeconds,
         subtitlesUrl: params.subtitlesUrl.trim(),
     };
 }

@@ -25,6 +25,8 @@ export interface Config {
     telegramBotToken: string;
     telegramWebhookSecret: string;
     makeWebhookUrl: string;
+    callbackToken?: string;
+    callbackHeader?: string;
 
     // OpenRouter (Primary Image Generation)
     openrouterApiKey: string;
@@ -62,24 +64,27 @@ export interface Config {
 }
 
 function getEnvVar(key: string, defaultValue?: string): string {
-    const value = process.env[key];
+    let value = process.env[key];
     if (value === undefined) {
         if (defaultValue !== undefined) {
             return defaultValue;
         }
         throw new Error(`Missing required environment variable: ${key}`);
     }
+
+    // Proactive cleanup: trim whitespace and remove wrapping quotes
+    value = value.trim();
+    if (value.startsWith('"') && value.endsWith('"')) {
+        value = value.substring(1, value.length - 1);
+    } else if (value.startsWith("'") && value.endsWith("'")) {
+        value = value.substring(1, value.length - 1);
+    }
+
     return value;
 }
 
 function getEnvVarNumber(key: string, defaultValue?: number): number {
-    const value = process.env[key];
-    if (value === undefined) {
-        if (defaultValue !== undefined) {
-            return defaultValue;
-        }
-        throw new Error(`Missing required environment variable: ${key}`);
-    }
+    const value = getEnvVar(key, defaultValue?.toString());
     const parsed = parseFloat(value);
     if (isNaN(parsed)) {
         throw new Error(`Environment variable ${key} must be a number, got: ${value}`);
@@ -126,11 +131,13 @@ export function loadConfig(): Config {
         telegramBotToken: getEnvVar('TELEGRAM_BOT_TOKEN', ''),
         telegramWebhookSecret: getEnvVar('TELEGRAM_WEBHOOK_SECRET', ''),
         makeWebhookUrl: getEnvVar('MAKE_WEBHOOK_URL', ''),
+        callbackToken: process.env.CALLBACK_TOKEN,
+        callbackHeader: process.env.CALLBACK_HEADER || 'Authorization',
 
         // OpenRouter
         openrouterApiKey: getEnvVar('OPENROUTER_API_KEY', ''),
         openrouterBaseUrl: getEnvVar('OPENROUTER_BASE_URL', 'https://openrouter.ai/api/v1'),
-        openrouterModel: getEnvVar('OPENROUTER_MODEL', 'google/gemini-flash-1.5'),
+        openrouterModel: getEnvVar('OPENROUTER_MODEL', 'google/gemini-2.5-flash'),
 
         // Kie.ai
         kieApiKey: getEnvVar('KIE_API_KEY', ''),
