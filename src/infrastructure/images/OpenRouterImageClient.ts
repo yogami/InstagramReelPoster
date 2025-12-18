@@ -26,11 +26,6 @@ export class OpenRouterImageClient implements IImageClient {
     }
 
     async generateImage(prompt: string): Promise<{ imageUrl: string }> {
-        // Proactive check: Gemini and other text-only models on OpenRouter don't return image URLs directly
-        if (this.model.includes('gemini') || this.model.includes('gpt-') || this.model.includes('claude')) {
-            throw new Error(`OpenRouter model ${this.model} is a text model and cannot generate images. Falling back to primary image generator.`);
-        }
-
         const enhancedPrompt = this.buildSequentialPrompt(prompt);
 
         try {

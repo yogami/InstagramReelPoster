@@ -238,6 +238,9 @@ export class ShortstackVideoRenderer implements IVideoRenderer {
      */
     private async startRender(edit: ShotstackEdit): Promise<string> {
         try {
+            const payload = JSON.stringify(edit);
+            console.log(`[Shotstack] Request payload size: ${(payload.length / 1024).toFixed(2)} KB`);
+
             const response = await axios.post(
                 `${this.baseUrl}/render`,
                 edit,

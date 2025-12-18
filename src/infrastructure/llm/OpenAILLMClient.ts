@@ -274,7 +274,10 @@ Rules:
 Respond with the adjusted JSON array in the same format.`;
 
         const response = await this.callOpenAI(prompt, true);
-        return this.parseJSON<SegmentContent[]>(response);
+        const parsed = this.parseJSON<any>(response);
+
+        // CRITICAL: Normalize the response just like generateSegmentContent
+        return this.normalizeSegments(parsed);
     }
 
     private async callOpenAI(prompt: string, jsonMode: boolean = false): Promise<string> {
