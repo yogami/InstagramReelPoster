@@ -3,14 +3,14 @@ import { IImageClient } from '../../domain/ports/IImageClient';
 
 /**
  * OpenRouter image client using Gemini Flash for image generation.
- * Supports sequential prompting for narrative continuity.
+ * Supports balanced sequential prompting with compact context extraction.
  */
 export class OpenRouterImageClient implements IImageClient {
     private readonly apiKey: string;
     private readonly baseUrl: string;
     private readonly model: string;
-    private previousPrompt?: string; // Track for sequential prompting
-    private sequenceIndex: number = 0; // Track position in sequence
+    private previousPrompt?: string;
+    private sequenceIndex: number = 0;
 
     constructor(
         apiKey: string,
@@ -26,7 +26,6 @@ export class OpenRouterImageClient implements IImageClient {
     }
 
     async generateImage(prompt: string): Promise<{ imageUrl: string }> {
-        // Build sequential prompt if we have a previous one
         const enhancedPrompt = this.buildSequentialPrompt(prompt);
 
         try {
@@ -50,14 +49,9 @@ export class OpenRouterImageClient implements IImageClient {
                 }
             );
 
-            // Extract image URL from response
             const content = response.data.choices[0].message.content;
-
-            // Gemini Flash returns image URL or base64
-            // Parse the response to extract the actual URL
             const imageUrl = this.extractImageUrl(content);
 
-            // Store this prompt for the next image
             this.previousPrompt = prompt;
             this.sequenceIndex++;
 
@@ -72,72 +66,72 @@ export class OpenRouterImageClient implements IImageClient {
     }
 
     /**
-     * Builds a sequential prompt that references the previous image.
-     * CRITICAL: Includes the ACTUAL previous prompt so the model has real context.
-     * Without this, "continuation" is meaningless since each API call is stateless.
+     * Builds sequential prompt with BALANCED context extraction.
+     * Extracts ~30-40 key words instead of full 140-word prompt.
+     * Token growth: Image 1: 140w → Image 2: ~170w → Image 3: ~200w (linear)
      */
     private buildSequentialPrompt(currentPrompt: string): string {
         if (!this.previousPrompt) {
-            // First image - no previous context
             return `Generate an image: ${currentPrompt}\n\nStyle: Cinematic, high quality, visually striking for Instagram reel. Use vibrant colors and dramatic lighting.`;
         }
 
-        // Subsequent images - provide ACTUAL previous prompt for real continuity
-        // The LLM already says "Continuation of previous scene:" but we need to tell 
-        // the image model what that previous scene actually WAS
-        return `You are generating image #${this.sequenceIndex + 1} in a visual sequence.
+        const context = this.extractCompactContext(this.previousPrompt);
 
-PREVIOUS IMAGE (for reference):
-${this.previousPrompt}
+        return `Image #${this.sequenceIndex + 1} in visual sequence.
 
-CURRENT IMAGE (what you should generate now):
+ESTABLISHED FROM PREVIOUS IMAGE:
+${context}
+
+CURRENT SCENE TO GENERATE:
 ${currentPrompt}
 
-CRITICAL INSTRUCTIONS:
-- This image must visually continue from the previous scene described above
-- Maintain the same lighting quality, color palette, and visual style
-- Keep the same location/setting unless the prompt explicitly changes it
-- Preserve any ongoing visual motifs or subjects
-- Show clear narrative progression while maintaining aesthetic coherence
+CRITICAL: Maintain the established elements above while progressing the narrative. Ensure visual coherence.
 
 Style: Cinematic, high quality, visually striking for Instagram reel.`;
     }
 
-
     /**
-     * Extracts image URL from Gemini response.
-     * Handles both direct URLs and base64 data.
+     * Extracts essential visual elements (~30-40 words) from previous prompt.
+     * Looks for: location, lighting, colors, subjects.
      */
+    private extractCompactContext(prompt: string): string {
+        const elements: string[] = [];
+
+        // Location
+        const loc = prompt.match(/(deck|room|forest|beach|mountain|garden|street|studio|landscape|field|valley|canyon)[^.!?]{0,30}/i);
+        if (loc) elements.push(`• Location: ${loc[0].trim()}`);
+
+        // Lighting/Time
+        const light = prompt.match(/(golden hour|sunrise|sunset|morning|evening|soft|warm|cool|dramatic|natural)[\s\w-]{0,25}(light|lighting|glow)/i);
+        if (light) elements.push(`• Lighting: ${light[0].trim()}`);
+
+        // Colors
+        const color = prompt.match(/(warm|cool|vibrant|muted|rich|amber|blue|green|earth|teal|orange|violet|purple)[\s\w-]{0,20}(tone|palette|color)/i);
+        if (color) elements.push(`• Colors: ${color[0].trim()}`);
+
+        // Subject
+        const subj = prompt.match(/(person|subject|figure|woman|man|meditating|sitting|standing|walking|pose)[^.!?]{0,25}/i);
+        if (subj) elements.push(`• Subject: ${subj[0].trim()}`);
+
+        return elements.length > 0 ? elements.join('\n') : `• Core elements: ${prompt.split(/\s+/).slice(0, 35).join(' ')}`;
+    }
+
     private extractImageUrl(content: string): string {
-        // If it's already a URL, return it
         if (content.startsWith('http://') || content.startsWith('https://')) {
             return content;
         }
 
-        // If it's markdown image format: ![alt](url)
         const markdownMatch = content.match(/!\[.*?\]\((https?:\/\/.*?)\)/);
-        if (markdownMatch) {
-            return markdownMatch[1];
-        }
+        if (markdownMatch) return markdownMatch[1];
 
-        // If it contains a URL somewhere in the text
         const urlMatch = content.match(/https?:\/\/[^\s]+/);
-        if (urlMatch) {
-            return urlMatch[0];
-        }
+        if (urlMatch) return urlMatch[0];
 
-        // If it's base64, return as data URL
-        if (content.includes('base64,')) {
-            return content;
-        }
+        if (content.includes('base64,')) return content;
 
         throw new Error(`Could not extract image URL from OpenRouter response: ${content.substring(0, 200)}`);
     }
 
-    /**
-     * Resets the sequential prompting state.
-     * Call this between different reel jobs.
-     */
     resetSequence(): void {
         this.previousPrompt = undefined;
         this.sequenceIndex = 0;
