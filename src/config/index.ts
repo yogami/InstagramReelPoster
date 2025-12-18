@@ -9,7 +9,8 @@ dotenv.config();
 export interface Config {
     // Server
     port: number;
-    nodeEnv: string;
+    environment: string;
+    testMode: boolean; // When true, use fixtures instead of real HTTP
 
     // OpenAI
     openaiApiKey: string;
@@ -83,6 +84,17 @@ function getEnvVarNumber(key: string, defaultValue?: number): number {
     return parsed;
 }
 
+function getEnvVarBoolean(key: string, defaultValue?: boolean): boolean {
+    const value = process.env[key];
+    if (value === undefined) {
+        if (defaultValue !== undefined) {
+            return defaultValue;
+        }
+        throw new Error(`Missing required environment variable: ${key}`);
+    }
+    return value.toLowerCase() === 'true';
+}
+
 /**
  * Loads and validates configuration from environment variables.
  */
@@ -90,7 +102,8 @@ export function loadConfig(): Config {
     return {
         // Server
         port: getEnvVarNumber('PORT', 3000),
-        nodeEnv: getEnvVar('NODE_ENV', 'development'),
+        environment: getEnvVar('NODE_ENV', 'development'),
+        testMode: getEnvVarBoolean('TEST_MODE', false),
 
         // OpenAI
         openaiApiKey: getEnvVar('OPENAI_API_KEY'),

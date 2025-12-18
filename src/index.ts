@@ -20,7 +20,7 @@ async function main(): Promise<void> {
 
     app.listen(config.port, () => {
         console.log(`✅ Server running on http://localhost:${config.port}`);
-        console.log(`   Environment: ${config.nodeEnv}`);
+        console.log(`   Environment: ${config.environment}`);
         console.log('');
         console.log('📡 Endpoints:');
         console.log(`   POST /process-reel    - Start a new reel generation job`);
