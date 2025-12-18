@@ -1,4 +1,4 @@
 {
-    "audioUrl": "https://mock-storage.example.com/voiceover.mp3",
-    "durationSeconds": 28.5
+    "audio_url": "https://mock-storage.example.com/voiceover.mp3",
+    "duration_seconds": 28.5
 }

@@ -1,0 +1,11 @@
+1
+00:00:00,000 --> 00:00:05,000
+Mindfulness is the practice of being present.
+
+2
+00:00:05,000 --> 00:00:10,000
+It reduces stress and anxiety in our lives.
+
+3
+00:00:10,000 --> 00:00:15,000
+Even five minutes makes a difference.

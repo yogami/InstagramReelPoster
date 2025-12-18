@@ -1,11 +1,13 @@
-{
-    "id": "track-test-001",
-    "url": "https://mock-storage.example.com/music.mp3",
-    "title": "Ambient Meditation",
-    "tags": [
-        "ambient",
-        "calm",
-        "meditation"
-    ],
-    "durationSeconds": 30
-}
+[
+    {
+        "id": "track-test-001",
+        "url": "https://mock-storage.example.com/music.mp3",
+        "title": "Ambient Meditation",
+        "tags": [
+            "ambient",
+            "calm",
+            "meditation"
+        ],
+        "durationSeconds": 30
+    }
+]
