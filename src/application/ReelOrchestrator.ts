@@ -267,23 +267,27 @@ export class ReelOrchestrator {
             (this.deps.primaryImageClient as any).resetSequence();
         }
 
-        const results = await Promise.all(
-            segments.map(async (segment, index) => {
-                try {
-                    // Try primary image client (OpenRouter) first
-                    if (this.deps.primaryImageClient) {
-                        const { imageUrl } = await this.deps.primaryImageClient.generateImage(segment.imagePrompt);
-                        return { ...segment, imageUrl };
-                    }
-                } catch (error) {
-                    console.warn(`Primary image client failed for segment ${index}, falling back to DALL-E:`, error);
-                }
+        const results: Segment[] = [];
+        for (let i = 0; i < segments.length; i++) {
+            const segment = segments[i];
+            const index = i;
 
-                // Fallback to DALL-E
-                const { imageUrl } = await this.deps.fallbackImageClient.generateImage(segment.imagePrompt);
-                return { ...segment, imageUrl };
-            })
-        );
+            try {
+                // Try primary image client (OpenRouter) first
+                if (this.deps.primaryImageClient) {
+                    const { imageUrl } = await this.deps.primaryImageClient.generateImage(segment.imagePrompt);
+                    results.push({ ...segment, imageUrl });
+                    continue;
+                }
+            } catch (error) {
+                console.warn(`Primary image client failed for segment ${index}, falling back to DALL-E:`, error);
+            }
+
+            // Fallback to DALL-E
+            const { imageUrl } = await this.deps.fallbackImageClient.generateImage(segment.imagePrompt);
+            results.push({ ...segment, imageUrl });
+        }
+
         return results;
     }
 
