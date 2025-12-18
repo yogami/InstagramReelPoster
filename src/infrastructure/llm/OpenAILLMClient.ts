@@ -202,21 +202,34 @@ Respond with a JSON array of ${plan.segmentCount} objects matching the structure
         const response = await this.callOpenAI(prompt, true);
         const parsed = this.parseJSON<any>(response);
 
-        // Handle both {"segments": [...]} and direct array [...] formats
-        if (parsed.segments && Array.isArray(parsed.segments)) {
-            return parsed.segments;
-        }
-        if (Array.isArray(parsed)) {
-            return parsed;
+        return this.normalizeSegments(parsed);
+    }
+
+    /**
+     * Normalizes segment content to ensure it's always an array of SegmentContent.
+     */
+    private normalizeSegments(data: any): SegmentContent[] {
+        if (Array.isArray(data)) {
+            return data;
         }
 
-        // Extreme resilience: if it returned a single object but we wanted an array
-        if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
-            console.warn('LLM returned single object instead of array, wrapping in array for resilience');
-            return [parsed] as SegmentContent[];
+        // Silent unwrap if it's {"segments": [...]}
+        if (data && typeof data === 'object' && Array.isArray(data.segments)) {
+            return data.segments;
         }
 
-        throw new Error('LLM failed to return a valid segments array or object');
+        // Silent wrap if it's a single object
+        if (data && typeof data === 'object' && data.commentary && data.imagePrompt) {
+            return [data as SegmentContent];
+        }
+
+        // Handle numeric keys (sometimes returned by LLMs)
+        const values = Object.values(data);
+        if (values.length > 0 && typeof values[0] === 'object' && (values[0] as any).commentary) {
+            return values as SegmentContent[];
+        }
+
+        throw new Error(`LLM returned invalid segments format: ${JSON.stringify(data).substring(0, 100)}`);
     }
 
     /**

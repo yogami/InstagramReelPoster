@@ -131,8 +131,8 @@ export function loadConfig(): Config {
         telegramBotToken: getEnvVar('TELEGRAM_BOT_TOKEN', ''),
         telegramWebhookSecret: getEnvVar('TELEGRAM_WEBHOOK_SECRET', ''),
         makeWebhookUrl: getEnvVar('MAKE_WEBHOOK_URL', ''),
-        callbackToken: process.env.CALLBACK_TOKEN,
-        callbackHeader: process.env.CALLBACK_HEADER || 'Authorization',
+        callbackToken: process.env.CALLBACK_TOKEN ? getEnvVar('CALLBACK_TOKEN') : undefined,
+        callbackHeader: process.env.CALLBACK_HEADER ? getEnvVar('CALLBACK_HEADER') : 'Authorization',
 
         // OpenRouter
         openrouterApiKey: getEnvVar('OPENROUTER_API_KEY', ''),

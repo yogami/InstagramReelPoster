@@ -105,10 +105,7 @@ export class ReelOrchestrator {
             if (!segments || segments.length === 0 || !segments[0].commentary) {
                 await this.updateJobStatus(jobId, 'generating_commentary', 'Writing commentary...');
                 let segmentContent = await this.deps.llmClient.generateSegmentContent(plan, transcript);
-
-                segmentContent = this.normalizeSegmentContent(segmentContent);
                 segmentContent = await this.adjustCommentaryIfNeeded(plan, segmentContent);
-                segmentContent = this.normalizeSegmentContent(segmentContent);
 
                 // Step 4: Synthesize voiceover
                 await this.updateJobStatus(jobId, 'synthesizing_voiceover', 'Creating voiceover...');
@@ -452,30 +449,5 @@ export class ReelOrchestrator {
         }
     }
 
-    /**
-     * Normalizes segment content to ensure it's always an array.
-     */
-    private normalizeSegmentContent(segmentContent: any): SegmentContent[] {
-        if (Array.isArray(segmentContent)) {
-            return segmentContent;
-        }
 
-        console.warn('LLM returned non-array segment content:', JSON.stringify(segmentContent).substring(0, 200));
-
-        if (typeof segmentContent === 'object' && segmentContent !== null && 'segments' in segmentContent) {
-            return (segmentContent as any).segments;
-        }
-
-        if (typeof segmentContent === 'object' && segmentContent !== null) {
-            // If it's an object with numbered keys, convert to array
-            const values = Object.values(segmentContent) as any[];
-            if (values.length > 0 && values[0].commentary) {
-                return values as SegmentContent[];
-            }
-            // Wrap single object
-            return [segmentContent] as SegmentContent[];
-        }
-
-        throw new Error(`Invalid segment content format: ${typeof segmentContent}`);
-    }
 }
