@@ -120,7 +120,7 @@ export function loadConfig(): Config {
         // Music Catalog
         musicCatalogApiKey: getEnvVar('MUSIC_CATALOG_API_KEY', ''),
         musicCatalogBaseUrl: getEnvVar('MUSIC_CATALOG_BASE_URL', ''),
-        internalMusicCatalogPath: getEnvVar('INTERNAL_MUSIC_CATALOG_PATH', './data/internal_music_catalog.json'),
+        internalMusicCatalogPath: getEnvVar('INTERNAL_MUSIC_CATALOG_PATH', './assets/music_catalog.json'),
 
         // Telegram & Callbacks
         telegramBotToken: getEnvVar('TELEGRAM_BOT_TOKEN', ''),
