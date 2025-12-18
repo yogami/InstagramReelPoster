@@ -71,6 +71,7 @@ export class OpenRouterImageClient implements IImageClient {
 
     /**
      * Builds a sequential prompt that references the previous image.
+     * Uses continuity tags if available for precise narrative coherence.
      */
     private buildSequentialPrompt(currentPrompt: string): string {
         if (!this.previousPrompt) {
@@ -78,8 +79,10 @@ export class OpenRouterImageClient implements IImageClient {
             return `Generate an image: ${currentPrompt}\n\nStyle: Cinematic, high quality, visually striking for Instagram reel. Use vibrant colors and dramatic lighting.`;
         }
 
-        // Subsequent images - build on previous
-        return `Generate an image that continues the visual story from the previous scene.\n\nPrevious scene: ${this.previousPrompt}\n\nNext scene: ${currentPrompt}\n\nMaintain visual continuity (similar lighting, color palette, artistic style) while showing progression in the narrative. Style: Cinematic, high quality, visually striking for Instagram reel.`;
+        // Subsequent images - build on previous with explicit continuation
+        // The LLM prompt already includes "Continuation of previous scene:" 
+        // and references continuity tags, so we enhance that with additional context
+        return `${currentPrompt}\n\nIMPORTANT CONTEXT: This image continues from the previous scene. Maintain strong visual continuity:\n- Keep similar lighting quality and direction\n- Preserve the color palette and mood\n- Ensure temporal/spatial coherence\n- Progress the narrative while keeping aesthetic consistency\n\nStyle: Cinematic, high quality, visually striking for Instagram reel.`;
     }
 
     /**

@@ -3,6 +3,7 @@ import { JobManager } from '../../src/application/JobManager';
 import { OpenAITranscriptionClient } from '../../src/infrastructure/transcription/OpenAITranscriptionClient';
 import { OpenAILLMClient } from '../../src/infrastructure/llm/OpenAILLMClient';
 import { FishAudioTTSClient } from '../../src/infrastructure/tts/FishAudioTTSClient';
+import { OpenRouterImageClient } from '../../src/infrastructure/images/OpenRouterImageClient';
 import { OpenAIImageClient } from '../../src/infrastructure/images/OpenAIImageClient';
 import { OpenAISubtitlesClient } from '../../src/infrastructure/subtitles/OpenAISubtitlesClient';
 import { ShortstackVideoRenderer } from '../../src/infrastructure/video/ShortstackVideoRenderer';
@@ -60,13 +61,24 @@ describe('Smoke Test - Real API Integration', () => {
             );
             const ttsClient = new FishAudioTTSClient(
                 config.fishAudioApiKey,
-                config.fishAudioBaseUrl,
-                config.fishAudioVoiceId
+                config.fishAudioVoiceId,
+                config.fishAudioBaseUrl
             );
-            const imageClient = new OpenAIImageClient(
+
+            // Image clients - use real OpenRouter as primary, DALL-E as fallback
+            const primaryImageClient = config.openrouterApiKey
+                ? new OpenRouterImageClient(
+                    config.openrouterApiKey,
+                    config.openrouterModel,
+                    config.openrouterBaseUrl
+                )
+                : undefined;
+
+            const fallbackImageClient = new OpenAIImageClient(
                 config.openaiApiKey,
                 'https://api.openai.com'
             );
+
             const subtitlesClient = new OpenAISubtitlesClient(
                 config.openaiApiKey,
                 'https://api.openai.com'
@@ -86,7 +98,8 @@ describe('Smoke Test - Real API Integration', () => {
                 transcriptionClient,
                 llmClient,
                 ttsClient,
-                imageClient,
+                primaryImageClient,
+                fallbackImageClient,
                 subtitlesClient,
                 videoRenderer,
                 musicSelector,

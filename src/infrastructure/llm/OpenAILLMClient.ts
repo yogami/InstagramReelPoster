@@ -86,7 +86,7 @@ For music, prefer: eastern, spiritual, ambient, meditation, indian, flute, bells
         const secondsPerSegment = plan.targetDurationSeconds / plan.segmentCount;
         const wordsPerSegment = Math.round(secondsPerSegment * 2.3); // ~2.3 words per second
 
-        const prompt = `Create ${plan.segmentCount} segments for this reel.
+        const prompt = `Create ${plan.segmentCount} segments for this reel with ADVANCED VISUAL specifications.
 
 Original idea:
 """
@@ -97,26 +97,52 @@ Reel concept: ${plan.summary}
 Mood: ${plan.mood}
 Target: ~${wordsPerSegment} words per segment (${secondsPerSegment.toFixed(1)}s each)
 
-For each segment, provide:
-1. commentary: 1-2 punchy sentences (aim for ~${wordsPerSegment} words)
-2. imagePrompt: detailed visual description for image generation
-3. caption: optional short subtitle text
+CRITICAL: For each segment, provide a JSON object with these EXACT fields:
 
-Respond with a JSON array:
-[
-  {
-    "commentary": "...",
-    "imagePrompt": "...",
-    "caption": "..."
+{
+  "commentary": "1-2 punchy sentences (~${wordsPerSegment} words)",
+  "imagePrompt": "100-140 word detailed visual description (see rules below)",
+  "caption": "optional short subtitle",
+  "visualSpecs": {
+    "shot": "close-up | medium | wide",
+    "lens": "35mm | 50mm | 85mm",
+    "framing": "rule-of-thirds | centered | leading-lines",
+    "angle": "eye-level | low | high",
+    "lighting": "soft-warm | hard-cool | dramatic | natural",
+    "colorGrade": "vivid-cinematic | teal-orange | warm-filmic | rich-natural"
   },
-  ...
-]
+  "continuityTags": {
+    "location": "specific setting/environment",
+    "timeOfDay": "morning/afternoon/evening/night/golden-hour",
+    "dominantColor": "primary color palette",
+    "heroProp": "key object/prop in scene",
+    "wardrobeDetail": "subject clothing/pose detail"
+  },
+  "deltaSummary": "10-16 words: Because X, the scene now Y (cause→effect)"
+}
 
-Guidelines:
-- Commentary should flow naturally when read aloud
-- Each segment should build on the previous one
-- Image prompts should be vivid, specific, and atmospheric
-- Avoid clichés; be original and thought-provoking`;
+IMAGE PROMPT RULES (100-140 words each):
+
+Index 1 (Setup):
+- Full visual description WITHOUT "Continuation" prefix
+- Include: ${plan.summary} visual interpretation
+- Specify all visualSpecs elements in natural language within the prompt
+- Example start: "A [shot] shot with [lens] lens showing..."
+
+Index 2+ (Progression with CONTINUATION):
+- START with: "Continuation of previous scene:"
+- Reference AT LEAST TWO continuityTags from previous segment
+- Example: "Continuation of previous scene: maintaining the [location] and [dominantColor] palette. Now [progression]..."
+- Build narrative progression while keeping visual coherence
+- Each segment increases story tension/revelation
+
+VISUAL LANGUAGE:
+- Use concrete nouns + sensory verbs
+- Max 1 metaphor per prompt
+- No buzzwords, no ellipses, no exclamation marks
+- Cinematic, high quality for Instagram reel aesthetic
+
+Respond with a JSON array of ${plan.segmentCount} objects matching the structure above exactly.`;
 
         const response = await this.callOpenAI(prompt, true);
         return this.parseJSON<SegmentContent[]>(response);

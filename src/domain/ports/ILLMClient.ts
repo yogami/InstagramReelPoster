@@ -24,10 +24,32 @@ export interface ReelPlan {
 export interface SegmentContent {
     /** The commentary text (1-2 sentences) */
     commentary: string;
-    /** Image generation prompt */
+    /** Image generation prompt (100-140 words with visual specs) */
     imagePrompt: string;
     /** Optional caption for subtitles */
     caption?: string;
+
+    /** Visual specifications for image generation */
+    visualSpecs?: {
+        shot: 'close-up' | 'medium' | 'wide';
+        lens: '35mm' | '50mm' | '85mm';
+        framing: 'rule-of-thirds' | 'centered' | 'leading-lines';
+        angle: 'eye-level' | 'low' | 'high';
+        lighting: 'soft-warm' | 'hard-cool' | 'dramatic' | 'natural';
+        colorGrade: 'vivid-cinematic' | 'teal-orange' | 'warm-filmic' | 'rich-natural';
+    };
+
+    /** Continuity tags for sequential prompting (5 elements tracked) */
+    continuityTags?: {
+        location: string;
+        timeOfDay: string;
+        dominantColor: string;
+        heroProp: string;
+        wardrobeDetail: string;
+    };
+
+    /** Brief summary of narrative progression (cause→effect) */
+    deltaSummary?: string;
 }
 
 /**
