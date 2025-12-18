@@ -59,7 +59,15 @@ export class MusicSelector {
 
         // Try internal catalog
         try {
-            const track = await this.findBestTrack(this.internalCatalog, query, targetDurationSeconds);
+            let track = await this.findBestTrack(this.internalCatalog, query, targetDurationSeconds);
+
+            // Second pass: if no tracks matched with tags, try matching just by duration
+            if (!track && query.tags && query.tags.length > 0) {
+                console.log('No tracks matched with tags, trying duration-only match in internal catalog');
+                const durationOnlyQuery = { ...query, tags: [] };
+                track = await this.findBestTrack(this.internalCatalog, durationOnlyQuery, targetDurationSeconds);
+            }
+
             if (track) {
                 return { track, source: 'internal' };
             }
