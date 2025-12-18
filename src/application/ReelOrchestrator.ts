@@ -67,73 +67,103 @@ export class ReelOrchestrator {
 
         try {
             // Step 1: Transcribe
-            this.updateJobStatus(jobId, 'transcribing', 'Transcribing voice note...');
-            const transcript = await this.deps.transcriptionClient.transcribe(job.sourceAudioUrl);
-            this.deps.jobManager.updateJob(jobId, { transcript });
+            let transcript = job.transcript;
+            if (!transcript) {
+                this.updateJobStatus(jobId, 'transcribing', 'Transcribing voice note...');
+                transcript = await this.deps.transcriptionClient.transcribe(job.sourceAudioUrl);
+                this.deps.jobManager.updateJob(jobId, { transcript });
+            }
 
             // Step 2: Plan reel
+            let targetDurationSeconds = job.targetDurationSeconds;
+            // For now, we replan if haven't passed planning, but we need the plan object for next steps
             this.updateJobStatus(jobId, 'planning', 'Planning reel structure...');
             const plan = await this.deps.llmClient.planReel(transcript, {
                 minDurationSeconds: job.targetDurationRange.min,
                 maxDurationSeconds: job.targetDurationRange.max,
                 moodOverrides: job.moodOverrides,
             });
-            this.deps.jobManager.updateJob(jobId, { targetDurationSeconds: plan.targetDurationSeconds });
+            if (!targetDurationSeconds) {
+                this.deps.jobManager.updateJob(jobId, { targetDurationSeconds: plan.targetDurationSeconds });
+            }
 
             // Step 3: Generate commentary
-            this.updateJobStatus(jobId, 'generating_commentary', 'Writing commentary...');
-            let segmentContent = await this.deps.llmClient.generateSegmentContent(plan, transcript);
+            let segments = job.segments;
+            if (!segments || segments.length === 0 || !segments[0].commentary) {
+                this.updateJobStatus(jobId, 'generating_commentary', 'Writing commentary...');
+                let segmentContent = await this.deps.llmClient.generateSegmentContent(plan, transcript);
 
-            segmentContent = this.normalizeSegmentContent(segmentContent);
-            segmentContent = await this.adjustCommentaryIfNeeded(plan, segmentContent);
-            segmentContent = this.normalizeSegmentContent(segmentContent); // Normalize again if adjustment changed format
+                segmentContent = this.normalizeSegmentContent(segmentContent);
+                segmentContent = await this.adjustCommentaryIfNeeded(plan, segmentContent);
+                segmentContent = this.normalizeSegmentContent(segmentContent);
 
-            // Step 4: Synthesize voiceover
-            this.updateJobStatus(jobId, 'synthesizing_voiceover', 'Creating voiceover...');
-            const fullCommentary = segmentContent.map((s) => s.commentary).join(' ');
-            const { voiceoverUrl, voiceoverDuration, speed } = await this.synthesizeWithAdjustment(
-                fullCommentary,
-                plan.targetDurationSeconds
-            );
-            this.deps.jobManager.updateJob(jobId, {
-                fullCommentary,
-                voiceoverUrl,
-                voiceoverDurationSeconds: voiceoverDuration,
-            });
+                // Step 4: Synthesize voiceover
+                this.updateJobStatus(jobId, 'synthesizing_voiceover', 'Creating voiceover...');
+                const fullCommentary = segmentContent.map((s) => s.commentary).join(' ');
+                const { voiceoverUrl, voiceoverDuration, speed } = await this.synthesizeWithAdjustment(
+                    fullCommentary,
+                    plan.targetDurationSeconds
+                );
+                this.deps.jobManager.updateJob(jobId, {
+                    fullCommentary,
+                    voiceoverUrl,
+                    voiceoverDurationSeconds: voiceoverDuration,
+                });
 
-            // Step 5: Build segments with timing
-            const segments = this.buildSegments(segmentContent, voiceoverDuration);
-            this.deps.jobManager.updateJob(jobId, { segments });
+                // Step 5: Build segments with timing
+                segments = this.buildSegments(segmentContent, voiceoverDuration);
+                this.deps.jobManager.updateJob(jobId, { segments });
+            }
+
+            // Refresh job object
+            const currentJob = this.deps.jobManager.getJob(jobId)!;
+            const voiceoverUrl = currentJob.voiceoverUrl!;
+            const voiceoverDuration = currentJob.voiceoverDurationSeconds!;
 
             // Step 6: Select music
-            this.updateJobStatus(jobId, 'selecting_music', 'Finding background music...');
-            const { track, source: musicSource } = await this.deps.musicSelector.selectMusic(
-                plan.musicTags,
-                voiceoverDuration,
-                plan.musicPrompt
-            );
-            this.deps.jobManager.updateJob(jobId, { musicUrl: track.audioUrl, musicSource });
+            let musicUrl = currentJob.musicUrl;
+            if (!musicUrl) {
+                this.updateJobStatus(jobId, 'selecting_music', 'Finding background music...');
+                const { track, source: musicSource } = await this.deps.musicSelector.selectMusic(
+                    plan.musicTags,
+                    voiceoverDuration,
+                    plan.musicPrompt
+                );
+                musicUrl = track.audioUrl;
+                this.deps.jobManager.updateJob(jobId, { musicUrl, musicSource });
+            }
 
             // Step 7: Generate images
-            this.updateJobStatus(jobId, 'generating_images', 'Creating visuals...');
-            const segmentsWithImages = await this.generateImages(segments);
-            this.deps.jobManager.updateJob(jobId, { segments: segmentsWithImages });
+            // Check if ANY image is missing
+            const needsImages = segments.some(s => !s.imageUrl);
+            if (needsImages) {
+                this.updateJobStatus(jobId, 'generating_images', 'Creating visuals...');
+                segments = await this.generateImages(segments);
+                this.deps.jobManager.updateJob(jobId, { segments });
+            }
 
             // Step 8: Generate subtitles
-            this.updateJobStatus(jobId, 'generating_subtitles', 'Creating subtitles...');
-            const { subtitlesUrl } = await this.deps.subtitlesClient.generateSubtitles(voiceoverUrl);
-            this.deps.jobManager.updateJob(jobId, { subtitlesUrl });
+            let subtitlesUrl = currentJob.subtitlesUrl;
+            if (!subtitlesUrl) {
+                this.updateJobStatus(jobId, 'generating_subtitles', 'Creating subtitles...');
+                const result = await this.deps.subtitlesClient.generateSubtitles(voiceoverUrl);
+                subtitlesUrl = result.subtitlesUrl;
+                this.deps.jobManager.updateJob(jobId, { subtitlesUrl });
+            }
 
             // Step 9: Build manifest
-            this.updateJobStatus(jobId, 'building_manifest', 'Preparing render manifest...');
-            const manifest = createReelManifest({
-                durationSeconds: voiceoverDuration,
-                segments: segmentsWithImages,
-                voiceoverUrl,
-                musicUrl: track.audioUrl,
-                subtitlesUrl,
-            });
-            this.deps.jobManager.updateJob(jobId, { manifest });
+            let manifest = currentJob.manifest;
+            if (!manifest) {
+                this.updateJobStatus(jobId, 'building_manifest', 'Preparing render manifest...');
+                manifest = createReelManifest({
+                    durationSeconds: voiceoverDuration,
+                    segments: segments,
+                    voiceoverUrl,
+                    musicUrl: musicUrl!,
+                    subtitlesUrl,
+                });
+                this.deps.jobManager.updateJob(jobId, { manifest });
+            }
 
             // Step 10: Render video
             this.updateJobStatus(jobId, 'rendering', 'Rendering final video...');

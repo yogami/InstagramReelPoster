@@ -48,6 +48,12 @@ export function createApp(config: Config): Application {
     // Create dependencies
     const { jobManager, orchestrator, cloudinaryClient } = createDependencies(config);
 
+    // Auto-resume interrupted jobs
+    import('../application/ResumeService').then(({ ResumeService }) => {
+        const resumeService = new ResumeService(jobManager, orchestrator);
+        resumeService.resumeAll().catch(err => console.error('ResumeService failure:', err));
+    });
+
     // Routes
     app.use(createReelRoutes(jobManager, orchestrator));
     app.use(createJobRoutes(jobManager));
