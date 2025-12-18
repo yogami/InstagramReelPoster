@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
+import Redis from 'ioredis';
 import {
     ReelJob,
     ReelJobInput,
@@ -11,19 +12,27 @@ import {
 } from '../domain/entities/ReelJob';
 
 /**
- * Job manager with file-based persistence.
+ * Job manager with Redis or File-based persistence.
  * Ensures jobs survive restarts during long creation processes.
  */
 export class JobManager {
     private jobs: Map<string, ReelJob> = new Map();
+    private readonly redis?: Redis;
     private readonly defaultDurationRange: { min: number; max: number };
     private readonly persistencePath: string;
+    private readonly REDIS_PREFIX = 'reel_job:';
 
-    constructor(minReelSeconds: number = 10, maxReelSeconds: number = 90) {
+    constructor(minReelSeconds: number = 10, maxReelSeconds: number = 90, redisUrl?: string) {
         this.defaultDurationRange = { min: minReelSeconds, max: maxReelSeconds };
         this.persistencePath = path.resolve(process.cwd(), 'data/jobs.json');
-        this.ensureDataDir();
-        this.loadFromDisk();
+
+        if (redisUrl) {
+            console.log('⚡ Connecting to Redis for job storage...');
+            this.redis = new Redis(redisUrl);
+        } else {
+            this.ensureDataDir();
+            this.loadFromDisk();
+        }
     }
 
     private ensureDataDir() {
@@ -33,13 +42,12 @@ export class JobManager {
         }
     }
 
-    private loadFromDisk() {
+    private async loadFromDisk() {
         try {
             if (fs.existsSync(this.persistencePath)) {
                 const data = fs.readFileSync(this.persistencePath, 'utf-8');
                 const parsed = JSON.parse(data);
                 Object.entries(parsed).forEach(([id, job]: [string, any]) => {
-                    // Convert date strings back to Date objects
                     job.createdAt = new Date(job.createdAt);
                     job.updatedAt = new Date(job.updatedAt);
                     if (job.completedAt) job.completedAt = new Date(job.completedAt);
@@ -52,7 +60,8 @@ export class JobManager {
         }
     }
 
-    private saveToDisk() {
+    private async saveToDisk() {
+        if (this.redis) return; // Redis saves are inline
         try {
             const data = Object.fromEntries(this.jobs);
             fs.writeFileSync(this.persistencePath, JSON.stringify(data, null, 2));
@@ -64,86 +73,133 @@ export class JobManager {
     /**
      * Creates a new reel job.
      */
-    createJob(input: ReelJobInput): ReelJob {
+    async createJob(input: ReelJobInput): Promise<ReelJob> {
         const id = `job_${uuidv4().substring(0, 8)}`;
         const job = createReelJob(id, input, this.defaultDurationRange);
-        this.jobs.set(id, job);
-        this.saveToDisk();
+
+        if (this.redis) {
+            await this.redis.set(`${this.REDIS_PREFIX}${id}`, JSON.stringify(job));
+        } else {
+            this.jobs.set(id, job);
+            await this.saveToDisk();
+        }
         return job;
     }
 
     /**
      * Gets a job by ID.
      */
-    getJob(id: string): ReelJob | null {
+    async getJob(id: string): Promise<ReelJob | null> {
+        if (this.redis) {
+            const data = await this.redis.get(`${this.REDIS_PREFIX}${id}`);
+            if (!data) return null;
+            const job = JSON.parse(data);
+            job.createdAt = new Date(job.createdAt);
+            job.updatedAt = new Date(job.updatedAt);
+            return job as ReelJob;
+        }
         return this.jobs.get(id) || null;
     }
 
     /**
      * Updates a job's status.
      */
-    updateStatus(id: string, status: ReelJobStatus, currentStep?: string): ReelJob | null {
-        const job = this.jobs.get(id);
-        if (!job) {
-            return null;
-        }
+    async updateStatus(id: string, status: ReelJobStatus, currentStep?: string): Promise<ReelJob | null> {
+        const job = await this.getJob(id);
+        if (!job) return null;
+
         const updated = updateJobStatus(job, status, currentStep);
-        this.jobs.set(id, updated);
-        this.saveToDisk();
+
+        if (this.redis) {
+            await this.redis.set(`${this.REDIS_PREFIX}${id}`, JSON.stringify(updated));
+        } else {
+            this.jobs.set(id, updated);
+            await this.saveToDisk();
+        }
         return updated;
     }
 
     /**
      * Updates a job with partial data.
      */
-    updateJob(id: string, updates: Partial<ReelJob>): ReelJob | null {
-        const job = this.jobs.get(id);
-        if (!job) {
-            return null;
-        }
+    async updateJob(id: string, updates: Partial<ReelJob>): Promise<ReelJob | null> {
+        const job = await this.getJob(id);
+        if (!job) return null;
+
         const updated: ReelJob = {
             ...job,
             ...updates,
             updatedAt: new Date(),
         };
-        this.jobs.set(id, updated);
-        this.saveToDisk();
+
+        if (this.redis) {
+            await this.redis.set(`${this.REDIS_PREFIX}${id}`, JSON.stringify(updated));
+        } else {
+            this.jobs.set(id, updated);
+            await this.saveToDisk();
+        }
         return updated;
     }
 
     /**
      * Marks a job as failed.
      */
-    failJob(id: string, error: string): ReelJob | null {
-        const job = this.jobs.get(id);
-        if (!job) {
-            return null;
-        }
+    async failJob(id: string, error: string): Promise<ReelJob | null> {
+        const job = await this.getJob(id);
+        if (!job) return null;
+
         const failed = failJob(job, error);
-        this.jobs.set(id, failed);
-        this.saveToDisk();
+
+        if (this.redis) {
+            await this.redis.set(`${this.REDIS_PREFIX}${id}`, JSON.stringify(failed));
+        } else {
+            this.jobs.set(id, failed);
+            await this.saveToDisk();
+        }
         return failed;
     }
 
     /**
      * Gets all jobs.
      */
-    getAllJobs(): ReelJob[] {
+    async getAllJobs(): Promise<ReelJob[]> {
+        if (this.redis) {
+            const keys = await this.redis.keys(`${this.REDIS_PREFIX}*`);
+            const jobs: ReelJob[] = [];
+            for (const key of keys) {
+                const data = await this.redis.get(key);
+                if (data) {
+                    const job = JSON.parse(data);
+                    job.createdAt = new Date(job.createdAt);
+                    job.updatedAt = new Date(job.updatedAt);
+                    jobs.push(job);
+                }
+            }
+            return jobs;
+        }
         return Array.from(this.jobs.values());
     }
 
     /**
      * Gets jobs by status.
      */
-    getJobsByStatus(status: ReelJobStatus): ReelJob[] {
-        return Array.from(this.jobs.values()).filter((job) => job.status === status);
+    async getJobsByStatus(status: ReelJobStatus): Promise<ReelJob[]> {
+        const jobs = await this.getAllJobs();
+        return jobs.filter((job) => job.status === status);
     }
 
     /**
      * Clears all jobs.
      */
-    clear(): void {
-        this.jobs.clear();
-        this.saveToDisk();
+    async clear(): Promise<void> {
+        if (this.redis) {
+            const keys = await this.redis.keys(`${this.REDIS_PREFIX}*`);
+            if (keys.length > 0) {
+                await this.redis.del(...keys);
+            }
+        } else {
+            this.jobs.clear();
+            await this.saveToDisk();
+        }
     }
 }

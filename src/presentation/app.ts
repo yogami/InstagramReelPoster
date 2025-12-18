@@ -144,7 +144,11 @@ function createDependencies(config: Config): {
     );
 
     // Application layer
-    const jobManager = new JobManager(config.minReelSeconds, config.maxReelSeconds);
+    const jobManager = new JobManager(
+        config.minReelSeconds,
+        config.maxReelSeconds,
+        config.redisUrl
+    );
 
     // Notification client (optional)
     const telegramService = config.telegramBotToken

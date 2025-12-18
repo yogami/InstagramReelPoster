@@ -17,7 +17,7 @@ export class ResumeService {
      * Finds and resumes all non-terminal jobs.
      */
     async resumeAll(): Promise<void> {
-        const jobs = this.jobManager.getAllJobs();
+        const jobs = await this.jobManager.getAllJobs();
         const activeJobs = jobs.filter(
             (job) => job.status !== 'completed' && job.status !== 'failed'
         );

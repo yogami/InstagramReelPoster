@@ -55,7 +55,7 @@ export function createReelRoutes(
                 moodOverrides,
                 callbackUrl: req.body.callbackUrl || config.makeWebhookUrl,
             };
-            const job = jobManager.createJob(input);
+            const job = await jobManager.createJob(input);
 
             // Start processing in background (don't await)
             orchestrator.processJob(job.id).catch((error) => {

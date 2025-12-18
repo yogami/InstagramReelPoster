@@ -52,6 +52,9 @@ export interface Config {
     cloudinaryApiKey: string;
     cloudinaryApiSecret: string;
 
+    // Redis
+    redisUrl?: string;
+
     // Reel constraints
     minReelSeconds: number;
     maxReelSeconds: number;
@@ -144,6 +147,9 @@ export function loadConfig(): Config {
         cloudinaryCloudName: getEnvVar('CLOUDINARY_CLOUD_NAME', ''),
         cloudinaryApiKey: getEnvVar('CLOUDINARY_API_KEY', ''),
         cloudinaryApiSecret: getEnvVar('CLOUDINARY_API_SECRET', ''),
+
+        // Redis
+        redisUrl: process.env.REDIS_URL,
 
         // Reel constraints
         minReelSeconds: getEnvVarNumber('MIN_REEL_SECONDS', 10),

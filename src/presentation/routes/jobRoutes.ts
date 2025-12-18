@@ -18,7 +18,7 @@ export function createJobRoutes(jobManager: JobManager): Router {
         '/jobs/:jobId',
         asyncHandler(async (req: Request, res: Response) => {
             const { jobId } = req.params;
-            const job = jobManager.getJob(jobId);
+            const job = await jobManager.getJob(jobId);
 
             if (!job) {
                 throw new NotFoundError(`Job not found: ${jobId}`);
@@ -69,7 +69,7 @@ export function createJobRoutes(jobManager: JobManager): Router {
     router.get(
         '/jobs',
         asyncHandler(async (req: Request, res: Response) => {
-            const jobs = jobManager.getAllJobs();
+            const jobs = await jobManager.getAllJobs();
 
             const summaries = jobs.map((job) => ({
                 jobId: job.id,

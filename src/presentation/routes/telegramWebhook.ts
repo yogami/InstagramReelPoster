@@ -102,7 +102,7 @@ async function processUpdate(
         // Sanitize mood from caption if present (optional feature for later)
         const moodOverrides = message.caption ? [message.caption] : undefined;
 
-        const job = jobManager.createJob({
+        const job = await jobManager.createJob({
             sourceAudioUrl,
             targetDurationRange: { min: 10, max: 90 }, // Defaults from app config usually, but hardcoded here for simplicity or passed via config
             moodOverrides,

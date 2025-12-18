@@ -58,7 +58,7 @@ export class ReelOrchestrator {
      */
     async processJob(jobId: string): Promise<ReelJob> {
         this.logMemoryUsage('Start processJob');
-        const job = this.deps.jobManager.getJob(jobId);
+        const job = await this.deps.jobManager.getJob(jobId);
         if (!job) {
             throw new Error(`Job not found: ${jobId}`);
         }
@@ -75,30 +75,30 @@ export class ReelOrchestrator {
             // Step 1: Transcribe
             let transcript = job.transcript;
             if (!transcript) {
-                this.updateJobStatus(jobId, 'transcribing', 'Transcribing voice note...');
+                await this.updateJobStatus(jobId, 'transcribing', 'Transcribing voice note...');
                 transcript = await this.deps.transcriptionClient.transcribe(job.sourceAudioUrl);
-                this.deps.jobManager.updateJob(jobId, { transcript });
+                await this.deps.jobManager.updateJob(jobId, { transcript });
                 this.logMemoryUsage('Step 1: Transcription');
             }
 
             // Step 2: Plan reel
             let targetDurationSeconds = job.targetDurationSeconds;
             // For now, we replan if haven't passed planning, but we need the plan object for next steps
-            this.updateJobStatus(jobId, 'planning', 'Planning reel structure...');
+            await this.updateJobStatus(jobId, 'planning', 'Planning reel structure...');
             const plan = await this.deps.llmClient.planReel(transcript, {
                 minDurationSeconds: job.targetDurationRange.min,
                 maxDurationSeconds: job.targetDurationRange.max,
                 moodOverrides: job.moodOverrides,
             });
             if (!targetDurationSeconds) {
-                this.deps.jobManager.updateJob(jobId, { targetDurationSeconds: plan.targetDurationSeconds });
+                await this.deps.jobManager.updateJob(jobId, { targetDurationSeconds: plan.targetDurationSeconds });
             }
             this.logMemoryUsage('Step 2: Planning');
 
             // Step 3: Generate commentary
             let segments = job.segments;
             if (!segments || segments.length === 0 || !segments[0].commentary) {
-                this.updateJobStatus(jobId, 'generating_commentary', 'Writing commentary...');
+                await this.updateJobStatus(jobId, 'generating_commentary', 'Writing commentary...');
                 let segmentContent = await this.deps.llmClient.generateSegmentContent(plan, transcript);
 
                 segmentContent = this.normalizeSegmentContent(segmentContent);
@@ -106,13 +106,13 @@ export class ReelOrchestrator {
                 segmentContent = this.normalizeSegmentContent(segmentContent);
 
                 // Step 4: Synthesize voiceover
-                this.updateJobStatus(jobId, 'synthesizing_voiceover', 'Creating voiceover...');
+                await this.updateJobStatus(jobId, 'synthesizing_voiceover', 'Creating voiceover...');
                 const fullCommentary = segmentContent.map((s) => s.commentary).join(' ');
                 const { voiceoverUrl, voiceoverDuration, speed } = await this.synthesizeWithAdjustment(
                     fullCommentary,
                     plan.targetDurationSeconds
                 );
-                this.deps.jobManager.updateJob(jobId, {
+                await this.deps.jobManager.updateJob(jobId, {
                     fullCommentary,
                     voiceoverUrl,
                     voiceoverDurationSeconds: voiceoverDuration,
@@ -120,26 +120,28 @@ export class ReelOrchestrator {
 
                 // Step 5: Build segments with timing
                 segments = this.buildSegments(segmentContent, voiceoverDuration);
-                this.deps.jobManager.updateJob(jobId, { segments });
+                await this.deps.jobManager.updateJob(jobId, { segments });
                 this.logMemoryUsage('Steps 3-5: Content & Voiceover');
             }
 
             // Refresh job object
-            const currentJob = this.deps.jobManager.getJob(jobId)!;
+            const currentJob = await this.deps.jobManager.getJob(jobId);
+            if (!currentJob) throw new Error('Job disappeared');
+
             const voiceoverUrl = currentJob.voiceoverUrl!;
             const voiceoverDuration = currentJob.voiceoverDurationSeconds!;
 
             // Step 6: Select music
             let musicUrl = currentJob.musicUrl;
             if (!musicUrl) {
-                this.updateJobStatus(jobId, 'selecting_music', 'Finding background music...');
+                await this.updateJobStatus(jobId, 'selecting_music', 'Finding background music...');
                 const { track, source: musicSource } = await this.deps.musicSelector.selectMusic(
                     plan.musicTags,
                     voiceoverDuration,
                     plan.musicPrompt
                 );
                 musicUrl = track.audioUrl;
-                this.deps.jobManager.updateJob(jobId, { musicUrl, musicSource });
+                await this.deps.jobManager.updateJob(jobId, { musicUrl, musicSource });
                 this.logMemoryUsage('Step 6: Music');
             }
 
@@ -147,26 +149,26 @@ export class ReelOrchestrator {
             // Check if ANY image is missing
             const needsImages = segments.some(s => !s.imageUrl);
             if (needsImages) {
-                this.updateJobStatus(jobId, 'generating_images', 'Creating visuals...');
+                await this.updateJobStatus(jobId, 'generating_images', 'Creating visuals...');
                 segments = await this.generateImages(segments);
-                this.deps.jobManager.updateJob(jobId, { segments });
+                await this.deps.jobManager.updateJob(jobId, { segments });
                 this.logMemoryUsage('Step 7: Images');
             }
 
             // Step 8: Generate subtitles
             let subtitlesUrl = currentJob.subtitlesUrl;
             if (!subtitlesUrl) {
-                this.updateJobStatus(jobId, 'generating_subtitles', 'Creating subtitles...');
+                await this.updateJobStatus(jobId, 'generating_subtitles', 'Creating subtitles...');
                 const result = await this.deps.subtitlesClient.generateSubtitles(voiceoverUrl);
                 subtitlesUrl = result.subtitlesUrl;
-                this.deps.jobManager.updateJob(jobId, { subtitlesUrl });
+                await this.deps.jobManager.updateJob(jobId, { subtitlesUrl });
                 this.logMemoryUsage('Step 8: Subtitles');
             }
 
             // Step 9: Build manifest
             let manifest = currentJob.manifest;
             if (!manifest) {
-                this.updateJobStatus(jobId, 'building_manifest', 'Preparing render manifest...');
+                await this.updateJobStatus(jobId, 'building_manifest', 'Preparing render manifest...');
                 manifest = createReelManifest({
                     durationSeconds: voiceoverDuration,
                     segments: segments,
@@ -174,19 +176,17 @@ export class ReelOrchestrator {
                     musicUrl: musicUrl!,
                     subtitlesUrl,
                 });
-                this.deps.jobManager.updateJob(jobId, { manifest });
+                await this.deps.jobManager.updateJob(jobId, { manifest });
             }
 
             // Step 10: Render video
-            this.updateJobStatus(jobId, 'rendering', 'Rendering final video...');
+            await this.updateJobStatus(jobId, 'rendering', 'Rendering final video...');
             this.logMemoryUsage('Starting Step 10: Rendering');
             const { videoUrl } = await this.deps.videoRenderer.render(manifest);
             this.logMemoryUsage('Step 10: Finished Rendering');
 
-
-
             // Complete the job
-            const completedJob = this.deps.jobManager.updateJob(jobId, {
+            const completedJob = await this.deps.jobManager.updateJob(jobId, {
                 status: 'completed',
                 finalVideoUrl: videoUrl,
                 currentStep: undefined,
@@ -208,23 +208,21 @@ export class ReelOrchestrator {
             return completedJob!;
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-            this.deps.jobManager.failJob(jobId, errorMessage);
+            await this.deps.jobManager.failJob(jobId, errorMessage);
 
             // Send error notification to Telegram
-            if (job.telegramChatId && this.deps.notificationClient) {
+            const jobForError = await this.deps.jobManager.getJob(jobId);
+            if (jobForError && jobForError.telegramChatId && this.deps.notificationClient) {
                 const friendlyError = this.getFriendlyErrorMessage(errorMessage);
                 await this.deps.notificationClient.sendNotification(
-                    job.telegramChatId,
+                    jobForError.telegramChatId,
                     `❌ *Oops! Something went wrong*\n\n${friendlyError}\n\nPlease try again or contact support if the issue persists.`
                 );
             }
 
             // Notify callback of failure
-            if (job.callbackUrl) {
-                const failedJob = this.deps.jobManager.getJob(jobId);
-                if (failedJob) {
-                    await this.notifyCallback(failedJob);
-                }
+            if (jobForError && jobForError.callbackUrl) {
+                await this.notifyCallback(jobForError);
             }
 
             throw error;
