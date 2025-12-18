@@ -49,9 +49,18 @@ export class OpenAILLMClient implements ILLMClient {
 
     /**
      * Plans the structure of a reel based on the transcript.
+     * SEGMENT COUNT is calculated mathematically, NOT by LLM.
      */
     async planReel(transcript: string, constraints: PlanningConstraints): Promise<ReelPlan> {
-        const prompt = `Based on this voice note transcript, plan a short-form video reel.
+        // Calculate optimal segment count based on duration
+        // Each segment should be 4-6 seconds for optimal visual storytelling
+        const avgDuration = (constraints.minDurationSeconds + constraints.maxDurationSeconds) / 2;
+        const OPTIMAL_SEGMENT_DURATION = 5; // seconds per visual beat
+        const calculatedSegmentCount = Math.max(2, Math.min(6, Math.round(avgDuration / OPTIMAL_SEGMENT_DURATION)));
+
+        console.log(`📊 Calculated segment count: ${calculatedSegmentCount} (based on ${avgDuration}s target / ${OPTIMAL_SEGMENT_DURATION}s per segment)`);
+
+        const prompt = `Plan a short-form video reel from this voice note.
 
 Transcript:
 """
@@ -60,23 +69,33 @@ ${transcript}
 
 Constraints:
 - Duration must be between ${constraints.minDurationSeconds} and ${constraints.maxDurationSeconds} seconds
+- You MUST use EXACTLY${calculatedSegmentCount} segments (already calculated, do NOT change this)
 ${constraints.moodOverrides?.length ? `- Mood should incorporate: ${constraints.moodOverrides.join(', ')}` : ''}
 
 Respond with a JSON object containing:
 {
   "targetDurationSeconds": <number between ${constraints.minDurationSeconds}-${constraints.maxDurationSeconds}>,
-  "segmentCount": <number of story beats, typically 3-6>,
+  "segmentCount": ${calculatedSegmentCount},
   "musicTags": ["array", "of", "music", "search", "tags"],
   "musicPrompt": "description for AI music generation if needed",
   "mood": "overall mood/tone",
   "summary": "brief summary of the reel concept"
 }
 
-Choose duration based on content depth. More complex ideas need more time.
-For music, prefer: eastern, spiritual, ambient, meditation, indian, flute, bells, no drums, no piano.`;
+CRITICAL: segmentCount MUST be exactly ${calculatedSegmentCount}. Do not change this number.
+
+Choose duration based on content depth. More complex ideas need more time.`;
 
         const response = await this.callOpenAI(prompt, true);
-        return this.parseJSON<ReelPlan>(response);
+        const plan = this.parseJSON<ReelPlan>(response);
+
+        // ENFORCE the calculated segment count (in case LLM ignored us)
+        if (plan.segmentCount !== calculatedSegmentCount) {
+            console.warn(`⚠️ LLM returned segmentCount=${plan.segmentCount}, forcing to ${calculatedSegmentCount}`);
+            plan.segmentCount = calculatedSegmentCount;
+        }
+
+        return plan;
     }
 
     /**
