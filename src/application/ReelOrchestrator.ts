@@ -84,28 +84,9 @@ export class ReelOrchestrator {
             this.updateJobStatus(jobId, 'generating_commentary', 'Writing commentary...');
             let segmentContent = await this.deps.llmClient.generateSegmentContent(plan, transcript);
 
-            // Ensure it's an array (sometimes LLM might return object instead of array)
-            console.log('Segment content type:', typeof segmentContent, 'isArray:', Array.isArray(segmentContent));
-            if (!Array.isArray(segmentContent)) {
-                console.warn('LLM returned non-array segment content:', JSON.stringify(segmentContent).substring(0, 200));
-                // Check if it's wrapped in a 'segments' key
-                if (typeof segmentContent === 'object' && segmentContent !== null && 'segments' in segmentContent) {
-                    segmentContent = (segmentContent as any).segments;
-                } else if (typeof segmentContent === 'object' && segmentContent !== null) {
-                    // If it's an object with numbered keys, convert to array
-                    const values = Object.values(segmentContent) as any[];
-                    if (values.length > 0 && values[0].commentary) {
-                        segmentContent = values as SegmentContent[];
-                    } else {
-                        // Wrap single object
-                        segmentContent = [segmentContent] as any;
-                    }
-                } else {
-                    throw new Error(`Invalid segment content format: ${typeof segmentContent}`);
-                }
-            }
-
+            segmentContent = this.normalizeSegmentContent(segmentContent);
             segmentContent = await this.adjustCommentaryIfNeeded(plan, segmentContent);
+            segmentContent = this.normalizeSegmentContent(segmentContent); // Normalize again if adjustment changed format
 
             // Step 4: Synthesize voiceover
             this.updateJobStatus(jobId, 'synthesizing_voiceover', 'Creating voiceover...');
@@ -362,5 +343,32 @@ export class ReelOrchestrator {
             console.error(`[${job.id}] Failed to notify callback:`, error);
             // We don't throw here to avoid failing the job processing just because the callback failed
         }
+    }
+
+    /**
+     * Normalizes segment content to ensure it's always an array.
+     */
+    private normalizeSegmentContent(segmentContent: any): SegmentContent[] {
+        if (Array.isArray(segmentContent)) {
+            return segmentContent;
+        }
+
+        console.warn('LLM returned non-array segment content:', JSON.stringify(segmentContent).substring(0, 200));
+
+        if (typeof segmentContent === 'object' && segmentContent !== null && 'segments' in segmentContent) {
+            return (segmentContent as any).segments;
+        }
+
+        if (typeof segmentContent === 'object' && segmentContent !== null) {
+            // If it's an object with numbered keys, convert to array
+            const values = Object.values(segmentContent) as any[];
+            if (values.length > 0 && values[0].commentary) {
+                return values as SegmentContent[];
+            }
+            // Wrap single object
+            return [segmentContent] as SegmentContent[];
+        }
+
+        throw new Error(`Invalid segment content format: ${typeof segmentContent}`);
     }
 }
