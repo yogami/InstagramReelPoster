@@ -87,6 +87,17 @@ export class MusicSelector {
                 return { track, source: 'ai' };
             } catch (error) {
                 console.error('AI music generation failed:', error);
+
+                // Final safety net: pick any track from internal catalog
+                try {
+                    const allTracks = await (this.internalCatalog as any).searchTracks({ limit: 1 });
+                    if (allTracks.length > 0) {
+                        return { track: allTracks[0], source: 'internal' };
+                    }
+                } catch (e) {
+                    // Ignore, show original error
+                }
+
                 throw new Error(`All music sources failed. Last error: ${error}`);
             }
         }
