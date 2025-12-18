@@ -122,7 +122,10 @@ describe('ReelOrchestrator E2E - Happy Path', () => {
         const transcriptionClient = new OpenAITranscriptionClient('test-key', 'https://api.openai.com');
         const llmClient = new OpenAILLMClient('test-key', 'gpt-4o', 'https://api.openai.com');
         const ttsClient = new FishAudioTTSClient('test-key', 'test-voice-id', 'https://api.fish.audio');
-        const imageClient = new OpenAIImageClient('test-key', 'https://api.openai.com');
+
+        // No primary image client for tests - use DALL-E fallback only
+        const fallbackImageClient = new OpenAIImageClient('test-key', 'https://api.openai.com');
+
         const subtitlesClient = new OpenAISubtitlesClient('test-key', 'https://api.openai.com');
         const videoRenderer = new ShortstackVideoRenderer('test-key', 'https://api.shotstack.io/stage');
 
@@ -136,7 +139,8 @@ describe('ReelOrchestrator E2E - Happy Path', () => {
             transcriptionClient,
             llmClient,
             ttsClient,
-            imageClient,
+            primaryImageClient: undefined, // No OpenRouter in tests
+            fallbackImageClient,
             subtitlesClient,
             videoRenderer,
             musicSelector,
