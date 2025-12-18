@@ -209,27 +209,41 @@ Respond with a JSON array of ${plan.segmentCount} objects matching the structure
      * Normalizes segment content to ensure it's always an array of SegmentContent.
      */
     private normalizeSegments(data: any): SegmentContent[] {
+        // Handle null/undefined
+        if (data === null || data === undefined) {
+            throw new Error('LLM returned null or undefined segment content');
+        }
+
+        // Already an array - ideal case
         if (Array.isArray(data)) {
+            console.log(`[LLM] normalizeSegments: received array with ${data.length} items`);
             return data;
         }
 
+        console.log(`[LLM] normalizeSegments: received ${typeof data}, attempting normalization`);
+
         // Silent unwrap if it's {"segments": [...]}
         if (data && typeof data === 'object' && Array.isArray(data.segments)) {
+            console.log(`[LLM] normalizeSegments: unwrapped .segments with ${data.segments.length} items`);
             return data.segments;
         }
 
         // Silent wrap if it's a single object
         if (data && typeof data === 'object' && data.commentary && data.imagePrompt) {
+            console.log(`[LLM] normalizeSegments: wrapped single object`);
             return [data as SegmentContent];
         }
 
         // Handle numeric keys (sometimes returned by LLMs)
-        const values = Object.values(data);
-        if (values.length > 0 && typeof values[0] === 'object' && (values[0] as any).commentary) {
-            return values as SegmentContent[];
+        if (data && typeof data === 'object') {
+            const values = Object.values(data);
+            if (values.length > 0 && typeof values[0] === 'object' && (values[0] as any).commentary) {
+                console.log(`[LLM] normalizeSegments: extracted ${values.length} items from object values`);
+                return values as SegmentContent[];
+            }
         }
 
-        throw new Error(`LLM returned invalid segments format: ${JSON.stringify(data).substring(0, 100)}`);
+        throw new Error(`LLM returned invalid segments format: ${JSON.stringify(data).substring(0, 200)}`);
     }
 
     /**

@@ -105,6 +105,28 @@ export class ReelOrchestrator {
             if (!segments || segments.length === 0 || !segments[0].commentary) {
                 await this.updateJobStatus(jobId, 'generating_commentary', 'Writing commentary...');
                 let segmentContent = await this.deps.llmClient.generateSegmentContent(plan, transcript);
+
+                // DEFENSIVE: Ensure segmentContent is always an array (catch any LLM normalization failures)
+                if (!Array.isArray(segmentContent)) {
+                    console.warn('[DEFENSIVE] segmentContent is not an array, attempting recovery:', typeof segmentContent);
+                    if (segmentContent && typeof segmentContent === 'object') {
+                        if (Array.isArray((segmentContent as any).segments)) {
+                            segmentContent = (segmentContent as any).segments;
+                        } else if ((segmentContent as any).commentary) {
+                            segmentContent = [segmentContent as any];
+                        } else {
+                            const values = Object.values(segmentContent);
+                            if (values.length > 0 && typeof values[0] === 'object') {
+                                segmentContent = values as any;
+                            } else {
+                                throw new Error(`LLM returned invalid format: ${JSON.stringify(segmentContent).substring(0, 200)}`);
+                            }
+                        }
+                    } else {
+                        throw new Error(`LLM returned non-object segment content: ${typeof segmentContent}`);
+                    }
+                }
+
                 segmentContent = await this.adjustCommentaryIfNeeded(plan, segmentContent);
 
                 // Step 4: Synthesize voiceover
