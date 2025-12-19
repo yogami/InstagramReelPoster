@@ -155,18 +155,25 @@ export class ReelOrchestrator {
             const voiceoverUrl = currentJob.voiceoverUrl!;
             const voiceoverDuration = currentJob.voiceoverDurationSeconds!;
 
-            // Step 6: Select music
+            // Step 6: Select music (optional)
             let musicUrl = currentJob.musicUrl;
+            let musicDurationSeconds = currentJob.musicDurationSeconds || 0;
             if (!musicUrl) {
                 await this.updateJobStatus(jobId, 'selecting_music', 'Finding background music...');
-                const { track, source: musicSource } = await this.deps.musicSelector.selectMusic(
+                const musicResult = await this.deps.musicSelector.selectMusic(
                     plan.musicTags,
                     voiceoverDuration,
                     plan.musicPrompt
                 );
-                musicUrl = track.audioUrl;
-                const musicDurationSeconds = track.durationSeconds;
-                await this.deps.jobManager.updateJob(jobId, { musicUrl, musicSource, musicDurationSeconds });
+                if (musicResult) {
+                    musicUrl = musicResult.track.audioUrl;
+                    musicDurationSeconds = musicResult.track.durationSeconds;
+                    await this.deps.jobManager.updateJob(jobId, {
+                        musicUrl,
+                        musicSource: musicResult.source,
+                        musicDurationSeconds
+                    });
+                }
                 this.logMemoryUsage('Step 6: Music');
             }
 
@@ -198,8 +205,8 @@ export class ReelOrchestrator {
                     durationSeconds: voiceoverDuration,
                     segments: segments,
                     voiceoverUrl,
-                    musicUrl: musicUrl!,
-                    musicDurationSeconds: (await this.deps.jobManager.getJob(jobId))?.musicDurationSeconds || voiceoverDuration,
+                    musicUrl: musicUrl,
+                    musicDurationSeconds: musicDurationSeconds || voiceoverDuration,
                     subtitlesUrl,
                 });
                 await this.deps.jobManager.updateJob(jobId, { manifest });
@@ -211,10 +218,32 @@ export class ReelOrchestrator {
             const { videoUrl } = await this.deps.videoRenderer.render(manifest);
             this.logMemoryUsage('Step 10: Finished Rendering');
 
+            // CRITICAL: Upload to Cloudinary for permanent storage
+            // Shotstack URLs expire after 24 hours, causing Instagram API failures
+            let permanentVideoUrl = videoUrl;
+            if (this.deps.storageClient) {
+                try {
+                    await this.updateJobStatus(jobId, 'uploading', 'Uploading to permanent storage...');
+                    console.log(`[${jobId}] Uploading final video to Cloudinary for permanent storage...`);
+                    const uploadResult = await this.deps.storageClient.uploadVideo(videoUrl, {
+                        folder: 'instagram-reels/final-videos',
+                        publicId: `reel_${jobId}_${Date.now()}`,
+                        resourceType: 'video'
+                    });
+                    permanentVideoUrl = uploadResult.url;
+                    console.log(`[${jobId}] Video uploaded successfully: ${permanentVideoUrl}`);
+                } catch (uploadError) {
+                    console.error(`[${jobId}] Failed to upload video to Cloudinary, using Shotstack URL (may expire):`, uploadError);
+                    // Continue with Shotstack URL if Cloudinary upload fails
+                }
+            } else {
+                console.warn(`[${jobId}] No storage client configured - using temporary Shotstack URL (expires in 24h)`);
+            }
+
             // Complete the job
             const completedJob = await this.deps.jobManager.updateJob(jobId, {
                 status: 'completed',
-                finalVideoUrl: videoUrl,
+                finalVideoUrl: permanentVideoUrl,
                 currentStep: undefined,
             });
 
@@ -382,6 +411,7 @@ export class ReelOrchestrator {
                 // Try primary image client (OpenRouter) first, with fallback to DALL-E
                 if (this.deps.primaryImageClient) {
                     try {
+                        await this.updateJobStatus(jobId, 'generating_images', `Creating visual ${index + 1} of ${segments.length}...`);
                         const { imageUrl } = await this.deps.primaryImageClient.generateImage(segment.imagePrompt);
                         finalImageUrl = imageUrl;
                     } catch (primaryError) {
@@ -457,30 +487,56 @@ export class ReelOrchestrator {
     private async notifyCallback(job: ReelJob): Promise<void> {
         if (!job.callbackUrl) return;
 
+        // CRITICAL: Only send callback if we have a valid video URL
+        // Make.com validation rejects empty strings as "missing values"
+        if (job.status === 'completed' && !job.finalVideoUrl) {
+            console.warn(`[${job.id}] Skipping callback - job completed but no video URL available`);
+            return;
+        }
+
         try {
             console.log(`[${job.id}] Notifying callback: ${job.callbackUrl}`);
-            const headers: Record<string, string> = {};
-            if (this.deps.callbackToken && this.deps.callbackHeader) {
-                if (this.deps.callbackHeader.toLowerCase() === 'authorization') {
-                    headers[this.deps.callbackHeader] = `Bearer ${this.deps.callbackToken}`;
-                } else {
-                    headers[this.deps.callbackHeader] = this.deps.callbackToken;
-                }
-            }
 
-            await axios.post(job.callbackUrl, {
+            // Make.com requires x-make-apikey header
+            const headers: Record<string, string> = {
+                'Content-Type': 'application/json',
+                'x-make-apikey': '4LyPD8E3TVRmh_F'
+            };
+
+            // Generate a caption from the commentary
+            const caption = job.fullCommentary
+                ? job.fullCommentary.substring(0, 200) + '...'
+                : 'New reel ready!';
+
+            // Build payload - only include video_url if we have a valid URL
+            const payload: any = {
                 jobId: job.id,
                 status: job.status,
-                videoUrl: job.finalVideoUrl,
-                error: job.error,
-                metadata: {
-                    duration: job.voiceoverDurationSeconds,
-                    createdAt: job.createdAt,
-                    completedAt: job.updatedAt
-                }
-            }, {
-                headers
-            });
+                caption: caption,
+            };
+
+            // Add video URL only if present (Make.com validates this field)
+            if (job.finalVideoUrl) {
+                payload.video_url = job.finalVideoUrl;
+            }
+
+            // Add error only if present
+            if (job.error) {
+                payload.error = job.error;
+            }
+
+            // Add metadata
+            payload.metadata = {
+                duration: job.voiceoverDurationSeconds,
+                createdAt: job.createdAt,
+                completedAt: job.updatedAt
+            };
+
+            console.log(`[${job.id}] Sending callback payload:`, JSON.stringify(payload, null, 2));
+
+            await axios.post(job.callbackUrl, payload, { headers });
+
+            console.log(`[${job.id}] Callback notification sent successfully`);
         } catch (error) {
             console.error(`[${job.id}] Failed to notify callback:`, error);
             // We don't throw here to avoid failing the job processing just because the callback failed

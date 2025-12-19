@@ -126,6 +126,24 @@ export class CloudinaryStorageClient {
     }
 
     /**
+     * Uploads a video to Cloudinary.
+     */
+    async uploadVideo(
+        videoUrl: string,
+        options: {
+            folder?: string;
+            publicId?: string;
+            resourceType?: 'video';
+        } = {}
+    ): Promise<{ url: string; publicId: string }> {
+        return this.uploadFromUrl(videoUrl, {
+            folder: options.folder || 'instagram-reels/videos',
+            publicId: options.publicId,
+            resourceType: 'video',
+        });
+    }
+
+    /**
      * Gets a URL for a Cloudinary resource.
      */
     getUrl(publicId: string, resourceType: 'image' | 'video' | 'raw' = 'image'): string {

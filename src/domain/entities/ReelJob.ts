@@ -15,6 +15,7 @@ export type ReelJobStatus =
     | 'generating_subtitles'
     | 'building_manifest'
     | 'rendering'
+    | 'uploading'
     | 'completed'
     | 'failed';
 
