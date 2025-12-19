@@ -321,12 +321,8 @@ export class ReelOrchestrator {
         try {
             result = await this.deps.ttsClient.synthesize(text);
         } catch (error) {
-            if (this.deps.fallbackTTSClient) {
-                console.warn('Primary TTS failed, trying fallback:', error);
-                result = await this.deps.fallbackTTSClient.synthesize(text);
-            } else {
-                throw error;
-            }
+            console.error('TTS Synthesis failed. Fallback disabled to enforce voice clone.', error);
+            throw error;
         }
 
         // Check if we need speed adjustment
@@ -337,12 +333,7 @@ export class ReelOrchestrator {
                 try {
                     result = await this.deps.ttsClient.synthesize(text, { speed });
                 } catch (error) {
-                    if (this.deps.fallbackTTSClient) {
-                        console.warn('Primary TTS adjustment failed, trying fallback:', error);
-                        result = await this.deps.fallbackTTSClient.synthesize(text, { speed });
-                    } else {
-                        throw error;
-                    }
+                    console.warn('Speed adjustment failed, using original audio:', error);
                 }
             }
         }
@@ -527,6 +518,8 @@ export class ReelOrchestrator {
             // Add video URL only if present (Make.com validates this field)
             if (job.finalVideoUrl) {
                 payload.video_url = job.finalVideoUrl;
+                payload.url = job.finalVideoUrl; // Alias for flexibility
+                payload.videoUrl = job.finalVideoUrl; // Alias for camelCase consumers
             }
 
             // Add error only if present

@@ -55,7 +55,7 @@ export class OpenAILLMClient implements ILLMClient {
         // Each segment should be 4-6 seconds for optimal visual storytelling
         const avgDuration = (constraints.minDurationSeconds + constraints.maxDurationSeconds) / 2;
         const OPTIMAL_SEGMENT_DURATION = 5; // seconds per visual beat
-        const calculatedSegmentCount = Math.max(2, Math.min(6, Math.round(avgDuration / OPTIMAL_SEGMENT_DURATION)));
+        const calculatedSegmentCount = Math.max(2, Math.min(15, Math.round(avgDuration / OPTIMAL_SEGMENT_DURATION)));
 
         console.log(`📊 Calculated segment count: ${calculatedSegmentCount} (based on ${avgDuration}s target / ${OPTIMAL_SEGMENT_DURATION}s per segment)`);
 
