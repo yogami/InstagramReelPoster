@@ -91,12 +91,12 @@ function createDependencies(config: Config): {
     }
 
     // Infrastructure clients - OpenAI for transcription/LLM, Fish Audio for TTS, OpenRouter for images  
+    // Use OpenAI Whisper (now enhanced with local FFmpeg compression for large files)
     const transcriptionClient = new OpenAITranscriptionClient(config.openaiApiKey);
     const llmClient = new OpenAILLMClient(config.openaiApiKey, config.openaiModel);
-    const ttsClient = new FishAudioTTSClient(
-        config.fishAudioApiKey,
-        config.fishAudioVoiceId,
-        config.fishAudioBaseUrl
+    const ttsClient = new OpenAITTSClient(
+        config.openaiApiKey,
+        'onyx' // Male voice for 'Challenging View' persona
     );
     // Image clients - OpenRouter is now REQUIRED (no more DALL-E)
     if (!config.openrouterApiKey) {
@@ -133,7 +133,7 @@ function createDependencies(config: Config): {
     // Music clients
     const internalMusicCatalog = new InMemoryMusicCatalogClient(config.internalMusicCatalogPath);
 
-    // External catalog (not implemented yet, pass null)
+    // External catalog (Optional - Not used for now)
     const externalMusicCatalog = null;
 
     // Kie.ai music generator (if configured)
@@ -178,6 +178,8 @@ function createDependencies(config: Config): {
         callbackToken: config.callbackToken,
         callbackHeader: config.callbackHeader,
     };
+
+    console.log(`📡 Callback configured: Header=${deps.callbackHeader}, Token=${deps.callbackToken ? (deps.callbackToken.substring(0, 5) + '...') : 'None'}`);
 
     const orchestrator = new ReelOrchestrator(deps);
 

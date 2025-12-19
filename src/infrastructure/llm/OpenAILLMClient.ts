@@ -76,7 +76,7 @@ Respond with a JSON object containing:
 {
   "targetDurationSeconds": <number between ${constraints.minDurationSeconds}-${constraints.maxDurationSeconds}>,
   "segmentCount": ${calculatedSegmentCount},
-  "musicTags": ["array", "of", "music", "search", "tags"],
+  "musicTags": ["array", "of", "music", "search", "tags", "e.g.", "indian", "japanese", "spiritual", "meditation"],
   "musicPrompt": "description for AI music generation if needed",
   "mood": "overall mood/tone",
   "summary": "brief summary of the reel concept"
@@ -136,7 +136,7 @@ Each segment object MUST have these fields:
 CRITICAL: For each segment, provide a JSON object with these EXACT fields:
 
 {
-  "commentary": "1-2 punchy sentences (~${wordsPerSegment} words) - MUST reference 2-3 visual elements from imagePrompt",
+  "commentary": "1-2 punchy sentences (~${wordsPerSegment} words) - Focus on the MESSAGE, not the visual",
   "imagePrompt": "100-140 word detailed visual description (see rules below)",
   "caption": "optional short subtitle",
   "visualSpecs": {
@@ -157,24 +157,33 @@ CRITICAL: For each segment, provide a JSON object with these EXACT fields:
   "deltaSummary": "10-16 words: Because X, the scene now Y (cause→effect)"
 }
 
-COMMENTARY-IMAGE LINKAGE (CRITICAL):
+COMMENTARY-IMAGE CONGRUENCE (CRITICAL):
 ★ Generate imagePrompt FIRST with all visual details
-★ THEN write commentary that explicitly describes what the viewer SEES
-★ Reference 2-3 specific visual elements from the imagePrompt:
-  - If image has "golden hour" → commentary says "warm sunset glow" or "amber light"
-  - If image has "wooden deck" → commentary says "this peaceful platform" or "natural setting"
-  - If image has "meditation pose" → commentary says "stillness" or "centered presence"
-  - If image has "misty mountains" → commentary says "distant peaks" or "mountain backdrop"
+★ THEN write commentary that is THEMATICALLY and EMOTIONALLY aligned with the image
+★ DO NOT describe what the viewer sees - they can already see it
+★ Instead, deliver the spiritual/philosophical insight that the visual supports
+★ The image should ILLUSTRATE the idea, not BE the idea
+
+STORYTELLING APPROACH:
+- Commentary delivers the insight, teaching, or provocation
+- Image provides the emotional/atmospheric backdrop
+- They work together but serve different roles
+- Avoid phrases like "notice the..." "see how..." "this scene shows..."
 
 GOOD Example:
 imagePrompt: "wooden deck at golden hour with person meditating, warm amber tones, mountains"
-commentary: "Notice the warm amber glow bathing this peaceful deck, where stillness meets nature's mountain backdrop"
-(References: golden hour→amber glow, deck→this deck, meditation→stillness, mountains→backdrop)
+commentary: "You think you need more time to find peace. But peace isn't found in time—it's found in the absence of seeking."
+(Image sets contemplative mood; commentary delivers the insight)
 
 BAD Example:
 imagePrompt: "wooden deck at golden hour with person meditating"
-commentary: "Mindfulness reduces stress and brings peace"
-(NO visual references - viewer hears abstract concept while seeing concrete scene!)
+commentary: "Notice the warm amber glow bathing this peaceful deck, where stillness meets nature's mountain backdrop"
+(This is describing the image like a tour guide - AVOID THIS!)
+
+ANOTHER GOOD Example:
+imagePrompt: "close-up of hands releasing sand, soft morning light, beach setting"
+commentary: "Every attachment you defend is a prison you've built with your own hands."
+(Image provides metaphor; commentary delivers the punch)
 
 IMAGE PROMPT RULES (100-140 words each):
 
