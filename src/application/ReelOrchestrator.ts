@@ -319,10 +319,22 @@ export class ReelOrchestrator {
         let speed = 1.0;
 
         try {
+            console.log('[TTS] Attempting synthesis with primary client (Fish Audio)...');
             result = await this.deps.ttsClient.synthesize(text);
-        } catch (error) {
-            console.error('TTS Synthesis failed. Fallback disabled to enforce voice clone.', error);
-            throw error;
+        } catch (error: any) {
+            console.error('[TTS] ❌ Primary TTS (Fish Audio) failed. Falling back to OpenAI.');
+            console.error(`[TTS] Error Details: ${error.message}`);
+            if (error.response) {
+                console.error(`[TTS] Status: ${error.response.status}`);
+                console.error(`[TTS] Data: ${JSON.stringify(error.response.data)}`);
+            }
+
+            if (this.deps.fallbackTTSClient) {
+                console.warn('[TTS] ⚠️ Using fallback TTS client...');
+                result = await this.deps.fallbackTTSClient.synthesize(text);
+            } else {
+                throw error;
+            }
         }
 
         // Check if we need speed adjustment
@@ -331,9 +343,17 @@ export class ReelOrchestrator {
             speed = calculateSpeedAdjustment(result.durationSeconds, targetDuration);
             if (speed !== 1.0) {
                 try {
+                    console.log(`[TTS] Applying speed adjustment (${speed.toFixed(2)}x)...`);
                     result = await this.deps.ttsClient.synthesize(text, { speed });
-                } catch (error) {
-                    console.warn('Speed adjustment failed, using original audio:', error);
+                } catch (error: any) {
+                    console.warn('[TTS] ⚠️ Primary TTS speed adjustment failed:', error.message);
+
+                    if (this.deps.fallbackTTSClient) {
+                        console.log('[TTS] Trying fallback client for speed adjustment...');
+                        result = await this.deps.fallbackTTSClient.synthesize(text, { speed });
+                    } else {
+                        console.warn('[TTS] No fallback available for adjustment, returning original.');
+                    }
                 }
             }
         }
