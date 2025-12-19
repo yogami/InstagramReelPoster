@@ -79,6 +79,10 @@ export class JobManager {
 
         if (this.redis) {
             await this.redis.set(`${this.REDIS_PREFIX}${id}`, JSON.stringify(job));
+            // Index by User (Telegram Chat ID)
+            if (input.telegramChatId) {
+                await this.redis.set(`${this.REDIS_PREFIX}user_last:${input.telegramChatId}`, id);
+            }
         } else {
             this.jobs.set(id, job);
             await this.saveToDisk();
@@ -87,9 +91,28 @@ export class JobManager {
     }
 
     /**
+     * Gets the last job created for a specific user.
+     */
+    async getLastJobForUser(telegramChatId: number): Promise<ReelJob | null> {
+        if (this.redis) {
+            const jobId = await this.redis.get(`${this.REDIS_PREFIX}user_last:${telegramChatId}`);
+            if (!jobId) return null;
+            return this.getJob(jobId);
+        }
+
+        // In-memory fallback (inefficient scan, but fine for local)
+        const userJobs = Array.from(this.jobs.values())
+            .filter(j => j.telegramChatId === telegramChatId)
+            .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+
+        return userJobs.length > 0 ? userJobs[0] : null;
+    }
+
+    /**
      * Gets a job by ID.
      */
     async getJob(id: string): Promise<ReelJob | null> {
+
         if (this.redis) {
             const data = await this.redis.get(`${this.REDIS_PREFIX}${id}`);
             if (!data) return null;

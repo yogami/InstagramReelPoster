@@ -71,5 +71,56 @@ export function createReelRoutes(
         })
     );
 
+    /**
+     * POST /retry-last
+     * 
+     * Retries the last job for a specific user (Telegram Chat ID).
+     */
+    router.post(
+        '/retry-last',
+        asyncHandler(async (req: Request, res: Response) => {
+            const { telegramChatId } = req.body;
+
+            if (!telegramChatId) {
+                throw new BadRequestError('telegramChatId is required');
+            }
+
+            const chatId = Number(telegramChatId);
+            if (isNaN(chatId)) {
+                throw new BadRequestError('telegramChatId must be a number');
+            }
+
+            const lastJob = await jobManager.getLastJobForUser(chatId);
+            if (!lastJob) {
+                throw new BadRequestError('No previous job found for this user to retry');
+            }
+
+            console.log(`[Retry] Retrying job for user ${chatId}. Previous Job: ${lastJob.id}`);
+
+            // Create new job with same inputs
+            const input: ReelJobInput = {
+                sourceAudioUrl: lastJob.sourceAudioUrl,
+                targetDurationRange: lastJob.targetDurationRange,
+                moodOverrides: lastJob.moodOverrides,
+                callbackUrl: lastJob.callbackUrl || config.makeWebhookUrl,
+                telegramChatId: chatId
+            };
+
+            const job = await jobManager.createJob(input);
+
+            // Start processing in background
+            orchestrator.processJob(job.id).catch((error) => {
+                console.error(`Retry Job ${job.id} failed:`, error);
+            });
+
+            res.status(202).json({
+                jobId: job.id,
+                status: job.status,
+                message: 'Retry processing started',
+                originalJobId: lastJob.id
+            });
+        })
+    );
+
     return router;
 }
