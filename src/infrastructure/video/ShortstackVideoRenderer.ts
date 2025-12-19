@@ -173,36 +173,47 @@ export class ShortstackVideoRenderer implements IVideoRenderer {
             length: manifest.durationSeconds,
         };
 
-        // Track 4: Background Music (bottom layer, but above images)
-        const musicClipCount = Math.ceil(manifest.durationSeconds / manifest.musicDurationSeconds);
+        // Track 4: Background Music (optional - only if musicUrl is provided)
         const musicClips: ShotstackClip[] = [];
-        for (let i = 0; i < musicClipCount; i++) {
-            const start = i * manifest.musicDurationSeconds;
-            const length = Math.min(manifest.musicDurationSeconds, manifest.durationSeconds - start);
-            if (length > 0) {
-                musicClips.push({
-                    asset: {
-                        type: 'audio' as const,
-                        src: manifest.musicUrl,
-                        volume: 0.25, // Subtle background
-                        effect: i === 0 ? 'fadeIn' : (i === musicClipCount - 1 ? 'fadeOut' : undefined),
-                    },
-                    start,
-                    length,
-                });
+        if (manifest.musicUrl && manifest.musicDurationSeconds) {
+            const musicUrl = manifest.musicUrl; // Narrow type
+            const musicDuration = manifest.musicDurationSeconds; // Narrow type
+            const musicClipCount = Math.ceil(manifest.durationSeconds / musicDuration);
+
+            for (let i = 0; i < musicClipCount; i++) {
+                const start = i * musicDuration;
+                const length = Math.min(musicDuration, manifest.durationSeconds - start);
+                if (length > 0) {
+                    musicClips.push({
+                        asset: {
+                            type: 'audio' as const,
+                            src: musicUrl,
+                            volume: 0.25, // Subtle background
+                            effect: i === 0 ? 'fadeIn' : (i === musicClipCount - 1 ? 'fadeOut' : undefined),
+                        },
+                        start,
+                        length,
+                    });
+                }
             }
+        }
+
+        // Build tracks - only include music track if we have music clips
+        const tracks: { clips: ShotstackClip[] }[] = [
+            { clips: [captionClip] },    // Top: Subtitles
+            { clips: [voiceoverClip] },  // Middle: Voiceover audio
+            { clips: imageClips },       // Bottom: Images
+        ];
+
+        // Insert music track if available (between voiceover and images)
+        if (musicClips.length > 0) {
+            tracks.splice(2, 0, { clips: musicClips });
         }
 
         return {
             timeline: {
                 background: '#000000',
-                tracks: [
-                    // Tracks are rendered back-to-front (first track is on top)
-                    { clips: [captionClip] },    // Top: Subtitles
-                    { clips: [voiceoverClip] },  // Middle: Voiceover audio
-                    { clips: musicClips },       // Lower-Middle: Music (looped)
-                    { clips: imageClips },       // Bottom: Images
-                ],
+                tracks,
             },
             output: {
                 format: 'mp4',

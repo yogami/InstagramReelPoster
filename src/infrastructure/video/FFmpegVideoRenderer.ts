@@ -68,15 +68,20 @@ export class FFmpegVideoRenderer implements IVideoRenderer {
 
     private async downloadAssets(manifest: ReelManifest, jobDir: string) {
         const voiceoverPath = path.join(jobDir, 'voiceover.mp3');
-        const musicPath = path.join(jobDir, 'music.mp3');
+        const musicPath = manifest.musicUrl ? path.join(jobDir, 'music.mp3') : null;
         const subtitlesPath = path.join(jobDir, 'subtitles.srt');
         const imagePaths: string[] = [];
 
         const downloads = [
             this.downloadFile(manifest.voiceoverUrl, voiceoverPath),
-            this.downloadFile(manifest.musicUrl, musicPath),
             this.downloadFile(manifest.subtitlesUrl, subtitlesPath),
         ];
+
+        // Download music only if available
+        if (manifest.musicUrl && musicPath) {
+            const musicUrl = manifest.musicUrl;
+            downloads.push(this.downloadFile(musicUrl, musicPath));
+        }
 
         // Download images
         for (let i = 0; i < manifest.segments.length; i++) {
@@ -126,7 +131,7 @@ export class FFmpegVideoRenderer implements IVideoRenderer {
         manifest: ReelManifest,
         assets: {
             voiceoverPath: string;
-            musicPath: string;
+            musicPath: string | null;
             subtitlesPath: string;
             imagePaths: string[];
         },
@@ -138,10 +143,12 @@ export class FFmpegVideoRenderer implements IVideoRenderer {
             // Input 0: Audio (Voiceover)
             cmd.input(assets.voiceoverPath);
 
-            // Input 1: Audio (Music)
-            cmd.input(assets.musicPath).inputOptions('-stream_loop -1');
+            // Input 1: Audio (Music) - only if available
+            if (assets.musicPath) {
+                cmd.input(assets.musicPath).inputOptions('-stream_loop -1');
+            }
 
-            // Inputs 2...N: Images
+            // Inputs 2...N (or 1...N if no music): Images
             assets.imagePaths.forEach((imgPath) => {
                 cmd.input(imgPath);
             });
