@@ -232,6 +232,11 @@ export class ReelOrchestrator {
                     });
                     permanentVideoUrl = uploadResult.url;
                     console.log(`[${jobId}] Video uploaded successfully: ${permanentVideoUrl}`);
+
+                    // Wait for CDN propagation before triggering webhook
+                    // Instagram API can be picky if the URL returns 404/403 even for a moment
+                    console.log(`[${jobId}] Waiting 5s for final video propagation...`);
+                    await new Promise(resolve => setTimeout(resolve, 5000));
                 } catch (uploadError) {
                     console.error(`[${jobId}] Failed to upload video to Cloudinary, using Shotstack URL (may expire):`, uploadError);
                     // Continue with Shotstack URL if Cloudinary upload fails

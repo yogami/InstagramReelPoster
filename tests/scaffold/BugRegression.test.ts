@@ -44,4 +44,10 @@ describe('Bug Regression Verification', () => {
         // Check for the payload logic fix
         expect(content).toContain('payload.video_url = job.finalVideoUrl');
     });
+
+    test('Fix 5: Final Video should have propagation delay', () => {
+        const filePath = path.join(projectRoot, 'application/ReelOrchestrator.ts');
+        const content = fs.readFileSync(filePath, 'utf-8');
+        expect(content).toContain('Waiting 5s for final video propagation');
+    });
 });

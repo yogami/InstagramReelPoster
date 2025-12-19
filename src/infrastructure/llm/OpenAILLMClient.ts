@@ -51,14 +51,11 @@ export class OpenAILLMClient implements ILLMClient {
      * SEGMENT COUNT is calculated mathematically, NOT by LLM.
      */
     async planReel(transcript: string, constraints: PlanningConstraints): Promise<ReelPlan> {
-        // Calculate optimal segment count based on duration
-        // Each segment should be 4-6 seconds for optimal visual storytelling
+        // Calculate default for fallback
         const avgDuration = (constraints.minDurationSeconds + constraints.maxDurationSeconds) / 2;
-        const OPTIMAL_SEGMENT_DURATION = 5; // seconds per visual beat
-        const calculatedSegmentCount = Math.max(2, Math.min(15, Math.round(avgDuration / OPTIMAL_SEGMENT_DURATION)));
+        const OPTIMAL_SEGMENT_DURATION = 5;
 
-        console.log(`📊 Calculated segment count: ${calculatedSegmentCount} (based on ${avgDuration}s target / ${OPTIMAL_SEGMENT_DURATION}s per segment)`);
-
+        // We allow the LLM to decide the duration if the user asks for it, otherwise default to context
         const prompt = `Plan a short-form video reel from this voice note.
 
 Transcript:
@@ -68,31 +65,31 @@ ${transcript}
 
 Constraints:
 - Duration must be between ${constraints.minDurationSeconds} and ${constraints.maxDurationSeconds} seconds
-- You MUST use EXACTLY${calculatedSegmentCount} segments (already calculated, do NOT change this)
-${constraints.moodOverrides?.length ? `- Mood should incorporate: ${constraints.moodOverrides.join(', ')}` : ''}
+- Target ~5 seconds per segment.
+- If the transcript explicitly requests a duration (e.g. "1 minute"), HONOR IT.
+- If no duration is requested, choose a duration fitting the content depth.
 
 Respond with a JSON object containing:
 {
-  "targetDurationSeconds": <number between ${constraints.minDurationSeconds}-${constraints.maxDurationSeconds}>,
-  "segmentCount": ${calculatedSegmentCount},
-  "musicTags": ["array", "of", "music", "search", "tags", "e.g.", "indian", "japanese", "spiritual", "meditation"],
-  "musicPrompt": "description for AI music generation if needed",
+  "targetDurationSeconds": <number>,
+  "segmentCount": <number: duration / 5>,
+  "musicTags": ["array", "of", "music", "search", "tags"],
+  "musicPrompt": "description for AI music generation",
   "mood": "overall mood/tone",
   "summary": "brief summary of the reel concept"
 }
 
-CRITICAL: segmentCount MUST be exactly ${calculatedSegmentCount}. Do not change this number.
-
-Choose duration based on content depth. More complex ideas need more time.`;
+CRITICAL: segmentCount must be an Integer between 2 and 15.`;
 
         const response = await this.callOpenAI(prompt, true);
         const plan = this.parseJSON<ReelPlan>(response);
 
-        // ENFORCE the calculated segment count (in case LLM ignored us)
-        if (plan.segmentCount !== calculatedSegmentCount) {
-            console.warn(`⚠️ LLM returned segmentCount=${plan.segmentCount}, forcing to ${calculatedSegmentCount}`);
-            plan.segmentCount = calculatedSegmentCount;
-        }
+        // Safety CLAMP on segment count
+        if (plan.segmentCount < 2) plan.segmentCount = 2;
+        if (plan.segmentCount > 15) plan.segmentCount = 15;
+
+        console.log(`[ReelPlan] Targeted ${plan.targetDurationSeconds}s with ${plan.segmentCount} segments.`);
+
 
         return plan;
     }
