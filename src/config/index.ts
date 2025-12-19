@@ -64,6 +64,20 @@ export interface Config {
 
     // Pixabay
     pixabayApiKey: string;
+
+    // Personal Clone Feature Flags
+    featureFlags: {
+        usePersonalCloneTTS: boolean;  // Use local XTTS v2 instead of Fish Audio
+        usePersonalCloneLLM: boolean;  // Use local fine-tuned LLM instead of OpenAI
+        personalCloneTrainingMode: boolean; // Collect data for training
+    };
+
+    // Personal Clone Configuration (only used when feature flags are enabled)
+    personalClone: {
+        xttsServerUrl: string;  // Local XTTS inference server URL
+        localLLMUrl: string;    // Local LLM server URL (e.g., Ollama)
+        trainingDataPath: string; // Path to store training data
+    };
 }
 
 function getEnvVar(key: string, defaultValue?: string): string {
@@ -168,6 +182,20 @@ export function loadConfig(): Config {
 
         // Pixabay
         pixabayApiKey: getEnvVar('PIXABAY_API_KEY', ''),
+
+        // Personal Clone Feature Flags (all default to false - non-breaking)
+        featureFlags: {
+            usePersonalCloneTTS: getEnvVarBoolean('USE_PERSONAL_CLONE_TTS', false),
+            usePersonalCloneLLM: getEnvVarBoolean('USE_PERSONAL_CLONE_LLM', false),
+            personalCloneTrainingMode: getEnvVarBoolean('PERSONAL_CLONE_TRAINING_MODE', false),
+        },
+
+        // Personal Clone Configuration
+        personalClone: {
+            xttsServerUrl: getEnvVar('XTTS_SERVER_URL', 'http://localhost:8020'),
+            localLLMUrl: getEnvVar('LOCAL_LLM_URL', 'http://localhost:11434'),
+            trainingDataPath: getEnvVar('PERSONAL_CLONE_DATA_PATH', './data/personal_clone'),
+        },
     };
 }
 
