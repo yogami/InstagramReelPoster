@@ -445,6 +445,15 @@ export class ReelOrchestrator {
             }
         }
 
+
+
+        // Add a small delay to ensure Cloudinary assets are propagated to CDNs
+        // This prevents "Asset URL not downloadable" errors from Shotstack
+        if (this.deps.storageClient) {
+            console.log('Waiting 2s for asset propagation...');
+            await new Promise(resolve => setTimeout(resolve, 2000));
+        }
+
         return results;
     }
 
