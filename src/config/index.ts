@@ -61,6 +61,9 @@ export interface Config {
     minReelSeconds: number;
     maxReelSeconds: number;
     speakingRateWps: number;
+
+    // Pixabay
+    pixabayApiKey: string;
 }
 
 function getEnvVar(key: string, defaultValue?: string): string {
@@ -162,6 +165,9 @@ export function loadConfig(): Config {
         minReelSeconds: getEnvVarNumber('MIN_REEL_SECONDS', 10),
         maxReelSeconds: getEnvVarNumber('MAX_REEL_SECONDS', 90),
         speakingRateWps: getEnvVarNumber('SPEAKING_RATE_WPS', 2.3),
+
+        // Pixabay
+        pixabayApiKey: getEnvVar('PIXABAY_API_KEY', ''),
     };
 }
 

@@ -1,0 +1,109 @@
+{
+    "name": "Reel Callback Proxy to Make.com",
+    "nodes": [
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "reel-callback",
+                "responseMode": "responseNode",
+                "options": {}
+            },
+            "id": "webhook-receive",
+            "name": "Webhook - Receive from Reel App",
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 1.1,
+            "position": [
+                250,
+                300
+            ],
+            "webhookId": "reel-callback-proxy"
+        },
+        {
+            "parameters": {
+                "url": "https://hook.eu2.make.com/w55ed4qflnhglj5ubde67e4xs93hdzyo",
+                "authentication": "none",
+                "sendBody": true,
+                "bodyParameters": {
+                    "parameters": [
+                        {
+                            "name": "jobId",
+                            "value": "={{ $json.jobId }}"
+                        },
+                        {
+                            "name": "status",
+                            "value": "={{ $json.status }}"
+                        },
+                        {
+                            "name": "videoUrl",
+                            "value": "={{ $json.videoUrl }}"
+                        },
+                        {
+                            "name": "error",
+                            "value": "={{ $json.error }}"
+                        },
+                        {
+                            "name": "metadata",
+                            "value": "={{ $json.metadata }}"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "id": "http-makecom",
+            "name": "HTTP Request - Forward to Make.com",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                470,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "respondWith": "json",
+                "responseBody": "={{ { \"success\": true, \"message\": \"Callback forwarded to Make.com\" } }}"
+            },
+            "id": "respond-success",
+            "name": "Respond to Webhook",
+            "type": "n8n-nodes-base.respondToWebhook",
+            "typeVersion": 1.1,
+            "position": [
+                690,
+                300
+            ]
+        }
+    ],
+    "connections": {
+        "Webhook - Receive from Reel App": {
+            "main": [
+                [
+                    {
+                        "node": "HTTP Request - Forward to Make.com",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "HTTP Request - Forward to Make.com": {
+            "main": [
+                [
+                    {
+                        "node": "Respond to Webhook",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "pinData": {},
+    "settings": {
+        "executionOrder": "v1"
+    },
+    "staticData": null,
+    "tags": [],
+    "triggerCount": 0,
+    "updatedAt": "2025-12-19T12:00:00.000Z",
+    "versionId": "1"
+}

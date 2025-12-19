@@ -1,4 +1,124 @@
 [
-  {"id": "track-1", "title": "Calm Meditation", "url": "https://res.cloudinary.com/djol0rpn5/video/upload/v1766043442/voice_sample_lvewfq.ogg", "durationSeconds": 60, "tags": ["calm", "meditation", "ambient", "spirituality", "peaceful"]},
-  {"id": "track-2", "title": "Universal Background", "url": "https://res.cloudinary.com/djol0rpn5/video/upload/v1766043442/voice_sample_lvewfq.ogg", "durationSeconds": 10, "tags": ["calm", "meditation", "ambient", "spirituality", "peaceful"]}
+    {
+        "id": "in-indian-dhaka",
+        "title": "Dhaka",
+        "audioUrl": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Dhaka.mp3",
+        "durationSeconds": 195,
+        "tags": [
+            "indian",
+            "spiritual",
+            "sarod",
+            "dilruba",
+            "drone",
+            "meditation"
+        ]
+    },
+    {
+        "id": "in-indian-jalandhar",
+        "title": "Jalandhar",
+        "audioUrl": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Jalandhar.mp3",
+        "durationSeconds": 312,
+        "tags": [
+            "indian",
+            "spiritual",
+            "sitar",
+            "meditation",
+            "calm"
+        ]
+    },
+    {
+        "id": "in-indian-vadodora",
+        "title": "Vadodora",
+        "audioUrl": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Vadodora.mp3",
+        "durationSeconds": 240,
+        "tags": [
+            "indian",
+            "spiritual",
+            "sitar",
+            "bansuri",
+            "flute",
+            "meditation"
+        ]
+    },
+    {
+        "id": "as-chinese-ripples",
+        "title": "Ripples",
+        "audioUrl": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Ripples.mp3",
+        "durationSeconds": 298,
+        "tags": [
+            "chinese",
+            "japanese",
+            "asian",
+            "spiritual",
+            "guzheng",
+            "koto",
+            "meditation"
+        ]
+    },
+    {
+        "id": "as-chinese-guzheng-city",
+        "title": "Guzheng City",
+        "audioUrl": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Guzheng%20City.mp3",
+        "durationSeconds": 185,
+        "tags": [
+            "chinese",
+            "asian",
+            "spiritual",
+            "guzheng",
+            "percussion"
+        ]
+    },
+    {
+        "id": "as-japanese-that-zen-moment",
+        "title": "That Zen Moment",
+        "audioUrl": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/That%20Zen%20Moment.mp3",
+        "durationSeconds": 210,
+        "tags": [
+            "japanese",
+            "asian",
+            "spiritual",
+            "zen",
+            "serene",
+            "meditation"
+        ]
+    },
+    {
+        "id": "me-meditation-impromptu-01",
+        "title": "Meditation Impromptu 01",
+        "audioUrl": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Meditation%20Impromptu%2001.mp3",
+        "durationSeconds": 340,
+        "tags": [
+            "meditation",
+            "spiritual",
+            "calm",
+            "ambient",
+            "piano"
+        ]
+    },
+    {
+        "id": "me-organic-meditations-one",
+        "title": "Organic Meditations One",
+        "audioUrl": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Organic%20Meditations%20One.mp3",
+        "durationSeconds": 600,
+        "tags": [
+            "meditation",
+            "spiritual",
+            "calm",
+            "long",
+            "ambient"
+        ]
+    },
+    {
+        "id": "me-ethereal-relaxation",
+        "title": "Ethereal Relaxation",
+        "audioUrl": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Ethereal%20Relaxation.mp3",
+        "durationSeconds": 245,
+        "tags": [
+            "meditation",
+            "spiritual",
+            "calm",
+            "relaxing",
+            "strings"
+        ]
+    }
 ]

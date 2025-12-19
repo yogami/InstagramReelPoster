@@ -39,7 +39,7 @@ export class MusicSelector {
         tags: string[],
         targetDurationSeconds: number,
         musicPrompt: string
-    ): Promise<MusicSelectionResult> {
+    ): Promise<MusicSelectionResult | null> {
         const query: MusicSearchQuery = {
             tags,
             minDurationSeconds: targetDurationSeconds * 0.7,
@@ -121,19 +121,9 @@ export class MusicSelector {
             }
         }
 
-        // 4. FINAL SAFETY NET: Hardcoded track
-        console.warn('CRITICAL: All music sources failed. Using hardcoded backup track.');
-        return {
-            track: {
-                id: 'backup-safety-track',
-                title: 'Calm Background (Safety Fallback)',
-                audioUrl: this.BACKUP_TRACK_URL,
-                durationSeconds: 60,
-                tags: ['backup', 'calm'],
-                isAIGenerated: false
-            },
-            source: 'internal'
-        };
+        // 4. No music available - return null (music is optional)
+        console.warn('No background music available. Video will be rendered without music.');
+        return null;
     }
 
     /**

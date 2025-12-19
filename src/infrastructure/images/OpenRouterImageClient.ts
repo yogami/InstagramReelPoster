@@ -49,6 +49,7 @@ export class OpenRouterImageClient implements IImageClient {
                         'HTTP-Referer': 'https://github.com/yogami/InstagramReelPoster',
                         'X-Title': 'Instagram Reel Poster',
                     },
+                    timeout: 60000,
                 }
             );
 

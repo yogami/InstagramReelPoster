@@ -11,7 +11,7 @@ import { Track, createTrack, trackMatchesTags, trackFitsDuration } from '../../d
  */
 interface RawTrackData {
     id: string;
-    url: string;
+    audioUrl: string;
     title?: string;
     tags: string[];
     durationSeconds: number;
@@ -72,7 +72,7 @@ export class InMemoryMusicCatalogClient implements IMusicCatalogClient {
                     title: raw.title,
                     tags: raw.tags,
                     durationSeconds: raw.durationSeconds,
-                    audioUrl: raw.url,
+                    audioUrl: raw.audioUrl,
                     isAIGenerated: false,
                 })
             );

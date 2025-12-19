@@ -30,6 +30,7 @@ export class FishAudioTTSClient implements ITTSClient {
         }
 
         try {
+            console.log(`[Fish Audio] Synthesizing with voice ID: ${this.voiceId}`);
             const response = await axios.post(
                 `${this.baseUrl}/v1/tts`,
                 {

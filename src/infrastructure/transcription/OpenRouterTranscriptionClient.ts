@@ -2,9 +2,8 @@ import axios from 'axios';
 import { ITranscriptionClient } from '../../domain/ports/ITranscriptionClient';
 
 /**
- * OpenRouter transcription client using Gemini 2.5 Flash for audio transcription.
- * Gemini accepts audio as base64 in the message content.
- * MUCH cheaper than Whisper: $0.0000003/token vs OpenAI's pricing.
+ * OpenRouter-based transcription client using Gemini.
+ * Gemini models are excellent at transcribing long audio and video files.
  */
 export class OpenRouterTranscriptionClient implements ITranscriptionClient {
     private readonly apiKey: string;
@@ -13,7 +12,7 @@ export class OpenRouterTranscriptionClient implements ITranscriptionClient {
 
     constructor(
         apiKey: string,
-        model: string = 'google/gemini-2.5-flash',
+        model: string = 'google/gemini-2.0-flash-001',
         baseUrl: string = 'https://openrouter.ai/api/v1'
     ) {
         if (!apiKey) {
@@ -24,91 +23,71 @@ export class OpenRouterTranscriptionClient implements ITranscriptionClient {
         this.baseUrl = baseUrl;
     }
 
+    /**
+     * Transcribes audio/video from a URL using Gemini via OpenRouter.
+     */
     async transcribe(audioUrl: string): Promise<string> {
-        console.log(`[OpenRouter Transcription] Starting transcription with ${this.model}...`);
+        if (!audioUrl) {
+            throw new Error('Audio URL is required');
+        }
 
         try {
-            // Fetch the audio file
-            const audioResponse = await axios.get(audioUrl, {
-                responseType: 'arraybuffer',
-                timeout: 60000,
-            });
+            console.log(`[OpenRouter] Transcribing source (${this.model}): ${audioUrl}`);
 
-            const audioBuffer = Buffer.from(audioResponse.data);
-            const base64Audio = audioBuffer.toString('base64');
-
-            // Determine audio MIME type
-            const mimeType = this.getMimeType(audioUrl, audioResponse.headers['content-type']);
-
-            console.log(`[OpenRouter Transcription] Audio fetched: ${(audioBuffer.length / 1024).toFixed(1)}KB, type: ${mimeType}`);
-
-            // Send to Gemini for transcription
             const response = await axios.post(
                 `${this.baseUrl}/chat/completions`,
                 {
                     model: this.model,
-                    messages: [{
-                        role: 'user',
-                        content: [
-                            {
-                                type: 'text',
-                                text: 'Please transcribe the following audio file. Return ONLY the transcription text, nothing else. No introductions, no explanations, just the exact words spoken in the audio.'
-                            },
-                            {
-                                type: 'audio_url',
-                                audio_url: {
-                                    url: `data:${mimeType};base64,${base64Audio}`
+                    messages: [
+                        {
+                            role: 'user',
+                            content: [
+                                {
+                                    type: 'text',
+                                    text: 'Transcribe this audio/video file exactly. Provide ONLY the transcription text, no preamble or extra words.'
+                                },
+                                {
+                                    type: 'image_url', // Standard multimodal field on OpenRouter
+                                    image_url: {
+                                        url: audioUrl
+                                    }
                                 }
-                            }
-                        ]
-                    }],
-                    temperature: 0.1,
+                            ]
+                        }
+                    ],
                 },
                 {
                     headers: {
-                        'Authorization': `Bearer ${this.apiKey}`,
+                        Authorization: `Bearer ${this.apiKey}`,
                         'Content-Type': 'application/json',
-                        'HTTP-Referer': 'https://github.com/yogami/InstagramReelPoster',
+                        'HTTP-Referer': 'https://github.com/yogami/InstagramReelPoster', // Recommended for OpenRouter
                         'X-Title': 'Instagram Reel Poster',
                     },
-                    timeout: 120000,
+                    timeout: 60000, // Give it time to process
                 }
             );
 
-            const transcription = response.data?.choices?.[0]?.message?.content?.trim();
-
-            if (!transcription) {
-                throw new Error('OpenRouter returned empty transcription');
+            if (!response.data || !response.data.choices || !response.data.choices[0]) {
+                console.error('[OpenRouter] Unexpected response format:', JSON.stringify(response.data, null, 2));
+                throw new Error('OpenRouter returned an invalid response structure');
             }
 
-            console.log(`[OpenRouter Transcription] Transcription complete: ${transcription.length} chars`);
-
-            return transcription;
-        } catch (error) {
-            if (axios.isAxiosError(error)) {
-                console.error('[OpenRouter Transcription] Error:', error.response?.data);
-                const message = error.response?.data?.error?.message || error.message;
-                throw new Error(`Transcription failed: ${message}`);
+            const content = response.data.choices[0].message?.content;
+            if (!content) {
+                console.warn('[OpenRouter] Received empty content from model');
+                throw new Error('OpenRouter model returned empty transcription');
             }
+
+            console.log(`[OpenRouter] Transcription successful (${content.length} chars)`);
+            return content.trim();
+        } catch (error: any) {
+            if (axios.isAxiosError(error) && error.response) {
+                console.error('[OpenRouter] API Error:', JSON.stringify(error.response.data, null, 2));
+                const message = error.response.data?.error?.message || error.message;
+                throw new Error(`Transcription failed via OpenRouter: ${message}`);
+            }
+            console.error('[OpenRouter] Unexpected error:', error);
             throw error;
         }
-    }
-
-    private getMimeType(url: string, contentType?: string): string {
-        if (contentType && contentType.includes('audio')) {
-            return contentType.split(';')[0];
-        }
-
-        const ext = url.split('.').pop()?.toLowerCase();
-        const mimeTypes: Record<string, string> = {
-            'mp3': 'audio/mpeg',
-            'wav': 'audio/wav',
-            'ogg': 'audio/ogg',
-            'm4a': 'audio/mp4',
-            'flac': 'audio/flac',
-            'webm': 'audio/webm',
-        };
-
-        return mimeTypes[ext || ''] || 'audio/mpeg';
     }
 }
