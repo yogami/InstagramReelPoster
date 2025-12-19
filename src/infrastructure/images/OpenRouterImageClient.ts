@@ -2,8 +2,9 @@ import axios from 'axios';
 import { IImageClient } from '../../domain/ports/IImageClient';
 
 /**
- * OpenRouter image client using Gemini Flash for image generation.
- * Supports balanced sequential prompting with compact context extraction.
+ * OpenRouter image generation client.
+ * Uses models like google/gemini-2.5-flash-image for image generation.
+ * IMAGE models return base64 in response.images array (NOT text content).
  */
 export class OpenRouterImageClient implements IImageClient {
     private readonly apiKey: string;
@@ -14,7 +15,7 @@ export class OpenRouterImageClient implements IImageClient {
 
     constructor(
         apiKey: string,
-        model: string = 'google/gemini-flash-1.5',
+        model: string = 'google/gemini-2.5-flash-image',
         baseUrl: string = 'https://openrouter.ai/api/v1'
     ) {
         if (!apiKey) {
@@ -29,13 +30,15 @@ export class OpenRouterImageClient implements IImageClient {
         const enhancedPrompt = this.buildSequentialPrompt(prompt);
 
         try {
+            console.log(`[OpenRouter] Generating image with ${this.model}...`);
+
             const response = await axios.post(
                 `${this.baseUrl}/chat/completions`,
                 {
                     model: this.model,
                     messages: [{
                         role: 'user',
-                        content: enhancedPrompt
+                        content: `Generate an image: ${enhancedPrompt}`
                     }],
                     temperature: 0.7,
                 },
@@ -49,12 +52,10 @@ export class OpenRouterImageClient implements IImageClient {
                 }
             );
 
-            const content = response.data.choices[0]?.message?.content;
-            if (!content) {
-                throw new Error('OpenRouter returned an empty response');
-            }
+            // Extract image from the response
+            const imageUrl = this.extractImageFromResponse(response.data);
 
-            const imageUrl = this.extractImageUrl(content);
+            console.log(`[OpenRouter] Image generated successfully`);
 
             this.previousPrompt = prompt;
             this.sequenceIndex++;
@@ -63,6 +64,7 @@ export class OpenRouterImageClient implements IImageClient {
         } catch (error) {
             if (axios.isAxiosError(error)) {
                 const message = error.response?.data?.error?.message || error.message;
+                console.error(`[OpenRouter] Image generation failed:`, error.response?.data);
                 throw new Error(`OpenRouter image generation failed: ${message}`);
             }
             throw error;
@@ -70,13 +72,48 @@ export class OpenRouterImageClient implements IImageClient {
     }
 
     /**
-     * Builds sequential prompt with BALANCED context extraction.
-     * Extracts ~30-40 key words instead of full 140-word prompt.
-     * Token growth: Image 1: 140w → Image 2: ~170w → Image 3: ~200w (linear)
+     * Extracts image URL/base64 from OpenRouter response.
+     * Image models return images in: response.choices[0].message.images[]
+     */
+    private extractImageFromResponse(data: any): string {
+        // Check for images array in the message (OpenRouter image model format)
+        const message = data?.choices?.[0]?.message;
+
+        if (message?.images && message.images.length > 0) {
+            const imageData = message.images[0];
+            // Format: { type: 'image_url', image_url: { url: 'data:image/png;base64,...' } }
+            if (imageData?.image_url?.url) {
+                return imageData.image_url.url;
+            }
+            // Alternative format: direct URL
+            if (typeof imageData === 'string') {
+                return imageData;
+            }
+        }
+
+        // Fallback: check text content for base64 or URLs
+        const content = message?.content;
+        if (content) {
+            // Check for base64 data URL
+            if (content.includes('data:image')) {
+                const match = content.match(/data:image\/[^;]+;base64,[A-Za-z0-9+/=]+/);
+                if (match) return match[0];
+            }
+
+            // Check for HTTP URL
+            const urlMatch = content.match(/https?:\/\/[^\s"]+/);
+            if (urlMatch) return urlMatch[0];
+        }
+
+        throw new Error(`Could not extract image from OpenRouter response: ${JSON.stringify(data).substring(0, 500)}`);
+    }
+
+    /**
+     * Builds sequential prompt with context from previous image.
      */
     private buildSequentialPrompt(currentPrompt: string): string {
         if (!this.previousPrompt) {
-            return `Generate an image: ${currentPrompt}\n\nStyle: Cinematic, high quality, visually striking for Instagram reel. Use vibrant colors and dramatic lighting.`;
+            return `${currentPrompt}. Style: Cinematic, high quality, visually striking for Instagram reel. Use vibrant colors and dramatic lighting.`;
         }
 
         const context = this.extractCompactContext(this.previousPrompt);
@@ -95,45 +132,24 @@ Style: Cinematic, high quality, visually striking for Instagram reel.`;
     }
 
     /**
-     * Extracts essential visual elements (~30-40 words) from previous prompt.
-     * Looks for: location, lighting, colors, subjects.
+     * Extracts essential visual elements from previous prompt.
      */
     private extractCompactContext(prompt: string): string {
         const elements: string[] = [];
 
-        // Location
         const loc = prompt.match(/(deck|room|forest|beach|mountain|garden|street|studio|landscape|field|valley|canyon)[^.!?]{0,30}/i);
         if (loc) elements.push(`• Location: ${loc[0].trim()}`);
 
-        // Lighting/Time
         const light = prompt.match(/(golden hour|sunrise|sunset|morning|evening|soft|warm|cool|dramatic|natural)[\s\w-]{0,25}(light|lighting|glow)/i);
         if (light) elements.push(`• Lighting: ${light[0].trim()}`);
 
-        // Colors
         const color = prompt.match(/(warm|cool|vibrant|muted|rich|amber|blue|green|earth|teal|orange|violet|purple)[\s\w-]{0,20}(tone|palette|color)/i);
         if (color) elements.push(`• Colors: ${color[0].trim()}`);
 
-        // Subject
         const subj = prompt.match(/(person|subject|figure|woman|man|meditating|sitting|standing|walking|pose)[^.!?]{0,25}/i);
         if (subj) elements.push(`• Subject: ${subj[0].trim()}`);
 
         return elements.length > 0 ? elements.join('\n') : `• Core elements: ${prompt.split(/\s+/).slice(0, 35).join(' ')}`;
-    }
-
-    private extractImageUrl(content: string): string {
-        if (content.startsWith('http://') || content.startsWith('https://')) {
-            return content;
-        }
-
-        const markdownMatch = content.match(/!\[.*?\]\((https?:\/\/.*?)\)/);
-        if (markdownMatch) return markdownMatch[1];
-
-        const urlMatch = content.match(/https?:\/\/[^\s]+/);
-        if (urlMatch) return urlMatch[0];
-
-        if (content.includes('base64,')) return content;
-
-        throw new Error(`Could not extract image URL from OpenRouter response: ${content.substring(0, 200)}`);
     }
 
     resetSequence(): void {

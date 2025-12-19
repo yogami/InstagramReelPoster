@@ -90,7 +90,7 @@ function createDependencies(config: Config): {
         console.log('⚠️  Cloudinary not configured. Warning: Subtitles and FFmpeg rendering require cloud storage.');
     }
 
-    // Infrastructure clients
+    // Infrastructure clients - OpenAI for transcription/LLM, Fish Audio for TTS, OpenRouter for images  
     const transcriptionClient = new OpenAITranscriptionClient(config.openaiApiKey);
     const llmClient = new OpenAILLMClient(config.openaiApiKey, config.openaiModel);
     const ttsClient = new FishAudioTTSClient(
@@ -98,16 +98,17 @@ function createDependencies(config: Config): {
         config.fishAudioVoiceId,
         config.fishAudioBaseUrl
     );
-    // Image clients - OpenRouter primary, DALL-E fallback
-    const primaryImageClient = config.openrouterApiKey
-        ? new OpenRouterImageClient(
-            config.openrouterApiKey,
-            config.openrouterModel,
-            config.openrouterBaseUrl
-        )
-        : undefined;
+    // Image clients - OpenRouter is now REQUIRED (no more DALL-E)
+    if (!config.openrouterApiKey) {
+        throw new Error('OPENROUTER_API_KEY is required for image generation');
+    }
+    const imageClient = new OpenRouterImageClient(
+        config.openrouterApiKey,
+        config.openrouterModel,
+        config.openrouterBaseUrl
+    );
 
-    const fallbackImageClient = new OpenAIImageClient(config.openaiApiKey);
+    // Use same OpenRouter client for both primary and fallback
     const subtitlesClient = new OpenAISubtitlesClient(config.openaiApiKey, cloudinaryClient!);
     const fallbackTTSClient = new OpenAITTSClient(config.openaiApiKey);
 
@@ -165,8 +166,8 @@ function createDependencies(config: Config): {
         transcriptionClient,
         llmClient,
         ttsClient,
-        primaryImageClient,
-        fallbackImageClient,
+        primaryImageClient: imageClient,
+        fallbackImageClient: imageClient,
         subtitlesClient,
         videoRenderer,
         musicSelector,
