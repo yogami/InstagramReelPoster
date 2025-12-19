@@ -280,11 +280,6 @@ export class ReelOrchestrator {
                 );
             }
 
-            // Notify callback of failure
-            if (jobForError && jobForError.callbackUrl) {
-                await this.notifyCallback(jobForError);
-            }
-
             throw error;
         }
     }
