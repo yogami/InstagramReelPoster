@@ -68,7 +68,7 @@ describe('Bug Regression Verification', () => {
         const filePath = path.join(projectRoot, 'infrastructure/video/ShortstackVideoRenderer.ts');
         const content = fs.readFileSync(filePath, 'utf-8');
         expect(content).toContain('size: 48');
-        expect(content).toContain('bottom: 350');
+        expect(content).toContain('y: 0.15');
     });
 
     test('Fix 9: Images should be Vertical (9:16 Prompt)', () => {

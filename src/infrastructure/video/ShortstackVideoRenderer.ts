@@ -39,6 +39,10 @@ interface ShotstackClip {
         out?: 'fade' | 'reveal' | 'wipeLeft' | 'wipeRight' | 'slideLeft' | 'slideRight' | 'slideUp' | 'slideDown' | 'carouselLeft' | 'carouselRight' | 'carouselUp' | 'carouselDown' | 'shuffleTopRight' | 'shuffleRightTop' | 'shuffleRightBottom' | 'shuffleBottomRight' | 'shuffleBottomLeft' | 'shuffleLeftBottom' | 'shuffleLeftTop' | 'shuffleTopLeft' | 'zoom';
     };
     effect?: 'zoomIn' | 'zoomOut' | 'slideLeft' | 'slideRight' | 'slideUp' | 'slideDown';
+    offset?: {
+        x?: number;
+        y?: number;
+    };
 }
 
 type ShotstackAsset =
@@ -177,15 +181,15 @@ export class ShortstackVideoRenderer implements IVideoRenderer {
                 background: {
                     color: '#000000',
                     opacity: 0.6,
-                    padding: 20,
-                    borderRadius: 10
-                },
-                margin: {
-                    bottom: 350 // Move up to avoid Instagram UI overlap
+                    padding: 20
                 }
             },
             start: 0,
             length: manifest.durationSeconds,
+            position: 'bottom',
+            offset: {
+                y: 0.15 // Offset from bottom (normalized ~15% up?)
+            }
         };
 
         // Track 4: Background Music (optional - only if musicUrl is provided)
