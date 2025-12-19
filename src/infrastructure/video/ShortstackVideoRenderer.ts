@@ -188,7 +188,7 @@ export class ShortstackVideoRenderer implements IVideoRenderer {
                         asset: {
                             type: 'audio' as const,
                             src: musicUrl,
-                            volume: 0.25, // Subtle background
+                            volume: 0.1, // Lowered to avoid interference with commentary
                             effect: i === 0 ? 'fadeIn' : (i === musicClipCount - 1 ? 'fadeOut' : undefined),
                         },
                         start,

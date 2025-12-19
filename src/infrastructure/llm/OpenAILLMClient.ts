@@ -158,6 +158,10 @@ COMMENTARY-IMAGE CONGRUENCE (CRITICAL):
 ★ THEN write commentary that is THEMATICALLY and EMOTIONALLY aligned with the image
 ★ DO NOT describe what the viewer sees - they can already see it
 ★ Instead, deliver the spiritual/philosophical insight that the visual supports
+
+STRICT IMAGE POLICY (NON-NEGOTIABLE):
+1. RACE/ETHNICITY: People must be race-neutral / ambiguous. Do not specify specific ethnicities. Describe "a person", "a silhouette", "a figure" with ambiguous features. The goal is universal relatability.
+2. RELATIONSHIPS: If the topic involves love, romance, dating, or marriage, and you show a couple, it MUST be a Heterosexual couple (Man and Woman). Do NOT depict same-sex couples for romantic themes.
 ★ The image should ILLUSTRATE the idea, not BE the idea
 
 STORYTELLING APPROACH:

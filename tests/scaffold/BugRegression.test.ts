@@ -50,4 +50,17 @@ describe('Bug Regression Verification', () => {
         const content = fs.readFileSync(filePath, 'utf-8');
         expect(content).toContain('Waiting 5s for final video propagation');
     });
+
+    test('Fix 6: Image Policy should be strict (Heterosexual & Race Neutral)', () => {
+        const filePath = path.join(projectRoot, 'infrastructure/llm/OpenAILLMClient.ts');
+        const content = fs.readFileSync(filePath, 'utf-8');
+        expect(content).toContain('RACE/ETHNICITY: People must be race-neutral');
+        expect(content).toContain('MUST be a Heterosexual couple');
+    });
+
+    test('Fix 7: Background Music Volume should be low (0.1)', () => {
+        const filePath = path.join(projectRoot, 'infrastructure/video/ShortstackVideoRenderer.ts');
+        const content = fs.readFileSync(filePath, 'utf-8');
+        expect(content).toContain('volume: 0.1');
+    });
 });
