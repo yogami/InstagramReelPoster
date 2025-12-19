@@ -23,10 +23,10 @@ export interface ReelManifest {
     segments: ManifestSegment[];
     /** URL to the voiceover audio file */
     voiceoverUrl: string;
-    /** URL to the background music file */
-    musicUrl: string;
+    /** URL to the background music file (optional) */
+    musicUrl?: string;
     /** Duration of the background music in seconds */
-    musicDurationSeconds: number;
+    musicDurationSeconds?: number;
     /** URL to the subtitles file (SRT or VTT) */
     subtitlesUrl: string;
 }
@@ -38,8 +38,8 @@ export function createReelManifest(params: {
     durationSeconds: number;
     segments: Segment[];
     voiceoverUrl: string;
-    musicUrl: string;
-    musicDurationSeconds: number;
+    musicUrl?: string;
+    musicDurationSeconds?: number;
     subtitlesUrl: string;
 }): ReelManifest {
     if (params.durationSeconds <= 0) {
@@ -51,9 +51,7 @@ export function createReelManifest(params: {
     if (!params.voiceoverUrl.trim()) {
         throw new Error('Manifest voiceoverUrl cannot be empty');
     }
-    if (!params.musicUrl.trim()) {
-        throw new Error('Manifest musicUrl cannot be empty');
-    }
+    // Music is optional - no validation needed
     if (!params.subtitlesUrl.trim()) {
         throw new Error('Manifest subtitlesUrl cannot be empty');
     }
@@ -77,7 +75,7 @@ export function createReelManifest(params: {
         durationSeconds: params.durationSeconds,
         segments: manifestSegments,
         voiceoverUrl: params.voiceoverUrl.trim(),
-        musicUrl: params.musicUrl.trim(),
+        musicUrl: params.musicUrl?.trim(),
         musicDurationSeconds: params.musicDurationSeconds,
         subtitlesUrl: params.subtitlesUrl.trim(),
     };
