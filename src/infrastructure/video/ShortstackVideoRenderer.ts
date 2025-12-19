@@ -168,6 +168,21 @@ export class ShortstackVideoRenderer implements IVideoRenderer {
             asset: {
                 type: 'caption' as const,
                 src: manifest.subtitlesUrl,
+                font: {
+                    family: 'Montserrat',
+                    size: 48,
+                    color: '#FFFFFF',
+                    lineHeight: 1.2
+                },
+                background: {
+                    color: '#000000',
+                    opacity: 0.6,
+                    padding: 20,
+                    borderRadius: 10
+                },
+                margin: {
+                    bottom: 350 // Move up to avoid Instagram UI overlap
+                }
             },
             start: 0,
             length: manifest.durationSeconds,

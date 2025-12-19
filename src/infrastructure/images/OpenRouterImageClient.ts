@@ -114,7 +114,7 @@ export class OpenRouterImageClient implements IImageClient {
      */
     private buildSequentialPrompt(currentPrompt: string): string {
         if (!this.previousPrompt) {
-            return `${currentPrompt}. Style: Cinematic, high quality, visually striking for Instagram reel. Use vibrant colors and dramatic lighting.`;
+            return `${currentPrompt}. Style: Cinematic, high quality, visually striking for Instagram reel. Use vibrant colors and dramatic lighting. Aspect Ratio: 9:16 Vertical Portrait.`;
         }
 
         const context = this.extractCompactContext(this.previousPrompt);
@@ -129,7 +129,7 @@ ${currentPrompt}
 
 CRITICAL: Maintain the established elements above while progressing the narrative. Ensure visual coherence.
 
-Style: Cinematic, high quality, visually striking for Instagram reel.`;
+Style: Cinematic, high quality, visually striking for Instagram reel. Aspect Ratio: 9:16 Vertical Portrait.`;
     }
 
     /**

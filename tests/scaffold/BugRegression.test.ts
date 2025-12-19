@@ -63,4 +63,17 @@ describe('Bug Regression Verification', () => {
         const content = fs.readFileSync(filePath, 'utf-8');
         expect(content).toContain('volume: 0.1');
     });
+
+    test('Fix 8: Subtitles should be readable (Size 48, Margin 350)', () => {
+        const filePath = path.join(projectRoot, 'infrastructure/video/ShortstackVideoRenderer.ts');
+        const content = fs.readFileSync(filePath, 'utf-8');
+        expect(content).toContain('size: 48');
+        expect(content).toContain('bottom: 350');
+    });
+
+    test('Fix 9: Images should be Vertical (9:16 Prompt)', () => {
+        const filePath = path.join(projectRoot, 'infrastructure/images/OpenRouterImageClient.ts');
+        const content = fs.readFileSync(filePath, 'utf-8');
+        expect(content).toContain('Aspect Ratio: 9:16 Vertical Portrait');
+    });
 });
