@@ -318,8 +318,24 @@ export class ReelOrchestrator {
             }
         }
 
+        // CRITICAL: Upload to Cloudinary if TTS returned a data URL
+        let voiceoverUrl = result.audioUrl;
+        if (voiceoverUrl.startsWith('data:') && this.deps.storageClient) {
+            console.log('[Voiceover] Uploading base64 audio to Cloudinary...');
+            try {
+                const uploadResult = await this.deps.storageClient.uploadAudio(voiceoverUrl, {
+                    folder: 'instagram-reels/voiceovers',
+                    publicId: `voiceover_${Date.now()}`
+                });
+                voiceoverUrl = uploadResult.url;
+                console.log('[Voiceover] Uploaded successfully:', voiceoverUrl);
+            } catch (uploadError) {
+                console.error('[Voiceover] Cloudinary upload failed, using data URL (may cause API issues):', uploadError);
+            }
+        }
+
         return {
-            voiceoverUrl: result.audioUrl,
+            voiceoverUrl,
             voiceoverDuration: result.durationSeconds,
             speed,
         };

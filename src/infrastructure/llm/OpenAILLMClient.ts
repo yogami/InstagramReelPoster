@@ -281,34 +281,50 @@ Respond with the adjusted JSON array in the same format.`;
     }
 
     private async callOpenAI(prompt: string, jsonMode: boolean = false): Promise<string> {
-        try {
-            const response = await axios.post(
-                `${this.baseUrl}/v1/chat/completions`,
-                {
-                    model: this.model,
-                    messages: [
-                        { role: 'system', content: CHALLENGING_VIEW_SYSTEM_PROMPT },
-                        { role: 'user', content: prompt },
-                    ],
-                    temperature: 0.7,
-                    ...(jsonMode && { response_format: { type: 'json_object' } }),
-                },
-                {
-                    headers: {
-                        Authorization: `Bearer ${this.apiKey}`,
-                        'Content-Type': 'application/json',
-                    },
-                }
-            );
+        const maxRetries = 3;
 
-            return response.data.choices[0].message.content;
-        } catch (error) {
-            if (axios.isAxiosError(error)) {
-                const message = error.response?.data?.error?.message || error.message;
-                throw new Error(`LLM call failed: ${message}`);
+        for (let attempt = 0; attempt < maxRetries; attempt++) {
+            try {
+                const response = await axios.post(
+                    `${this.baseUrl}/v1/chat/completions`,
+                    {
+                        model: this.model,
+                        messages: [
+                            { role: 'system', content: CHALLENGING_VIEW_SYSTEM_PROMPT },
+                            { role: 'user', content: prompt },
+                        ],
+                        temperature: 0.7,
+                        ...(jsonMode && { response_format: { type: 'json_object' } }),
+                    },
+                    {
+                        headers: {
+                            Authorization: `Bearer ${this.apiKey}`,
+                            'Content-Type': 'application/json',
+                        },
+                    }
+                );
+
+                return response.data.choices[0].message.content;
+            } catch (error) {
+                if (axios.isAxiosError(error)) {
+                    const status = error.response?.status;
+                    const message = error.response?.data?.error?.message || error.message;
+
+                    // Retry on transient errors (502, 503, 429)
+                    if ((status === 502 || status === 503 || status === 429) && attempt < maxRetries - 1) {
+                        const delay = Math.pow(2, attempt) * 1000;
+                        console.warn(`[LLM] Transient error (${status}), retrying in ${delay / 1000}s...`);
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                        continue;
+                    }
+
+                    throw new Error(`LLM call failed: ${message}`);
+                }
+                throw error;
             }
-            throw error;
         }
+
+        throw new Error('LLM call failed after max retries');
     }
 
     private parseJSON<T>(response: string): T {

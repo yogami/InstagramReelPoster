@@ -163,30 +163,11 @@ export class ShortstackVideoRenderer implements IVideoRenderer {
             length: manifest.durationSeconds,
         };
 
-        // Track 3: Captions/Subtitles (top layer)
+        // Track 3: Captions/Subtitles (top layer) - Simplified for stage API compatibility
         const captionClip: ShotstackClip = {
             asset: {
                 type: 'caption' as const,
                 src: manifest.subtitlesUrl,
-                font: {
-                    family: 'Open Sans',
-                    color: '#ffffff',
-                    size: 28,
-                    lineHeight: 1.2,
-                    stroke: '#000000',
-                    strokeWidth: 1,
-                },
-                background: {
-                    color: '#000000',
-                    opacity: 0.6,
-                    padding: 12,
-                    borderRadius: 8,
-                },
-                margin: {
-                    bottom: 0.1,
-                    left: 0.05,
-                    right: 0.05,
-                },
             },
             start: 0,
             length: manifest.durationSeconds,
@@ -261,6 +242,7 @@ export class ShortstackVideoRenderer implements IVideoRenderer {
             return renderId;
         } catch (error) {
             if (axios.isAxiosError(error)) {
+                console.error('[Shotstack] Error response:', JSON.stringify(error.response?.data, null, 2));
                 const message = error.response?.data?.message ||
                     error.response?.data?.error ||
                     error.message;
