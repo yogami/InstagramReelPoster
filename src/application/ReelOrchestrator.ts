@@ -207,7 +207,7 @@ export class ReelOrchestrator {
                     voiceoverUrl,
                     musicUrl: musicUrl,
                     musicDurationSeconds: musicDurationSeconds || voiceoverDuration,
-                    subtitlesUrl,
+                    subtitlesUrl: subtitlesUrl || '',
                 });
                 await this.deps.jobManager.updateJob(jobId, { manifest });
             }
