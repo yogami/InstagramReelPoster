@@ -13,7 +13,8 @@ describe('Bug Regression Verification', () => {
         expect(content).not.toContain('MUST reference 2-3 visual elements from imagePrompt');
 
         // It SHOULD contain the new instruction
-        expect(content).toContain('Focus on the MESSAGE, not the visual');
+        expect(content).toContain('NEVER describe the visual');
+        expect(content).toContain('Gen-Z Simple English');
     });
 
     test('Fix 2: Voice should be configured to Fish Audio (User Preference)', () => {
