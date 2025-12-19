@@ -94,9 +94,10 @@ function createDependencies(config: Config): {
     // Use OpenAI Whisper (now enhanced with local FFmpeg compression for large files)
     const transcriptionClient = new OpenAITranscriptionClient(config.openaiApiKey);
     const llmClient = new OpenAILLMClient(config.openaiApiKey, config.openaiModel);
-    const ttsClient = new OpenAITTSClient(
-        config.openaiApiKey,
-        'onyx' // Male voice for 'Challenging View' persona
+    const ttsClient = new FishAudioTTSClient(
+        config.fishAudioApiKey,
+        config.fishAudioVoiceId,
+        config.fishAudioBaseUrl
     );
     // Image clients - OpenRouter is now REQUIRED (no more DALL-E)
     if (!config.openrouterApiKey) {

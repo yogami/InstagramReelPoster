@@ -16,19 +16,15 @@ describe('Bug Regression Verification', () => {
         expect(content).toContain('Focus on the MESSAGE, not the visual');
     });
 
-    test('Fix 2: Voice should be configured to OpenAI Onyx (Male)', () => {
+    test('Fix 2: Voice should be configured to Fish Audio (User Preference)', () => {
         const filePath = path.join(projectRoot, 'presentation/app.ts');
         const content = fs.readFileSync(filePath, 'utf-8');
 
-        // Should use OpenAITTSClient
-        expect(content).toContain('new OpenAITTSClient');
+        // Should use FishAudioTTSClient
+        expect(content).toContain('new FishAudioTTSClient');
 
-        // Should use 'onyx' voice
-        expect(content).toContain("'onyx'");
-
-        // Should NOT use FishAudio definitions for the active client (though import might exist)
-        // We check for the instantiation block we replaced
-        expect(content).not.toContain('new FishAudioTTSClient');
+        // Should confirm ttsClient is assigned to FishAudio
+        expect(content).toMatch(/const ttsClient = new FishAudioTTSClient/);
     });
 
     test('Fix 3: Orchestrator should upload to Cloudinary and Delay (preventing Shotstack download error)', () => {
