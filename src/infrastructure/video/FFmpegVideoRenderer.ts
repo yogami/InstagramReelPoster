@@ -71,6 +71,7 @@ export class FFmpegVideoRenderer implements IVideoRenderer {
         const musicPath = manifest.musicUrl ? path.join(jobDir, 'music.mp3') : null;
         const subtitlesPath = path.join(jobDir, 'subtitles.srt');
         const imagePaths: string[] = [];
+        let animatedVideoPath: string | null = null;
 
         const downloads = [
             this.downloadFile(manifest.voiceoverUrl, voiceoverPath),
@@ -79,15 +80,20 @@ export class FFmpegVideoRenderer implements IVideoRenderer {
 
         // Download music only if available
         if (manifest.musicUrl && musicPath) {
-            const musicUrl = manifest.musicUrl;
-            downloads.push(this.downloadFile(musicUrl, musicPath));
+            downloads.push(this.downloadFile(manifest.musicUrl, musicPath));
         }
 
-        // Download images
-        for (let i = 0; i < manifest.segments.length; i++) {
-            const imgPath = path.join(jobDir, `image_${i}.png`);
-            imagePaths.push(imgPath);
-            downloads.push(this.downloadFile(manifest.segments[i].imageUrl, imgPath));
+        // Branch: Animated Video vs Images
+        if (manifest.animatedVideoUrl) {
+            animatedVideoPath = path.join(jobDir, 'source_video.mp4');
+            downloads.push(this.downloadFile(manifest.animatedVideoUrl, animatedVideoPath));
+        } else if (manifest.segments) {
+            // Download images
+            for (let i = 0; i < manifest.segments.length; i++) {
+                const imgPath = path.join(jobDir, `image_${i}.png`);
+                imagePaths.push(imgPath);
+                downloads.push(this.downloadFile(manifest.segments[i].imageUrl, imgPath));
+            }
         }
 
         await Promise.all(downloads);
@@ -97,6 +103,7 @@ export class FFmpegVideoRenderer implements IVideoRenderer {
             musicPath,
             subtitlesPath,
             imagePaths,
+            animatedVideoPath,
         };
     }
 
@@ -134,6 +141,7 @@ export class FFmpegVideoRenderer implements IVideoRenderer {
             musicPath: string | null;
             subtitlesPath: string;
             imagePaths: string[];
+            animatedVideoPath?: string | null;
         },
         outputPath: string
     ): Promise<void> {
@@ -148,60 +156,49 @@ export class FFmpegVideoRenderer implements IVideoRenderer {
                 cmd.input(assets.musicPath).inputOptions('-stream_loop -1');
             }
 
-            // Inputs 2...N (or 1...N if no music): Images
-            assets.imagePaths.forEach((imgPath) => {
-                cmd.input(imgPath);
-            });
-
-            // Filter Graph logic
+            // Inputs 2...N: Video source
             const complexFilter: string[] = [];
-            const imageInputs: string[] = [];
+            let vbaseTag = '[vbase]';
 
-            // Process images (Loop, Scale, Crop, Trim)
-            assets.imagePaths.forEach((_, i) => {
-                const segment = manifest.segments[i];
-                const duration = segment.end - segment.start;
-                const inputTag = `[${i + 2}:v]`; // Images start at index 2
-                const outputTag = `[v${i}]`;
+            if (assets.animatedVideoPath) {
+                // Input 2: The animated video
+                cmd.input(assets.animatedVideoPath);
+                // Ensure it's scaled to 1080:1920 just in case
+                complexFilter.push(`[2:v]scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1,format=yuv420p[vbase]`);
+            } else if (manifest.segments) {
+                // Inputs 2...N: Images
+                assets.imagePaths.forEach((imgPath) => {
+                    cmd.input(imgPath);
+                });
 
-                // Filter chain for this image:
-                // 1. Loop image
-                // 2. Scale and crop to 9:16 (1080x1920)
-                // 3. Set pixel format
-                // 4. Trim to duration
-                // 5. Fade out (last 0.5s) if not last segment
-                // NOTE: 'loop' option in fluent-ffmpeg input options is simpler, but let's use filters for precision
+                const imageInputs: string[] = [];
+                assets.imagePaths.forEach((_, i) => {
+                    const segment = manifest.segments![i];
+                    const duration = segment.end - segment.start;
+                    const inputTag = `[${i + 2}:v]`; // Images start at index 2
+                    const outputTag = `[v${i}]`;
 
-                // We use -loop 1 input option for images, then trim in filter
-                cmd.inputOptions([`-loop 1`, `-t ${duration}`]);
+                    // We use -loop 1 input option for images, then trim in filter
+                    cmd.inputOptions([`-loop 1`, `-t ${duration}`]);
 
-                complexFilter.push(
-                    `${inputTag}scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1,format=yuv420p${outputTag}`
-                );
-                imageInputs.push(outputTag);
+                    complexFilter.push(
+                        `${inputTag}scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1,format=yuv420p${outputTag}`
+                    );
+                    imageInputs.push(outputTag);
+                });
 
-                // Note: transitions and complex concurrency are hard in basic ffmpeg.
-                // We will just do a hard cut concat for V1 to be safe, fast and reliable.
-                // Advanced transitions (crossfade) require complex offset math.
-            });
-
-            // Concat video segments
-            const concatInput = imageInputs.join('');
-            complexFilter.push(`${concatInput}concat=n=${imageInputs.length}:v=1:a=0[vbase]`);
+                // Concat video segments
+                const concatInput = imageInputs.join('');
+                complexFilter.push(`${concatInput}concat=n=${imageInputs.length}:v=1:a=0[vbase]`);
+            } else {
+                return reject(new Error('Manifest has neither segments nor animatedVideoUrl'));
+            }
 
             // Burn subtitles into video
-            // Escape path for windows compatibility (though we run on linux usually)
-            // and ensure styling.
-            // Using 'force_style' to ensure visibility.
             const subsFilter = `subtitles=${assets.subtitlesPath}:force_style='FontName=Arial,FontSize=24,PrimaryColour=&H00FFFFFF,BackColour=&H80000000,BorderStyle=3,Outline=1,Shadow=0,MarginV=60'`;
-
             complexFilter.push(`[vbase]${subsFilter}[vburned]`);
 
             // Mix Audio
-            // [0:a] is voiceover (keep volume 1.0)
-            // [1:a] is music (lower volume 0.2)
-            // amix mixes them. 'duration=first' matches voiceover length (roughly)
-            // Actually we want duration of the video.
             complexFilter.push(`[1:a]volume=0.2[bq_music]`);
             complexFilter.push(`[0:a][bq_music]amix=inputs=2:duration=first[audio_out]`);
 
@@ -211,8 +208,8 @@ export class FFmpegVideoRenderer implements IVideoRenderer {
                 '-c:v libx264',
                 '-c:a aac',
                 '-pix_fmt yuv420p',
-                '-shortest', // Stop when shortest stream ends (usually audio)
-                '-movflags +faststart' // Web optimized
+                '-shortest',
+                '-movflags +faststart'
             ]);
 
             cmd.save(outputPath)
