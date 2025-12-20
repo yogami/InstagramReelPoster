@@ -96,6 +96,8 @@ export interface ReelJob {
     isAnimatedVideoMode?: boolean;
     /** URL to the generated animated video (for animated mode) */
     animatedVideoUrl?: string;
+    /** Multiple URLs to animated videos (to be concatenated) */
+    animatedVideoUrls?: string[];
 
     /** Error message if the job failed */
     error?: string;

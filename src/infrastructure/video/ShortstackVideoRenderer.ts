@@ -152,18 +152,53 @@ export class ShortstackVideoRenderer implements IVideoRenderer {
         // Track 1: Visuals (Video or Images)
         let visualClips: ShotstackClip[];
 
-        if (manifest.animatedVideoUrl) {
-            // Animated Video Path
-            visualClips = [{
-                asset: {
-                    type: 'video',
-                    src: manifest.animatedVideoUrl,
-                    volume: 0, // Mute the background video to ensure voiceover is clear
-                },
-                start: 0,
-                length: manifest.durationSeconds,
-                fit: 'cover', // Cover the 9:16 frame
-            }];
+        if (manifest.animatedVideoUrls && manifest.animatedVideoUrls.length > 0) {
+            // Multiple Animated Videos Path
+            const videos = manifest.animatedVideoUrls;
+            const singleDuration = manifest.durationSeconds / videos.length;
+            visualClips = [];
+
+            for (let i = 0; i < videos.length; i++) {
+                const start = i * singleDuration;
+                const length = singleDuration;
+
+                visualClips.push({
+                    asset: {
+                        type: 'video',
+                        src: videos[i],
+                        volume: 0,
+                    },
+                    start: start,
+                    length: length,
+                    fit: 'cover',
+                });
+            }
+        } else if (manifest.animatedVideoUrl) {
+            // Animated Video Path - Shortstack doesn't support 'loop: true' for video assets.
+            // We must repeat the clip multiple times to fill the full duration.
+            // Assuming the source video is at least 5-10s (standard for Kling/Luma).
+            const sourceDuration = 10; // Conservative estimate, or we could fetch it.
+            const loops = Math.ceil(manifest.durationSeconds / sourceDuration);
+            visualClips = [];
+
+            for (let i = 0; i < loops; i++) {
+                const start = i * sourceDuration;
+                // Don't go past total duration
+                const length = Math.min(sourceDuration, manifest.durationSeconds - start);
+
+                if (length <= 0) break;
+
+                visualClips.push({
+                    asset: {
+                        type: 'video',
+                        src: manifest.animatedVideoUrl,
+                        volume: 0,
+                    },
+                    start: start,
+                    length: length,
+                    fit: 'cover',
+                });
+            }
         } else if (manifest.segments) {
             // Image Path
             visualClips = manifest.segments.map((segment, index) => ({

@@ -73,8 +73,8 @@ export class JobManager {
     /**
      * Creates a new reel job.
      */
-    async createJob(input: ReelJobInput): Promise<ReelJob> {
-        const id = `job_${uuidv4().substring(0, 8)}`;
+    async createJob(input: ReelJobInput, explicitId?: string): Promise<ReelJob> {
+        const id = explicitId || `job_${uuidv4().substring(0, 8)}`;
         const job = createReelJob(id, input, this.defaultDurationRange);
 
         if (this.redis) {

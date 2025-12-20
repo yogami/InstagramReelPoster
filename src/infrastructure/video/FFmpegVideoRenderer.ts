@@ -71,24 +71,28 @@ export class FFmpegVideoRenderer implements IVideoRenderer {
         const musicPath = manifest.musicUrl ? path.join(jobDir, 'music.mp3') : null;
         const subtitlesPath = path.join(jobDir, 'subtitles.srt');
         const imagePaths: string[] = [];
-        let animatedVideoPath: string | null = null;
+        const videoPaths: string[] = [];
 
         const downloads = [
             this.downloadFile(manifest.voiceoverUrl, voiceoverPath),
             this.downloadFile(manifest.subtitlesUrl, subtitlesPath),
         ];
 
-        // Download music only if available
         if (manifest.musicUrl && musicPath) {
             downloads.push(this.downloadFile(manifest.musicUrl, musicPath));
         }
 
-        // Branch: Animated Video vs Images
-        if (manifest.animatedVideoUrl) {
-            animatedVideoPath = path.join(jobDir, 'source_video.mp4');
-            downloads.push(this.downloadFile(manifest.animatedVideoUrl, animatedVideoPath));
+        if (manifest.animatedVideoUrls && manifest.animatedVideoUrls.length > 0) {
+            for (let i = 0; i < manifest.animatedVideoUrls.length; i++) {
+                const vidPath = path.join(jobDir, `video_${i}.mp4`);
+                videoPaths.push(vidPath);
+                downloads.push(this.downloadFile(manifest.animatedVideoUrls[i], vidPath));
+            }
+        } else if (manifest.animatedVideoUrl) {
+            const vidPath = path.join(jobDir, 'source_video.mp4');
+            videoPaths.push(vidPath);
+            downloads.push(this.downloadFile(manifest.animatedVideoUrl, vidPath));
         } else if (manifest.segments) {
-            // Download images
             for (let i = 0; i < manifest.segments.length; i++) {
                 const imgPath = path.join(jobDir, `image_${i}.png`);
                 imagePaths.push(imgPath);
@@ -103,7 +107,7 @@ export class FFmpegVideoRenderer implements IVideoRenderer {
             musicPath,
             subtitlesPath,
             imagePaths,
-            animatedVideoPath,
+            videoPaths,
         };
     }
 
@@ -141,7 +145,7 @@ export class FFmpegVideoRenderer implements IVideoRenderer {
             musicPath: string | null;
             subtitlesPath: string;
             imagePaths: string[];
-            animatedVideoPath?: string | null;
+            videoPaths: string[];
         },
         outputPath: string
     ): Promise<void> {
@@ -161,11 +165,24 @@ export class FFmpegVideoRenderer implements IVideoRenderer {
             // Visual Inputs (Starting from visualInputOffset)
             const complexFilter: string[] = [];
 
-            if (assets.animatedVideoPath) {
-                // Single Video Source - loop it to ensure it covers full audio
-                cmd.input(assets.animatedVideoPath).inputOptions('-stream_loop -1');
-                const inputTag = `[${visualInputOffset}:v]`;
-                complexFilter.push(`${inputTag}scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1,format=yuv420p[vbase]`);
+            if (assets.videoPaths.length > 0) {
+                // Video Source(s)
+                if (assets.videoPaths.length === 1) {
+                    // Single Video Source - loop it to ensure it covers full audio
+                    cmd.input(assets.videoPaths[0]).inputOptions('-stream_loop -1');
+                    const inputTag = `[${visualInputOffset}:v]`;
+                    complexFilter.push(`${inputTag}scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1,format=yuv420p[vbase]`);
+                } else {
+                    // Multiple video sources - concatenate them
+                    assets.videoPaths.forEach(v => cmd.input(v));
+                    let concatInputs = '';
+                    assets.videoPaths.forEach((_, i) => {
+                        const idx = visualInputOffset + i;
+                        complexFilter.push(`[${idx}:v]scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1,format=yuv420p[v${i}]`);
+                        concatInputs += `[v${i}]`;
+                    });
+                    complexFilter.push(`${concatInputs}concat=n=${assets.videoPaths.length}:v=1:a=0[vbase]`);
+                }
             } else if (manifest.segments) {
                 // Multi-Image Source
                 assets.imagePaths.forEach((imgPath) => {

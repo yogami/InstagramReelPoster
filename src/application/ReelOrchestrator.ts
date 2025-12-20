@@ -293,10 +293,12 @@ export class ReelOrchestrator {
             let manifest = currentJob.manifest;
             if (!manifest) {
                 await this.updateJobStatus(jobId, 'building_manifest', 'Preparing render manifest...');
+                const hasAnimatedVideo = !!currentJob.animatedVideoUrl || (currentJob.animatedVideoUrls && currentJob.animatedVideoUrls.length > 0);
                 manifest = createReelManifest({
                     durationSeconds: voiceoverDuration,
-                    segments: currentJob.animatedVideoUrl ? undefined : segments, // Only omit segments if we actually generated a video
+                    segments: hasAnimatedVideo ? undefined : segments,
                     animatedVideoUrl: currentJob.animatedVideoUrl,
+                    animatedVideoUrls: currentJob.animatedVideoUrls,
                     voiceoverUrl,
                     musicUrl: musicUrl,
                     musicDurationSeconds: musicDurationSeconds || voiceoverDuration,

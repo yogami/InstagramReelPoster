@@ -23,6 +23,8 @@ export interface ReelManifest {
     segments?: ManifestSegment[];
     /** URL to the generated animated video (instead of segments) */
     animatedVideoUrl?: string;
+    /** Multiple URLs to animated videos (to be concatenated) */
+    animatedVideoUrls?: string[];
     /** URL to the voiceover audio file */
     voiceoverUrl: string;
     /** URL to the background music file (optional) */
@@ -40,6 +42,7 @@ export function createReelManifest(params: {
     durationSeconds: number;
     segments?: Segment[];
     animatedVideoUrl?: string;
+    animatedVideoUrls?: string[];
     voiceoverUrl: string;
     musicUrl?: string;
     musicDurationSeconds?: number;
@@ -51,10 +54,10 @@ export function createReelManifest(params: {
 
     // Validation: Must have EITHER segments OR animatedVideoUrl
     const hasSegments = params.segments && params.segments.length > 0;
-    const hasAnimatedVideo = !!params.animatedVideoUrl;
+    const hasAnimatedVideo = !!params.animatedVideoUrl || (params.animatedVideoUrls && params.animatedVideoUrls.length > 0);
 
     if (!hasSegments && !hasAnimatedVideo) {
-        throw new Error('Manifest must have either segments or animatedVideoUrl');
+        throw new Error('Manifest must have either segments or animatedVideoUrl(s)');
     }
 
     if (!params.voiceoverUrl.trim()) {
@@ -88,6 +91,7 @@ export function createReelManifest(params: {
         durationSeconds: params.durationSeconds,
         segments: manifestSegments,
         animatedVideoUrl: params.animatedVideoUrl,
+        animatedVideoUrls: params.animatedVideoUrls,
         voiceoverUrl: params.voiceoverUrl.trim(),
         musicUrl: params.musicUrl?.trim(),
         musicDurationSeconds: params.musicDurationSeconds,
