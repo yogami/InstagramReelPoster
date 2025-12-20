@@ -5,6 +5,7 @@ import {
     SegmentContent,
     PlanningConstraints,
 } from '../../domain/ports/ILLMClient';
+import { getConfig } from '../../config';
 
 /**
  * System prompt enforcing the "Challenging View" voice.
@@ -98,16 +99,12 @@ CRITICAL: segmentCount must be an Integer between 2 and 15.`;
     /**
      * Generates commentary and image prompts for each segment.
      */
-import { getConfig } from '../../config';
+    async generateSegmentContent(plan: ReelPlan, transcript: string): Promise<SegmentContent[]> {
+        const config = getConfig();
+        const secondsPerSegment = plan.targetDurationSeconds / plan.segmentCount;
+        const wordsPerSegment = Math.round(secondsPerSegment * config.speakingRateWps); // Uses config (default 1.8)
 
-// ... class definition ...
-
-    async generateSegmentContent(plan: ReelPlan, transcript: string): Promise < SegmentContent[] > {
-    const config = getConfig();
-    const secondsPerSegment = plan.targetDurationSeconds / plan.segmentCount;
-    const wordsPerSegment = Math.round(secondsPerSegment * config.speakingRateWps); // Uses config (default 1.8)
-
-    const prompt = `You MUST create EXACTLY ${plan.segmentCount} segments for this reel.
+        const prompt = `You MUST create EXACTLY ${plan.segmentCount} segments for this reel.
 
 Original transcript:
 """
@@ -216,66 +213,66 @@ VISUAL LANGUAGE:
 
 Respond with a JSON array of ${plan.segmentCount} objects matching the structure above exactly.`;
 
-    const response = await this.callOpenAI(prompt, true);
-    const parsed = this.parseJSON<any>(response);
+        const response = await this.callOpenAI(prompt, true);
+        const parsed = this.parseJSON<any>(response);
 
-    return this.normalizeSegments(parsed);
-}
+        return this.normalizeSegments(parsed);
+    }
 
     /**
      * Normalizes segment content to ensure it's always an array of SegmentContent.
      */
     private normalizeSegments(data: any): SegmentContent[] {
-    // Handle null/undefined
-    if (data === null || data === undefined) {
-        throw new Error('LLM returned null or undefined segment content');
-    }
-
-    // Already an array - ideal case
-    if (Array.isArray(data)) {
-        console.log(`[LLM] normalizeSegments: received array with ${data.length} items`);
-        return data;
-    }
-
-    console.log(`[LLM] normalizeSegments: received ${typeof data}, attempting normalization`);
-
-    // Silent unwrap if it's {"segments": [...]}
-    if (data && typeof data === 'object' && Array.isArray(data.segments)) {
-        console.log(`[LLM] normalizeSegments: unwrapped .segments with ${data.segments.length} items`);
-        return data.segments;
-    }
-
-    // Silent wrap if it's a single object
-    if (data && typeof data === 'object' && data.commentary && data.imagePrompt) {
-        console.log(`[LLM] normalizeSegments: wrapped single object`);
-        return [data as SegmentContent];
-    }
-
-    // Handle numeric keys (sometimes returned by LLMs)
-    if (data && typeof data === 'object') {
-        const values = Object.values(data);
-        if (values.length > 0 && typeof values[0] === 'object' && (values[0] as any).commentary) {
-            console.log(`[LLM] normalizeSegments: extracted ${values.length} items from object values`);
-            return values as SegmentContent[];
+        // Handle null/undefined
+        if (data === null || data === undefined) {
+            throw new Error('LLM returned null or undefined segment content');
         }
-    }
 
-    throw new Error(`LLM returned invalid segments format: ${JSON.stringify(data).substring(0, 200)}`);
-}
+        // Already an array - ideal case
+        if (Array.isArray(data)) {
+            console.log(`[LLM] normalizeSegments: received array with ${data.length} items`);
+            return data;
+        }
+
+        console.log(`[LLM] normalizeSegments: received ${typeof data}, attempting normalization`);
+
+        // Silent unwrap if it's {"segments": [...]}
+        if (data && typeof data === 'object' && Array.isArray(data.segments)) {
+            console.log(`[LLM] normalizeSegments: unwrapped .segments with ${data.segments.length} items`);
+            return data.segments;
+        }
+
+        // Silent wrap if it's a single object
+        if (data && typeof data === 'object' && data.commentary && data.imagePrompt) {
+            console.log(`[LLM] normalizeSegments: wrapped single object`);
+            return [data as SegmentContent];
+        }
+
+        // Handle numeric keys (sometimes returned by LLMs)
+        if (data && typeof data === 'object') {
+            const values = Object.values(data);
+            if (values.length > 0 && typeof values[0] === 'object' && (values[0] as any).commentary) {
+                console.log(`[LLM] normalizeSegments: extracted ${values.length} items from object values`);
+                return values as SegmentContent[];
+            }
+        }
+
+        throw new Error(`LLM returned invalid segments format: ${JSON.stringify(data).substring(0, 200)}`);
+    }
 
     /**
      * Adjusts commentary length to better match target duration.
      */
     async adjustCommentaryLength(
-    segments: SegmentContent[],
-    direction: 'shorter' | 'longer',
-    targetDurationSeconds: number
-): Promise < SegmentContent[] > {
-    const wordsPerSegment = Math.round(
-        (targetDurationSeconds / segments.length) * 2.3
-    );
+        segments: SegmentContent[],
+        direction: 'shorter' | 'longer',
+        targetDurationSeconds: number
+    ): Promise<SegmentContent[]> {
+        const wordsPerSegment = Math.round(
+            (targetDurationSeconds / segments.length) * 2.3
+        );
 
-    const prompt = `Adjust these segment commentaries to be ${direction}.
+        const prompt = `Adjust these segment commentaries to be ${direction}.
 
 Current segments:
 ${JSON.stringify(segments, null, 2)}
@@ -290,67 +287,67 @@ Rules:
 
 Respond with the adjusted JSON array in the same format.`;
 
-    const response = await this.callOpenAI(prompt, true);
-    const parsed = this.parseJSON<any>(response);
+        const response = await this.callOpenAI(prompt, true);
+        const parsed = this.parseJSON<any>(response);
 
-    // CRITICAL: Normalize the response just like generateSegmentContent
-    return this.normalizeSegments(parsed);
-}
-
-    private async callOpenAI(prompt: string, jsonMode: boolean = false): Promise < string > {
-    const maxRetries = 3;
-
-    for(let attempt = 0; attempt <maxRetries; attempt++) {
-    try {
-        const response = await axios.post(
-            `${this.baseUrl}/v1/chat/completions`,
-            {
-                model: this.model,
-                messages: [
-                    { role: 'system', content: CHALLENGING_VIEW_SYSTEM_PROMPT },
-                    { role: 'user', content: prompt },
-                ],
-                temperature: 0.7,
-                ...(jsonMode && { response_format: { type: 'json_object' } }),
-            },
-            {
-                headers: {
-                    Authorization: `Bearer ${this.apiKey}`,
-                    'Content-Type': 'application/json',
-                },
-            }
-        );
-
-        return response.data.choices[0].message.content;
-    } catch (error) {
-        if (axios.isAxiosError(error)) {
-            const status = error.response?.status;
-            const message = error.response?.data?.error?.message || error.message;
-
-            // Retry on transient errors (502, 503, 429)
-            if ((status === 502 || status === 503 || status === 429) && attempt < maxRetries - 1) {
-                const delay = Math.pow(2, attempt) * 1000;
-                console.warn(`[LLM] Transient error (${status}), retrying in ${delay / 1000}s...`);
-                await new Promise(resolve => setTimeout(resolve, delay));
-                continue;
-            }
-
-            throw new Error(`LLM call failed: ${message}`);
-        }
-        throw error;
+        // CRITICAL: Normalize the response just like generateSegmentContent
+        return this.normalizeSegments(parsed);
     }
-}
 
-throw new Error('LLM call failed after max retries');
+    private async callOpenAI(prompt: string, jsonMode: boolean = false): Promise<string> {
+        const maxRetries = 3;
+
+        for (let attempt = 0; attempt < maxRetries; attempt++) {
+            try {
+                const response = await axios.post(
+                    `${this.baseUrl}/v1/chat/completions`,
+                    {
+                        model: this.model,
+                        messages: [
+                            { role: 'system', content: CHALLENGING_VIEW_SYSTEM_PROMPT },
+                            { role: 'user', content: prompt },
+                        ],
+                        temperature: 0.7,
+                        ...(jsonMode && { response_format: { type: 'json_object' } }),
+                    },
+                    {
+                        headers: {
+                            Authorization: `Bearer ${this.apiKey}`,
+                            'Content-Type': 'application/json',
+                        },
+                    }
+                );
+
+                return response.data.choices[0].message.content;
+            } catch (error) {
+                if (axios.isAxiosError(error)) {
+                    const status = error.response?.status;
+                    const message = error.response?.data?.error?.message || error.message;
+
+                    // Retry on transient errors (502, 503, 429)
+                    if ((status === 502 || status === 503 || status === 429) && attempt < maxRetries - 1) {
+                        const delay = Math.pow(2, attempt) * 1000;
+                        console.warn(`[LLM] Transient error (${status}), retrying in ${delay / 1000}s...`);
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                        continue;
+                    }
+
+                    throw new Error(`LLM call failed: ${message}`);
+                }
+                throw error;
+            }
+        }
+
+        throw new Error('LLM call failed after max retries');
     }
 
     private parseJSON<T>(response: string): T {
-    try {
-        // Handle potential markdown code blocks
-        const jsonStr = response.replace(/```json\n?|\n?```/g, '').trim();
-        return JSON.parse(jsonStr);
-    } catch {
-        throw new Error(`Failed to parse LLM response as JSON: ${response.substring(0, 200)}...`);
+        try {
+            // Handle potential markdown code blocks
+            const jsonStr = response.replace(/```json\n?|\n?```/g, '').trim();
+            return JSON.parse(jsonStr);
+        } catch {
+            throw new Error(`Failed to parse LLM response as JSON: ${response.substring(0, 200)}...`);
+        }
     }
-}
 }
