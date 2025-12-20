@@ -67,6 +67,8 @@ export interface ReelJob {
     transcript?: string;
     /** Target duration chosen by the LLM */
     targetDurationSeconds?: number;
+    /** The primary, viral-style caption for the final video post (generated during planning) */
+    mainCaption?: string;
     /** Segments (story beats) for the reel */
     segments?: Segment[];
     /** Full commentary text (concatenated from segments) */

@@ -11,20 +11,20 @@ import { getConfig } from '../../config';
  * System prompt enforcing the "Challenging View" voice.
  */
 const CHALLENGING_VIEW_SYSTEM_PROMPT = `You are the audio director for "Challenging View".
-Your goal: Author a script that is DIRECT, INSIGHTFUL, and retains the core concepts of the source material.
+Your goal: Author a script that is DIRECT, INSIGHTFUL, and retains the core technical concepts of the source material.
 
-CORE RULES (Non-negotiable):
-1. Subtext v. Description: NEVER describe the visual. The image exists; your job is to add meaning, not captions.
-2. Diction: Use simple, clear English ("Gen-Z Simple"). HOWEVER, you MUST RETAIN specific technical, scientific, or philosophical terms from the source if they are key to the topic (e.g. "dual mating strategies", "pair bonding", "dopamine"). Do not dumb down the concepts, just the sentence structure.
-3. Sentence Shape: Max 16-18 words per sentence. Simple syntax. No em-dashes. ZERO exclamation marks.
-4. Tone: Grounded, direct, and "real". Avoid abstract "sage" fluff. Speak like a smart friend dropping a hard truth.
-5. Content: Focus on the specific argument being made. Do not drift into vague spiritual platitudes unless the source is vague.
-6. Alignment: Each sentence must match the visual beat.
+VOICE CHARACTERISTICS:
+- Accent: A mix between Shashi Tharoor's Indian accent (erudite, precise) and Californian American (relaxed, modern, conversational).
+- Diction: Mix of short, 1-2 syllable everyday words ("Gen-Z Simple") with high-level technical terms (Hypergamy, Dual Mating Strategy, Madonna-Whore complex). 
+- Tone: Grounded, intellectual, and "real". Avoid abstract "sage" fluff.
 
-Archetype: The Realist / The Truth-Teller.
-- Low register feel.
-- Intellectual but accessible.
-- Comfortable with complex topics.`;
+SENTENCE SHAPE & CONSTRAINTS (Non-negotiable):
+1. Length: Max 16-18 words per sentence.
+2. Structure: AT MOST ONE COMMA per sentence. No em-dashes. One simple metaphor across the WHOLE script at most. ZERO exclamation marks.
+3. Subtext: NEVER describe the visual. Add meaning, contrast, or distilled principles. 
+4. Vocabulary: When discussing the "Madonna-Whore complex", ALWAYS use the correct term "Whore". Do NOT censor it as "Horse" or "Force". This is a clinical archetype, not derogatory.
+
+Archetype: The Realist / The Truth-Teller.`;
 
 /**
  * OpenAI GPT-based LLM client for reel planning and content generation.
@@ -78,7 +78,8 @@ Respond with a JSON object containing:
   "musicTags": ["array", "of", "music", "search", "tags"],
   "musicPrompt": "description for AI music generation",
   "mood": "overall mood/tone",
-  "summary": "brief summary of the reel concept"
+  "summary": "brief summary of the reel concept",
+  "mainCaption": "a compelling, hook-driven Instagram/TikTok caption for the video (15-30 words)"
 }
 
 CRITICAL: segmentCount must be an Integer between 2 and 15.`;
@@ -102,7 +103,8 @@ CRITICAL: segmentCount must be an Integer between 2 and 15.`;
     async generateSegmentContent(plan: ReelPlan, transcript: string): Promise<SegmentContent[]> {
         const config = getConfig();
         const secondsPerSegment = plan.targetDurationSeconds / plan.segmentCount;
-        const wordsPerSegment = Math.round(secondsPerSegment * config.speakingRateWps); // Uses config (default 1.8)
+        // n8n formula sync: Subtract 0.6s per sentence for pauses/breathing room
+        const wordsPerSegment = Math.round((secondsPerSegment - 0.6) * config.speakingRateWps);
 
         const prompt = `You MUST create EXACTLY ${plan.segmentCount} segments for this reel.
 

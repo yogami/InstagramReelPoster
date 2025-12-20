@@ -121,9 +121,10 @@ export class ReelOrchestrator {
 
             console.log(`[${jobId}] LLM Plan: target=${plan.targetDurationSeconds}s, segments=${plan.segmentCount}`);
 
-            if (!targetDurationSeconds) {
-                await this.deps.jobManager.updateJob(jobId, { targetDurationSeconds: plan.targetDurationSeconds });
-            }
+            await this.deps.jobManager.updateJob(jobId, {
+                targetDurationSeconds: plan.targetDurationSeconds,
+                mainCaption: plan.mainCaption
+            });
             this.logMemoryUsage('Step 2: Planning');
 
             // Step 3: Generate commentary
@@ -567,17 +568,20 @@ export class ReelOrchestrator {
             };
 
             // Generate a caption:
-            // 1. Try FIRST segment's "caption" field (Intent based)
-            // 2. Fallback to Source Transcript (Topic based)
-            // 3. Last resort: Commentary summary
+            // 1. Try global mainCaption (Primary)
+            // 2. Try FIRST segment's "caption" field (Fallback 1)
+            // 3. Fallback to Source Transcript (Topic based)
+            // 4. Last resort: Commentary summary
             let caption = 'New reel ready!';
-            if (job.segments && job.segments.length > 0 && job.segments[0].caption) {
+            if (job.mainCaption) {
+                caption = job.mainCaption;
+            } else if (job.segments && job.segments.length > 0 && job.segments[0].caption) {
                 caption = job.segments[0].caption;
             } else if (job.transcript) {
-                console.warn(`[${job.id}] ⚠️ Missing segment caption, falling back to transcript summary.`);
+                console.warn(`[${job.id}] ⚠️ Missing main caption, falling back to transcript summary.`);
                 caption = job.transcript.substring(0, 150) + '...';
             } else if (job.fullCommentary) {
-                console.warn(`[${job.id}] ⚠️ Missing segment caption & transcript, falling back to commentary.`);
+                console.warn(`[${job.id}] ⚠️ Missing caption, falling back to commentary.`);
                 caption = job.fullCommentary.substring(0, 150) + '...';
             }
 
@@ -604,7 +608,8 @@ export class ReelOrchestrator {
             payload.metadata = {
                 duration: job.voiceoverDurationSeconds,
                 createdAt: job.createdAt,
-                completedAt: job.updatedAt
+                completedAt: job.updatedAt,
+                mainCaption: job.mainCaption, // Add mainCaption to metadata
             };
 
             console.log(`[${job.id}] Sending callback payload:`, JSON.stringify(payload, null, 2));

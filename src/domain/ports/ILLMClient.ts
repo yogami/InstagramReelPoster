@@ -16,6 +16,8 @@ export interface ReelPlan {
     mood: string;
     /** Brief summary of the reel concept */
     summary: string;
+    /** The primary, viral-style caption for the final video post */
+    mainCaption: string;
 }
 
 /**
