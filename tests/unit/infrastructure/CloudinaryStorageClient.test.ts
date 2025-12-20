@@ -1,176 +1,261 @@
 import { CloudinaryStorageClient } from '../../../src/infrastructure/storage/CloudinaryStorageClient';
+import { v2 as cloudinary } from 'cloudinary';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
 
-// Mock cloudinary SDK
+// Mock cloudinary and fs
 jest.mock('cloudinary', () => ({
     v2: {
         config: jest.fn(),
         uploader: {
             upload: jest.fn(),
-            destroy: jest.fn(),
+            destroy: jest.fn()
         },
-        url: jest.fn(),
-    },
+        url: jest.fn()
+    }
 }));
 
-import { v2 as cloudinary } from 'cloudinary';
+jest.mock('fs');
+jest.mock('os');
+
+const mockedFs = fs as jest.Mocked<typeof fs>;
+const mockedOs = os as jest.Mocked<typeof os>;
 
 describe('CloudinaryStorageClient', () => {
-    const cloudName = 'test-cloud';
-    const apiKey = 'test-api-key';
-    const apiSecret = 'test-api-secret';
-
     beforeEach(() => {
         jest.clearAllMocks();
+        mockedOs.tmpdir.mockReturnValue('/tmp');
+        mockedFs.existsSync.mockReturnValue(true);
+        mockedFs.writeFileSync.mockImplementation(() => undefined);
+        mockedFs.unlinkSync.mockImplementation(() => undefined);
     });
 
-    describe('Constructor validation', () => {
-        it('should throw error when cloudName is missing', () => {
-            expect(() => new CloudinaryStorageClient('', apiKey, apiSecret))
+    describe('constructor', () => {
+        test('should throw error if cloudName is missing', () => {
+            expect(() => new CloudinaryStorageClient('', 'key', 'secret'))
                 .toThrow('Cloudinary credentials are required');
         });
 
-        it('should throw error when apiKey is missing', () => {
-            expect(() => new CloudinaryStorageClient(cloudName, '', apiSecret))
+        test('should throw error if apiKey is missing', () => {
+            expect(() => new CloudinaryStorageClient('cloud', '', 'secret'))
                 .toThrow('Cloudinary credentials are required');
         });
 
-        it('should throw error when apiSecret is missing', () => {
-            expect(() => new CloudinaryStorageClient(cloudName, apiKey, ''))
+        test('should throw error if apiSecret is missing', () => {
+            expect(() => new CloudinaryStorageClient('cloud', 'key', ''))
                 .toThrow('Cloudinary credentials are required');
         });
 
-        it('should configure cloudinary with valid credentials', () => {
-            new CloudinaryStorageClient(cloudName, apiKey, apiSecret);
+        test('should configure cloudinary on creation', () => {
+            new CloudinaryStorageClient('mycloud', 'mykey', 'mysecret');
 
             expect(cloudinary.config).toHaveBeenCalledWith({
-                cloud_name: cloudName,
-                api_key: apiKey,
-                api_secret: apiSecret,
-                secure: true,
+                cloud_name: 'mycloud',
+                api_key: 'mykey',
+                api_secret: 'mysecret',
+                secure: true
             });
         });
     });
 
-    describe('uploadFromUrl()', () => {
-        it('should upload from URL and return secure URL', async () => {
-            const client = new CloudinaryStorageClient(cloudName, apiKey, apiSecret);
-
-            (cloudinary.uploader.upload as jest.Mock).mockResolvedValue({
-                secure_url: 'https://res.cloudinary.com/test-cloud/image/upload/v1/folder/image.jpg',
-                public_id: 'folder/image',
+    describe('uploadFromUrl', () => {
+        test('should upload file and return url and publicId', async () => {
+            (cloudinary.uploader.upload as jest.Mock).mockResolvedValueOnce({
+                secure_url: 'https://cloudinary.com/uploaded.mp4',
+                public_id: 'instagram-reels/video1'
             });
 
-            const result = await client.uploadFromUrl('https://example.com/source.jpg', {
-                folder: 'test-folder',
-                publicId: 'my-image',
-            });
+            const client = new CloudinaryStorageClient('cloud', 'key', 'secret');
+            const result = await client.uploadFromUrl('https://example.com/video.mp4');
 
-            expect(result.url).toBe('https://res.cloudinary.com/test-cloud/image/upload/v1/folder/image.jpg');
-            expect(result.publicId).toBe('folder/image');
-            expect(cloudinary.uploader.upload).toHaveBeenCalledWith(
-                'https://example.com/source.jpg',
-                expect.objectContaining({
-                    folder: 'test-folder',
-                    public_id: 'my-image',
-                })
-            );
+            expect(result.url).toBe('https://cloudinary.com/uploaded.mp4');
+            expect(result.publicId).toBe('instagram-reels/video1');
         });
 
-        it('should use default folder if not specified', async () => {
-            const client = new CloudinaryStorageClient(cloudName, apiKey, apiSecret);
-
-            (cloudinary.uploader.upload as jest.Mock).mockResolvedValue({
-                secure_url: 'https://res.cloudinary.com/test-cloud/image.jpg',
-                public_id: 'instagram-reels/image',
+        test('should use provided folder and publicId', async () => {
+            (cloudinary.uploader.upload as jest.Mock).mockResolvedValueOnce({
+                secure_url: 'https://cloudinary.com/custom.mp4',
+                public_id: 'custom-folder/custom-id'
             });
 
-            await client.uploadFromUrl('https://example.com/source.jpg');
-
-            expect(cloudinary.uploader.upload).toHaveBeenCalledWith(
-                'https://example.com/source.jpg',
-                expect.objectContaining({
-                    folder: 'instagram-reels',
-                })
-            );
-        });
-
-        it('should throw descriptive error on upload failure', async () => {
-            const client = new CloudinaryStorageClient(cloudName, apiKey, apiSecret);
-
-            (cloudinary.uploader.upload as jest.Mock).mockRejectedValue(new Error('Invalid URL'));
-
-            await expect(client.uploadFromUrl('bad-url')).rejects.toThrow('Cloudinary upload failed: Invalid URL');
-        });
-    });
-
-    describe('uploadImage()', () => {
-        it('should upload image with correct resource type', async () => {
-            const client = new CloudinaryStorageClient(cloudName, apiKey, apiSecret);
-
-            (cloudinary.uploader.upload as jest.Mock).mockResolvedValue({
-                secure_url: 'https://res.cloudinary.com/test-cloud/image.jpg',
-                public_id: 'instagram-reels/images/test',
-            });
-
-            await client.uploadImage('https://example.com/image.jpg', {
+            const client = new CloudinaryStorageClient('cloud', 'key', 'secret');
+            await client.uploadFromUrl('https://example.com/video.mp4', {
                 folder: 'custom-folder',
+                publicId: 'custom-id'
             });
 
             expect(cloudinary.uploader.upload).toHaveBeenCalledWith(
-                'https://example.com/image.jpg',
+                'https://example.com/video.mp4',
                 expect.objectContaining({
-                    resource_type: 'image',
                     folder: 'custom-folder',
+                    public_id: 'custom-id'
                 })
             );
         });
+
+        test('should throw on upload failure', async () => {
+            (cloudinary.uploader.upload as jest.Mock).mockRejectedValueOnce(
+                new Error('Upload failed: Invalid file')
+            );
+
+            const client = new CloudinaryStorageClient('cloud', 'key', 'secret');
+
+            await expect(client.uploadFromUrl('https://example.com/invalid.mp4'))
+                .rejects.toThrow('Cloudinary upload failed: Upload failed: Invalid file');
+        });
     });
 
-    describe('uploadAudio()', () => {
-        it('should upload audio with video resource type', async () => {
-            const client = new CloudinaryStorageClient(cloudName, apiKey, apiSecret);
-
-            (cloudinary.uploader.upload as jest.Mock).mockResolvedValue({
-                secure_url: 'https://res.cloudinary.com/test-cloud/audio.mp3',
-                public_id: 'instagram-reels/audio/test',
+    describe('uploadRawContent', () => {
+        test('should write content to temp file and upload', async () => {
+            (cloudinary.uploader.upload as jest.Mock).mockResolvedValueOnce({
+                secure_url: 'https://cloudinary.com/subtitles.srt',
+                public_id: 'instagram-reels/subtitles/mysubs'
             });
 
-            await client.uploadAudio('https://example.com/audio.mp3');
+            const client = new CloudinaryStorageClient('cloud', 'key', 'secret');
+            const result = await client.uploadRawContent('1\n00:00:00,000 --> 00:00:05,000\nHello', 'mysubs.srt');
+
+            expect(mockedFs.writeFileSync).toHaveBeenCalledWith(
+                path.join('/tmp', 'mysubs.srt'),
+                '1\n00:00:00,000 --> 00:00:05,000\nHello',
+                'utf-8'
+            );
+            expect(result.url).toBe('https://cloudinary.com/subtitles.srt');
+        });
+
+        test('should cleanup temp file after upload', async () => {
+            (cloudinary.uploader.upload as jest.Mock).mockResolvedValueOnce({
+                secure_url: 'https://cloudinary.com/file.srt',
+                public_id: 'file'
+            });
+
+            const client = new CloudinaryStorageClient('cloud', 'key', 'secret');
+            await client.uploadRawContent('content', 'file.srt');
+
+            expect(mockedFs.unlinkSync).toHaveBeenCalled();
+        });
+
+        test('should cleanup temp file even on error', async () => {
+            (cloudinary.uploader.upload as jest.Mock).mockRejectedValueOnce(new Error('Upload failed'));
+
+            const client = new CloudinaryStorageClient('cloud', 'key', 'secret');
+
+            await expect(client.uploadRawContent('content', 'file.srt')).rejects.toThrow();
+            expect(mockedFs.unlinkSync).toHaveBeenCalled();
+        });
+    });
+
+    describe('uploadAudio', () => {
+        test('should upload audio with video resource type', async () => {
+            (cloudinary.uploader.upload as jest.Mock).mockResolvedValueOnce({
+                secure_url: 'https://cloudinary.com/audio.mp3',
+                public_id: 'instagram-reels/audio/myaudio'
+            });
+
+            const client = new CloudinaryStorageClient('cloud', 'key', 'secret');
+            const result = await client.uploadAudio('https://example.com/audio.mp3');
 
             expect(cloudinary.uploader.upload).toHaveBeenCalledWith(
                 'https://example.com/audio.mp3',
                 expect.objectContaining({
-                    resource_type: 'video', // Cloudinary uses video for audio
+                    resource_type: 'video',
+                    folder: 'instagram-reels/audio'
                 })
             );
+            expect(result.url).toBe('https://cloudinary.com/audio.mp3');
         });
     });
 
-    describe('getUrl()', () => {
-        it('should return URL for given public ID', () => {
-            const client = new CloudinaryStorageClient(cloudName, apiKey, apiSecret);
+    describe('uploadImage', () => {
+        test('should upload image with image resource type', async () => {
+            (cloudinary.uploader.upload as jest.Mock).mockResolvedValueOnce({
+                secure_url: 'https://cloudinary.com/image.png',
+                public_id: 'instagram-reels/images/myimage'
+            });
 
-            (cloudinary.url as jest.Mock).mockReturnValue('https://res.cloudinary.com/test-cloud/image/upload/test.jpg');
+            const client = new CloudinaryStorageClient('cloud', 'key', 'secret');
+            const result = await client.uploadImage('https://example.com/image.png');
 
-            const url = client.getUrl('test', 'image');
+            expect(cloudinary.uploader.upload).toHaveBeenCalledWith(
+                'https://example.com/image.png',
+                expect.objectContaining({
+                    resource_type: 'image',
+                    folder: 'instagram-reels/images'
+                })
+            );
+            expect(result.url).toBe('https://cloudinary.com/image.png');
+        });
+    });
 
-            expect(cloudinary.url).toHaveBeenCalledWith('test', {
+    describe('uploadVideo', () => {
+        test('should upload video with video resource type', async () => {
+            (cloudinary.uploader.upload as jest.Mock).mockResolvedValueOnce({
+                secure_url: 'https://cloudinary.com/video.mp4',
+                public_id: 'instagram-reels/videos/myvideo'
+            });
+
+            const client = new CloudinaryStorageClient('cloud', 'key', 'secret');
+            const result = await client.uploadVideo('https://example.com/video.mp4');
+
+            expect(cloudinary.uploader.upload).toHaveBeenCalledWith(
+                'https://example.com/video.mp4',
+                expect.objectContaining({
+                    resource_type: 'video',
+                    folder: 'instagram-reels/videos'
+                })
+            );
+            expect(result.url).toBe('https://cloudinary.com/video.mp4');
+        });
+    });
+
+    describe('getUrl', () => {
+        test('should return cloudinary URL for resource', () => {
+            (cloudinary.url as jest.Mock).mockReturnValueOnce('https://cloudinary.com/resource.png');
+
+            const client = new CloudinaryStorageClient('cloud', 'key', 'secret');
+            const url = client.getUrl('my-public-id');
+
+            expect(cloudinary.url).toHaveBeenCalledWith('my-public-id', {
                 resource_type: 'image',
-                secure: true,
+                secure: true
+            });
+            expect(url).toBe('https://cloudinary.com/resource.png');
+        });
+
+        test('should use provided resource type', () => {
+            (cloudinary.url as jest.Mock).mockReturnValueOnce('https://cloudinary.com/video.mp4');
+
+            const client = new CloudinaryStorageClient('cloud', 'key', 'secret');
+            client.getUrl('video-id', 'video');
+
+            expect(cloudinary.url).toHaveBeenCalledWith('video-id', {
+                resource_type: 'video',
+                secure: true
             });
         });
     });
 
-    describe('delete()', () => {
-        it('should delete resource by public ID', async () => {
-            const client = new CloudinaryStorageClient(cloudName, apiKey, apiSecret);
+    describe('delete', () => {
+        test('should delete resource from cloudinary', async () => {
+            (cloudinary.uploader.destroy as jest.Mock).mockResolvedValueOnce({ result: 'ok' });
 
-            (cloudinary.uploader.destroy as jest.Mock).mockResolvedValue({ result: 'ok' });
+            const client = new CloudinaryStorageClient('cloud', 'key', 'secret');
+            await client.delete('public-id-to-delete');
 
-            await client.delete('test-public-id', 'image');
+            expect(cloudinary.uploader.destroy).toHaveBeenCalledWith('public-id-to-delete', {
+                resource_type: 'image'
+            });
+        });
 
-            expect(cloudinary.uploader.destroy).toHaveBeenCalledWith('test-public-id', {
-                resource_type: 'image',
+        test('should use provided resource type for deletion', async () => {
+            (cloudinary.uploader.destroy as jest.Mock).mockResolvedValueOnce({ result: 'ok' });
+
+            const client = new CloudinaryStorageClient('cloud', 'key', 'secret');
+            await client.delete('video-id', 'video');
+
+            expect(cloudinary.uploader.destroy).toHaveBeenCalledWith('video-id', {
+                resource_type: 'video'
             });
         });
     });
