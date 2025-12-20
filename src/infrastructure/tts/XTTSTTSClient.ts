@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { ITTSClient, TTSResult, TTSOptions } from '../../domain/ports/ITTSClient';
+import { getConfig } from '../../config';
 
 /**
  * XTTS v2 TTS Client for local voice cloning.
@@ -129,8 +130,9 @@ export class XTTSTTSClient implements ITTSClient {
      * Uses ~2.3 words per second at normal speed (same as FishAudioTTSClient).
      */
     private async estimateDuration(text: string, speed: number = 1.0): Promise<number> {
+        const config = getConfig();
         const words = text.trim().split(/\s+/).length;
-        const baseSeconds = words / 2.3;
+        const baseSeconds = words / config.speakingRateWps;
         return baseSeconds / speed;
     }
 

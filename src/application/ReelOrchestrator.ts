@@ -148,28 +148,14 @@ export class ReelOrchestrator {
                     }
                 }
 
-                // DEFENSIVE: Ensure segmentContent is always an array (catch any LLM normalization failures)
-                if (!Array.isArray(segmentContent)) {
-                    console.warn('[DEFENSIVE] segmentContent is not an array, attempting recovery:', typeof segmentContent);
-                    if (segmentContent && typeof segmentContent === 'object') {
-                        if (Array.isArray((segmentContent as any).segments)) {
-                            segmentContent = (segmentContent as any).segments;
-                        } else if ((segmentContent as any).commentary) {
-                            segmentContent = [segmentContent as any];
-                        } else {
-                            const values = Object.values(segmentContent);
-                            if (values.length > 0 && typeof values[0] === 'object') {
-                                segmentContent = values as any;
-                            } else {
-                                throw new Error(`LLM returned invalid format: ${JSON.stringify(segmentContent).substring(0, 200)}`);
-                            }
-                        }
-                    } else {
-                        throw new Error(`LLM returned non-object segment content: ${typeof segmentContent}`);
-                    }
-                }
+                // VALIDATION: Ensure the LLM returned exactly the number of segments we planned for.
+                // We no longer silently "recover" by wrapping a single segment, as that causes 5-second videos.
+                this.validateSegmentCount(segmentContent, plan.segmentCount, 'Initial Generation');
 
                 segmentContent = await this.adjustCommentaryIfNeeded(plan, segmentContent);
+
+                // VALIDATION: Ensure the adjustment step didn't truncate segments either.
+                this.validateSegmentCount(segmentContent, plan.segmentCount, 'Adjustment Phase');
 
                 // Step 4: Synthesize voiceover
                 await this.updateJobStatus(jobId, 'synthesizing_voiceover', 'Creating voiceover...');
@@ -343,12 +329,35 @@ export class ReelOrchestrator {
             return segmentContent;
         }
 
-        // Ask LLM to adjust
         return this.deps.llmClient.adjustCommentaryLength(
             segmentContent,
             adjustment,
             plan.targetDurationSeconds
         );
+    }
+
+    /**
+     * Strictly validates that the LLM returned the expected number of segments.
+     * This prevents "Strategic Collapse" where a 12-segment plan becomes a 1-segment video.
+     */
+    private validateSegmentCount(segments: SegmentContent[], expected: number, stage: string): void {
+        if (!Array.isArray(segments)) {
+            throw new Error(`[${stage}] LLM returned non-array segment content: ${typeof segments}`);
+        }
+
+        if (segments.length !== expected) {
+            throw new Error(
+                `[${stage}] Segment count mismatch: Planned ${expected} segments, but LLM returned ${segments.length}. ` +
+                `This safety guard prevents generating a truncated (e.g. 5-second) video.`
+            );
+        }
+
+        // Additional sanity check: ensure no empty commentaries
+        for (let i = 0; i < segments.length; i++) {
+            if (!segments[i].commentary || segments[i].commentary.trim().length < 5) {
+                throw new Error(`[${stage}] Segment ${i + 1} has missing or too-short commentary.`);
+            }
+        }
     }
 
     /**
