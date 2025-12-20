@@ -6,10 +6,10 @@
  * decomposed into discrete steps implementing this interface.
  */
 
-import { ReelJob } from '../domain/entities/ReelJob';
-import { Segment } from '../domain/entities/Segment';
-import { ReelPlan, SegmentContent } from '../domain/ports/ILLMClient';
-import { ReelManifest } from '../domain/entities/ReelManifest';
+import { ReelJob } from '../../domain/entities/ReelJob';
+import { Segment } from '../../domain/entities/Segment';
+import { ReelPlan, SegmentContent } from '../../domain/ports/ILLMClient';
+import { ReelManifest } from '../../domain/entities/ReelManifest';
 
 /**
  * Shared context passed between pipeline steps.
