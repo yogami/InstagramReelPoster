@@ -566,10 +566,14 @@ export class ReelOrchestrator {
                 'x-make-apikey': '4LyPD8E3TVRmh_F'
             };
 
-            // Generate a caption from the commentary
-            const caption = job.fullCommentary
-                ? job.fullCommentary.substring(0, 200) + '...'
-                : 'New reel ready!';
+            // Generate a caption from the FIRST segment's "caption" field (Intent/Topic)
+            // If not available, fall back to a summary of the commentary
+            let caption = 'New reel ready!';
+            if (job.segments && job.segments.length > 0 && job.segments[0].caption) {
+                caption = job.segments[0].caption;
+            } else if (job.fullCommentary) {
+                caption = job.fullCommentary.substring(0, 200) + '...';
+            }
 
             // Build payload - only include video_url if we have a valid URL
             const payload: any = {
