@@ -88,12 +88,12 @@ export function calculateSpeedAdjustment(
  * Determines whether text needs to be adjusted to better match target duration.
  * @param estimatedSeconds Estimated speaking duration
  * @param targetSeconds Target duration
- * @param tolerancePercent Maximum acceptable deviation as a percentage (default: 0.15 = 15%)
+ * @param tolerancePercent Maximum acceptable deviation as a percentage (default: 0.10 = 10%)
  */
 export function needsTextAdjustment(
     estimatedSeconds: number,
     targetSeconds: number,
-    tolerancePercent: number = 0.15
+    tolerancePercent: number = 0.10  // Reduced from 0.15 to catch overshoots earlier
 ): 'shorter' | 'longer' | 'ok' {
     const deviation = (estimatedSeconds - targetSeconds) / targetSeconds;
 

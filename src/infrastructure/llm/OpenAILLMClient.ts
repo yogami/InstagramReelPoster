@@ -104,8 +104,12 @@ CRITICAL: segmentCount must be an Integer between 2 and 15.`;
     async generateSegmentContent(plan: ReelPlan, transcript: string): Promise<SegmentContent[]> {
         const config = getConfig();
         const secondsPerSegment = plan.targetDurationSeconds / plan.segmentCount;
+        // Apply 15% safety margin to prevent overshoot (LLMs often ignore word limits)
+        const safetyMargin = 0.85;
         // n8n formula sync: Subtract 0.6s per sentence for pauses/breathing room
-        const wordsPerSegment = Math.round((secondsPerSegment - 0.6) * config.speakingRateWps);
+        const wordsPerSegment = Math.round((secondsPerSegment - 0.6) * config.speakingRateWps * safetyMargin);
+        // Hard cap is the absolute maximum (without safety margin)
+        const hardCapPerSegment = Math.round((secondsPerSegment - 0.6) * config.speakingRateWps);
 
         const prompt = `You MUST create EXACTLY ${plan.segmentCount} segments for this reel.
 
@@ -116,13 +120,18 @@ ${transcript}
 
 Reel concept: ${plan.summary}
 Mood: ${plan.mood}
-Target: ~${wordsPerSegment} words per segment (${secondsPerSegment.toFixed(1)}s each)
+
+⚠️ WORD COUNT IS CRITICAL - FAILURE TO COMPLY = REJECTION ⚠️
+Target: ${wordsPerSegment} words per segment MAXIMUM
+HARD CAP: ${hardCapPerSegment} words per commentary (DO NOT EXCEED)
+Total video: ${plan.targetDurationSeconds}s = ${plan.segmentCount} segments × ${secondsPerSegment.toFixed(1)}s each
 
 CRITICAL REQUIREMENTS:
 1. Return a JSON ARRAY of EXACTLY ${plan.segmentCount} objects
 2. DO NOT wrap the array in any outer object
 3. DO NOT return fewer than ${plan.segmentCount} segments
 4. DO NOT return more than ${plan.segmentCount} segments
+5. EACH COMMENTARY MUST BE ${wordsPerSegment} WORDS OR FEWER - COUNT THEM!
 
 Expected format (MUST be a JSON object):
 {
@@ -138,7 +147,7 @@ Each segment object MUST have these fields:
 CRITICAL: For each segment, provide a JSON object with these EXACT fields:
 
 {
-  "commentary": "1-2 sentences of CREATIVE, ARTISTIC NARRATION that tells the story or delivers the insight (~${wordsPerSegment} words).",
+  "commentary": "1-2 SENTENCES ONLY. HARD LIMIT: ${wordsPerSegment} words. PUNCHY, NOT VERBOSE.",
   "imagePrompt": "100-140 word detailed visual description (see rules below)",
   "caption": "A clear, direct description of the INTENT or TOPIC (2-6 words). MUST be distinct from commentary. Example: 'The Biology of Attraction'",
   "visualSpecs": {
@@ -178,20 +187,18 @@ STORYTELLING APPROACH:
 - They work together but serve different roles
 - Avoid phrases like "notice the..." "see how..." "this scene shows..."
 
-GOOD Example:
+GOOD Example (${17} words - UNDER LIMIT ✓):
 imagePrompt: "wooden deck at golden hour with person meditating, warm amber tones, mountains"
 commentary: "You think you need more time to find peace. But peace isn't found in time—it's found in the absence of seeking."
-(Image sets contemplative mood; commentary delivers the insight)
 
-BAD Example:
+BAD Example (Too descriptive - AVOID):
 imagePrompt: "wooden deck at golden hour with person meditating"
 commentary: "Notice the warm amber glow bathing this peaceful deck, where stillness meets nature's mountain backdrop"
 (This is describing the image like a tour guide - AVOID THIS!)
 
-ANOTHER GOOD Example:
+ANOTHER GOOD Example (${12} words - UNDER LIMIT ✓):
 imagePrompt: "close-up of hands releasing sand, soft morning light, beach setting"
 commentary: "Every attachment you defend is a prison you've built with your own hands."
-(Image provides metaphor; commentary delivers the punch)
 
 IMAGE PROMPT RULES (100-140 words each):
 
@@ -218,8 +225,47 @@ Respond with a JSON array of ${plan.segmentCount} objects matching the structure
 
         const response = await this.callOpenAI(prompt, true);
         const parsed = this.parseJSON<any>(response);
+        const segments = this.normalizeSegments(parsed);
 
-        return this.normalizeSegments(parsed);
+        // CRITICAL: Post-generation enforcement - truncate overlong commentaries
+        return this.enforceWordLimits(segments, hardCapPerSegment);
+    }
+
+    /**
+     * Enforces hard word limits on commentaries by truncating at sentence boundaries.
+     */
+    private enforceWordLimits(segments: SegmentContent[], maxWords: number): SegmentContent[] {
+        return segments.map((segment, index) => {
+            const words = segment.commentary.trim().split(/\s+/);
+            if (words.length <= maxWords) {
+                return segment;
+            }
+
+            console.warn(
+                `[LLM] Segment ${index + 1} exceeded word limit: ${words.length} > ${maxWords}. Truncating...`
+            );
+
+            // Try to truncate at sentence boundary
+            const truncated = words.slice(0, maxWords);
+            let commentary = truncated.join(' ');
+
+            // Find last sentence boundary
+            const lastSentenceEnd = Math.max(
+                commentary.lastIndexOf('.'),
+                commentary.lastIndexOf('!'),
+                commentary.lastIndexOf('?')
+            );
+
+            if (lastSentenceEnd > commentary.length * 0.6) {
+                // Keep complete sentence if it's at least 60% of the text
+                commentary = commentary.substring(0, lastSentenceEnd + 1);
+            } else {
+                // Otherwise just end with ellipsis
+                commentary = commentary.trimEnd().replace(/[,;:]?$/, '...');
+            }
+
+            return { ...segment, commentary };
+        });
     }
 
     /**
@@ -273,8 +319,10 @@ Respond with a JSON array of ${plan.segmentCount} objects matching the structure
     ): Promise<SegmentContent[]> {
         const config = getConfig();
         const secondsPerSegment = targetDurationSeconds / segments.length;
-        // Consistent with initial generation formula
-        const wordsPerSegment = Math.round((secondsPerSegment - 0.6) * config.speakingRateWps);
+        // Apply 15% safety margin to prevent overshoot
+        const safetyMargin = direction === 'shorter' ? 0.80 : 0.90; // Stricter for "shorter"
+        const wordsPerSegment = Math.round((secondsPerSegment - 0.6) * config.speakingRateWps * safetyMargin);
+        const hardCapPerSegment = Math.round((secondsPerSegment - 0.6) * config.speakingRateWps);
 
         const prompt = `Adjust these segment commentaries to be ${direction}.
 
@@ -282,14 +330,18 @@ Current segments (Count: ${segments.length}):
 ${JSON.stringify(segments, null, 2)}
 
 Target Duration: ${targetDurationSeconds}s total (~${secondsPerSegment.toFixed(1)}s per segment).
-Target Word Budget: ~${wordsPerSegment} words per segment.
+
+⚠️ WORD COUNT IS CRITICAL ⚠️
+Target: ${wordsPerSegment} words per segment MAXIMUM
+HARD CAP: ${hardCapPerSegment} words (DO NOT EXCEED)
 
 RULES:
 1. You MUST return EXACTLY ${segments.length} segment objects. Do NOT truncate or merge them.
-2. Make each commentary ${direction === 'shorter' ? 'more concise' : 'slightly more developed'} to hit the ${wordsPerSegment} word budget.
-3. Keep the same meaning and impact.
-4. Maintain the Challenging View voice (Direct, Grounded, Indian/Californian mix).
-5. Keep imagePrompts, captions, and all other fields EXACTLY the same.
+2. Make each commentary ${direction === 'shorter' ? 'SIGNIFICANTLY MORE CONCISE - cut the fluff!' : 'slightly more developed'}.
+3. EACH COMMENTARY MUST BE ${wordsPerSegment} WORDS OR FEWER - COUNT THEM!
+4. Keep the same meaning and impact.
+5. Maintain the Challenging View voice (Direct, Grounded, Indian/Californian mix).
+6. Keep imagePrompts, captions, and all other fields EXACTLY the same.
 
 Expected format (MUST be a JSON object):
 {
@@ -305,8 +357,9 @@ Respond with exactly ${segments.length} adjusted segments in the JSON structure 
         const response = await this.callOpenAI(prompt, true);
         const parsed = this.parseJSON<any>(response);
 
-        // CRITICAL: Normalize the response just like generateSegmentContent
-        return this.normalizeSegments(parsed);
+        // CRITICAL: Normalize the response AND enforce word limits
+        const normalized = this.normalizeSegments(parsed);
+        return this.enforceWordLimits(normalized, hardCapPerSegment);
     }
 
     private async callOpenAI(prompt: string, jsonMode: boolean = false): Promise<string> {
