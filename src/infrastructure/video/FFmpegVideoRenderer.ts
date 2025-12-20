@@ -162,8 +162,8 @@ export class FFmpegVideoRenderer implements IVideoRenderer {
             const complexFilter: string[] = [];
 
             if (assets.animatedVideoPath) {
-                // Single Video Source
-                cmd.input(assets.animatedVideoPath);
+                // Single Video Source - loop it to ensure it covers full audio
+                cmd.input(assets.animatedVideoPath).inputOptions('-stream_loop -1');
                 const inputTag = `[${visualInputOffset}:v]`;
                 complexFilter.push(`${inputTag}scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1,format=yuv420p[vbase]`);
             } else if (manifest.segments) {
