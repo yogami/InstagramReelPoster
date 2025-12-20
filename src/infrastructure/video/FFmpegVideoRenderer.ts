@@ -151,22 +151,23 @@ export class FFmpegVideoRenderer implements IVideoRenderer {
             // Input 0: Audio (Voiceover)
             cmd.input(assets.voiceoverPath);
 
-            // Input 1: Audio (Music) - only if available
+            // Input 1 (Optional): Audio (Music)
+            let visualInputOffset = 1;
             if (assets.musicPath) {
                 cmd.input(assets.musicPath).inputOptions('-stream_loop -1');
+                visualInputOffset = 2;
             }
 
-            // Inputs 2...N: Video source
+            // Visual Inputs (Starting from visualInputOffset)
             const complexFilter: string[] = [];
-            let vbaseTag = '[vbase]';
 
             if (assets.animatedVideoPath) {
-                // Input 2: The animated video
+                // Single Video Source
                 cmd.input(assets.animatedVideoPath);
-                // Ensure it's scaled to 1080:1920 just in case
-                complexFilter.push(`[2:v]scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1,format=yuv420p[vbase]`);
+                const inputTag = `[${visualInputOffset}:v]`;
+                complexFilter.push(`${inputTag}scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1,format=yuv420p[vbase]`);
             } else if (manifest.segments) {
-                // Inputs 2...N: Images
+                // Multi-Image Source
                 assets.imagePaths.forEach((imgPath) => {
                     cmd.input(imgPath);
                 });
@@ -175,7 +176,7 @@ export class FFmpegVideoRenderer implements IVideoRenderer {
                 assets.imagePaths.forEach((_, i) => {
                     const segment = manifest.segments![i];
                     const duration = segment.end - segment.start;
-                    const inputTag = `[${i + 2}:v]`; // Images start at index 2
+                    const inputTag = `[${i + visualInputOffset}:v]`;
                     const outputTag = `[v${i}]`;
 
                     // We use -loop 1 input option for images, then trim in filter
@@ -199,8 +200,14 @@ export class FFmpegVideoRenderer implements IVideoRenderer {
             complexFilter.push(`[vbase]${subsFilter}[vburned]`);
 
             // Mix Audio
-            complexFilter.push(`[1:a]volume=0.2[bq_music]`);
-            complexFilter.push(`[0:a][bq_music]amix=inputs=2:duration=first[audio_out]`);
+            // Voiceover is [0:a], Music is [1:a] (if present)
+            if (assets.musicPath) {
+                complexFilter.push(`[1:a]volume=0.2[bq_music]`);
+                complexFilter.push(`[0:a][bq_music]amix=inputs=2:duration=first[audio_out]`);
+            } else {
+                // No music, just use voiceover
+                complexFilter.push(`[0:a]copy[audio_out]`);
+            }
 
             cmd.complexFilter(complexFilter, ['vburned', 'audio_out']);
 

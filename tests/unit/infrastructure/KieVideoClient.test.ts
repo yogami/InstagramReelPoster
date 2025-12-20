@@ -25,7 +25,7 @@ describe('KieVideoClient', () => {
 
             // Mock task creation
             mockedAxios.post.mockResolvedValueOnce({
-                data: { id: mockJobId }
+                data: { data: { taskId: mockJobId } }
             });
 
             // Mock polling status - pending then success
@@ -39,8 +39,11 @@ describe('KieVideoClient', () => {
                 expect.stringContaining('/jobs/createTask'),
                 expect.objectContaining({
                     model: 'KLING_V2_5_TURBO',
-                    prompt: expect.stringContaining('Ocean'),
-                    duration: 5
+                    input: expect.objectContaining({
+                        prompt: expect.stringContaining('Ocean'),
+                        duration: '5',
+                        sound: false
+                    })
                 }),
                 expect.any(Object)
             );
@@ -64,7 +67,7 @@ describe('KieVideoClient', () => {
         });
 
         it('should throw error if production fails', async () => {
-            mockedAxios.post.mockResolvedValueOnce({ data: { id: 'job-err' } });
+            mockedAxios.post.mockResolvedValueOnce({ data: { data: { taskId: 'job-err' } } });
             mockedAxios.get.mockResolvedValueOnce({ data: { status: 'failed', error: 'Content policy violation' } });
 
             await expect(client.generateAnimatedVideo({
@@ -74,7 +77,7 @@ describe('KieVideoClient', () => {
         });
 
         it('should timeout if max attempts reached', async () => {
-            mockedAxios.post.mockResolvedValueOnce({ data: { id: 'job-timeout' } });
+            mockedAxios.post.mockResolvedValueOnce({ data: { data: { taskId: 'job-timeout' } } });
             mockedAxios.get.mockResolvedValue({ data: { status: 'processing' } });
 
             await expect(client.generateAnimatedVideo({

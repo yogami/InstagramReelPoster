@@ -62,10 +62,12 @@ export class KieVideoClient implements IAnimatedVideoClient {
                 endpoint,
                 {
                     model: this.defaultModel,
-                    prompt: prompt,
-                    duration: options.durationSeconds <= 5 ? 5 : 10, // Many models only support 5s or 10s increments
-                    aspectRatio: '9:16',
-                    quality: '720p'
+                    input: {
+                        prompt: prompt.substring(0, 1000), // Documented max length
+                        duration: options.durationSeconds <= 5 ? "5" : "10", // String as per docs
+                        aspect_ratio: '9:16',
+                        sound: false // Mandatory boolean
+                    }
                 },
                 {
                     headers: {
@@ -75,7 +77,8 @@ export class KieVideoClient implements IAnimatedVideoClient {
                 }
             );
 
-            const jobId = response.data.id || response.data.jobId || response.data.taskId;
+            // Documented response: { "code": 200, "data": { "taskId": "..." } }
+            const jobId = response.data?.data?.taskId || response.data?.taskId || response.data?.id;
             if (!jobId) {
                 console.error('[Kie.ai] Response body:', JSON.stringify(response.data));
                 throw new Error('Kie.ai did not return a job ID');
