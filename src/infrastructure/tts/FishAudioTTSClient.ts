@@ -38,6 +38,7 @@ export class FishAudioTTSClient implements ITTSClient {
                     reference_id: this.voiceId,
                     format: options?.format || 'mp3',
                     speed: options?.speed || 1.0,
+                    pitch: options?.pitch || 1.0,
                 },
                 {
                     headers: {

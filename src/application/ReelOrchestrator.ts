@@ -386,14 +386,14 @@ export class ReelOrchestrator {
             speed = calculateSpeedAdjustment(result.durationSeconds, targetDuration);
             if (speed !== 1.0) {
                 try {
-                    console.log(`[TTS] Applying speed adjustment (${speed.toFixed(2)}x)...`);
-                    result = await this.deps.ttsClient.synthesize(text, { speed });
+                    console.log(`[TTS] Applying speed adjustment (${speed.toFixed(2)}x) with pitch 0.9...`);
+                    result = await this.deps.ttsClient.synthesize(text, { speed, pitch: 0.9 });
                 } catch (error: any) {
                     console.warn('[TTS] ⚠️ Primary TTS speed adjustment failed:', error.message);
 
                     if (this.deps.fallbackTTSClient) {
-                        console.log('[TTS] Trying fallback client for speed adjustment...');
-                        result = await this.deps.fallbackTTSClient.synthesize(text, { speed });
+                        console.log('[TTS] Trying fallback client for speed adjustment with pitch 0.9...');
+                        result = await this.deps.fallbackTTSClient.synthesize(text, { speed, pitch: 0.9 });
                     } else {
                         console.warn('[TTS] No fallback available for adjustment, returning original.');
                     }
