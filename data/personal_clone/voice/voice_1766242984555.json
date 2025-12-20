@@ -1,0 +1,7 @@
+{
+  "id": "voice_1766242984555",
+  "audioUrl": "https://api.telegram.org/file/bottest-bot-token/voice/file_1.ogg",
+  "transcript": "Hello world",
+  "durationSeconds": 30,
+  "collectedAt": "2025-12-20T15:03:04.555Z"
+}
