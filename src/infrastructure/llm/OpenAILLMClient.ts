@@ -100,7 +100,7 @@ CRITICAL: segmentCount must be an Integer between 2 and 15.`;
      */
     async generateSegmentContent(plan: ReelPlan, transcript: string): Promise<SegmentContent[]> {
         const secondsPerSegment = plan.targetDurationSeconds / plan.segmentCount;
-        const wordsPerSegment = Math.round(secondsPerSegment * 2.1); // Reduced to ~2.1 wps to prevent overshoot
+        const wordsPerSegment = Math.round(secondsPerSegment * 1.8); // Reduced to ~1.8 wps for slower delivery
 
         const prompt = `You MUST create EXACTLY ${plan.segmentCount} segments for this reel.
 

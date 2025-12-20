@@ -89,6 +89,8 @@ export class OpenAITranscriptionClient implements ITranscriptionClient {
             formData.append('file', fs.createReadStream(uploadPath));
             formData.append('model', 'whisper-1');
             formData.append('response_format', 'text');
+            // Context prompt to improve accuracy of technical/domain terms
+            formData.append('prompt', 'Psychology, evolutionary biology, mating strategies, madonna-whore complex, archetypes, dual mating strategy, pair bonding, dopamine, hypergamy, intrasexual competition.');
 
             console.log(`[Whisper] Sending to OpenAI...`);
             const transcriptionResponse = await axios.post(

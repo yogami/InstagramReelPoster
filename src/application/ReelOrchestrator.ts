@@ -566,13 +566,19 @@ export class ReelOrchestrator {
                 'x-make-apikey': '4LyPD8E3TVRmh_F'
             };
 
-            // Generate a caption from the FIRST segment's "caption" field (Intent/Topic)
-            // If not available, fall back to a summary of the commentary
+            // Generate a caption:
+            // 1. Try FIRST segment's "caption" field (Intent based)
+            // 2. Fallback to Source Transcript (Topic based)
+            // 3. Last resort: Commentary summary
             let caption = 'New reel ready!';
             if (job.segments && job.segments.length > 0 && job.segments[0].caption) {
                 caption = job.segments[0].caption;
+            } else if (job.transcript) {
+                console.warn(`[${job.id}] ⚠️ Missing segment caption, falling back to transcript summary.`);
+                caption = job.transcript.substring(0, 150) + '...';
             } else if (job.fullCommentary) {
-                caption = job.fullCommentary.substring(0, 200) + '...';
+                console.warn(`[${job.id}] ⚠️ Missing segment caption & transcript, falling back to commentary.`);
+                caption = job.fullCommentary.substring(0, 150) + '...';
             }
 
             // Build payload - only include video_url if we have a valid URL
