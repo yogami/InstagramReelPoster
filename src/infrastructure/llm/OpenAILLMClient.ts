@@ -100,7 +100,7 @@ CRITICAL: segmentCount must be an Integer between 2 and 15.`;
      */
     async generateSegmentContent(plan: ReelPlan, transcript: string): Promise<SegmentContent[]> {
         const secondsPerSegment = plan.targetDurationSeconds / plan.segmentCount;
-        const wordsPerSegment = Math.round(secondsPerSegment * 2.3); // ~2.3 words per second
+        const wordsPerSegment = Math.round(secondsPerSegment * 2.1); // Reduced to ~2.1 wps to prevent overshoot
 
         const prompt = `You MUST create EXACTLY ${plan.segmentCount} segments for this reel.
 
@@ -161,9 +161,11 @@ COMMENTARY-IMAGE CONGRUENCE (CRITICAL):
 ★ Instead, deliver the spiritual/philosophical insight that the visual supports
 
 STRICT IMAGE POLICY (NON-NEGOTIABLE):
-1. RACE/ETHNICITY: People must be race-neutral / ambiguous. Do not specify specific ethnicities. Describe "a person", "a silhouette", "a figure" with ambiguous features. The goal is universal relatability.
-2. RELATIONSHIPS: If the topic involves love, romance, dating, or marriage, and you show a couple, it MUST be a Heterosexual couple (Man and Woman). Do NOT depict same-sex couples for romantic themes.
-★ The image should ILLUSTRATE the idea, not BE the idea
+1. RELATIONSHIPS: If the topic involves love, romance, dating, or marriage, you MUST depict a Heterosexual couple (Man and Woman).
+   - STRICT PROHIBITION: Do NOT generate same-sex imagery for romantic topics.
+   - REASONING: The content is specifically targeted at biological mating strategies between men and women.
+2. STYLE: Cinematic, grounded, realistic. No "cartoonish" or "abstract" art.
+   - Avoid "corporate diversity" art styles. Keep it cinematic and natural.
 
 STORYTELLING APPROACH:
 - Commentary delivers the insight, teaching, or provocation
