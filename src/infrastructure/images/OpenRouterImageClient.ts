@@ -40,7 +40,17 @@ export class OpenRouterImageClient implements IImageClient {
                         role: 'user',
                         content: `Generate an image: ${enhancedPrompt}`
                     }],
+                    // CRITICAL: Required for Flux on OpenRouter
+                    // @ts-ignore - modalities is not in standard types but required
+                    modalities: ['image', 'text'],
                     temperature: 0.7,
+                    // OpenRouter generic way to request image output from capable models
+                    provider: {
+                        require_parameters: true
+                    }
+                    // Note: 'modalities' is not standard OpenAI, but used by some providers on OpenRouter. 
+                    // However, for Flux on OpenRouter, simple prompt usually works if routed correctly.
+                    // We will add it if using 'flux' in the model name to be safe.
                 },
                 {
                     headers: {
