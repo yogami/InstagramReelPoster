@@ -12,6 +12,7 @@ import { InMemoryMusicCatalogClient } from '../infrastructure/music/InMemoryMusi
 import { KieMusicGeneratorClient } from '../infrastructure/music/KieMusicGeneratorClient';
 import { OpenRouterImageClient } from '../infrastructure/images/OpenRouterImageClient';
 import { OpenAIImageClient } from '../infrastructure/images/OpenAIImageClient';
+import { PixabayImageClient } from '../infrastructure/images/PixabayImageClient';
 import { OpenAISubtitlesClient } from '../infrastructure/subtitles/OpenAISubtitlesClient';
 import { ShortstackVideoRenderer } from '../infrastructure/video/ShortstackVideoRenderer';
 import { FFmpegVideoRenderer } from '../infrastructure/video/FFmpegVideoRenderer';
@@ -129,6 +130,11 @@ function createDependencies(config: Config): {
         config.openrouterBaseUrl
     );
 
+    // Fallback Image Client (Pixabay = Free, OpenRouter = Paid)
+    const fallbackImageClient = config.pixabayApiKey
+        ? new PixabayImageClient(config.pixabayApiKey)
+        : imageClient;
+
     // Use same OpenRouter client for both primary and fallback
     const subtitlesClient = new OpenAISubtitlesClient(config.openaiApiKey, cloudinaryClient!);
     const fallbackTTSClient = new OpenAITTSClient(config.openaiApiKey);
@@ -188,7 +194,7 @@ function createDependencies(config: Config): {
         llmClient,
         ttsClient,
         primaryImageClient: imageClient,
-        fallbackImageClient: imageClient,
+        fallbackImageClient: fallbackImageClient,
         subtitlesClient,
         videoRenderer,
         musicSelector,
