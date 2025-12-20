@@ -22,7 +22,8 @@ SENTENCE SHAPE & CONSTRAINTS (Non-negotiable):
 1. Length: Max 16-18 words per sentence.
 2. Structure: AT MOST ONE COMMA per sentence. No em-dashes. One simple metaphor across the WHOLE script at most. ZERO exclamation marks.
 3. Subtext: NEVER describe the visual. Add meaning, contrast, or distilled principles. 
-4. Vocabulary: When discussing the "Madonna-Whore complex", ALWAYS use the correct term "Whore". Do NOT censor it as "Horse" or "Force". This is a clinical archetype, not derogatory.
+4. Vocabulary (Commentary): When discussing the "Madonna-Whore complex" in the COMMENTARY, ALWAYS use the correct term "Whore". Do NOT censor it for the voiceover.
+5. Vocabulary (Image Prompts): NEVER use the word "Whore" or any explicit/crude terms in the "imagePrompt" field. This will trigger safety filters. Instead, use artistic euphemisms like "seductive aesthetics", "alluring noir style", or "femme fatale energy". 
 
 Archetype: The Realist / The Truth-Teller.`;
 
@@ -270,24 +271,36 @@ Respond with a JSON array of ${plan.segmentCount} objects matching the structure
         direction: 'shorter' | 'longer',
         targetDurationSeconds: number
     ): Promise<SegmentContent[]> {
-        const wordsPerSegment = Math.round(
-            (targetDurationSeconds / segments.length) * 2.3
-        );
+        const config = getConfig();
+        const secondsPerSegment = targetDurationSeconds / segments.length;
+        // Consistent with initial generation formula
+        const wordsPerSegment = Math.round((secondsPerSegment - 0.6) * config.speakingRateWps);
 
         const prompt = `Adjust these segment commentaries to be ${direction}.
 
-Current segments:
+Current segments (Count: ${segments.length}):
 ${JSON.stringify(segments, null, 2)}
 
-Target: ~${wordsPerSegment} words per segment for ${targetDurationSeconds}s total.
+Target Duration: ${targetDurationSeconds}s total (~${secondsPerSegment.toFixed(1)}s per segment).
+Target Word Budget: ~${wordsPerSegment} words per segment.
 
-Rules:
-- Make each commentary ${direction === 'shorter' ? 'more concise' : 'slightly more developed'}
-- Keep the same meaning and impact
-- Maintain the Challenging View voice
-- Keep image prompts unchanged
+RULES:
+1. You MUST return EXACTLY ${segments.length} segment objects. Do NOT truncate or merge them.
+2. Make each commentary ${direction === 'shorter' ? 'more concise' : 'slightly more developed'} to hit the ${wordsPerSegment} word budget.
+3. Keep the same meaning and impact.
+4. Maintain the Challenging View voice (Direct, Grounded, Indian/Californian mix).
+5. Keep imagePrompts, captions, and all other fields EXACTLY the same.
 
-Respond with the adjusted JSON array in the same format.`;
+Expected format (MUST be a JSON object):
+{
+  "segments": [
+    { adjusted segment 1 },
+    { adjusted segment 2 },
+    ...
+  ]
+}
+
+Respond with exactly ${segments.length} adjusted segments in the JSON structure requested.`;
 
         const response = await this.callOpenAI(prompt, true);
         const parsed = this.parseJSON<any>(response);

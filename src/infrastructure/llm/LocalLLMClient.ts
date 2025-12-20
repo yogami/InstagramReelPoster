@@ -5,6 +5,7 @@ import {
     SegmentContent,
     PlanningConstraints,
 } from '../../domain/ports/ILLMClient';
+import { getConfig } from '../../config';
 
 // Character/Personality prompt is now passed via constructor from configuration
 
@@ -86,8 +87,9 @@ RESPOND ONLY WITH VALID JSON, NO OTHER TEXT.`;
      * Generates commentary and image prompts for each segment.
      */
     async generateSegmentContent(plan: ReelPlan, transcript: string): Promise<SegmentContent[]> {
+        const config = getConfig();
         const secondsPerSegment = plan.targetDurationSeconds / plan.segmentCount;
-        const wordsPerSegment = Math.round(secondsPerSegment * 2.3);
+        const wordsPerSegment = Math.round((secondsPerSegment - 0.6) * config.speakingRateWps);
 
         const prompt = `Create EXACTLY ${plan.segmentCount} segments for this reel.
 
@@ -134,22 +136,24 @@ RESPOND ONLY WITH VALID JSON in this format:
         direction: 'shorter' | 'longer',
         targetDurationSeconds: number
     ): Promise<SegmentContent[]> {
-        const wordsPerSegment = Math.round(
-            (targetDurationSeconds / segments.length) * 2.3
-        );
+        const config = getConfig();
+        const secondsPerSegment = targetDurationSeconds / segments.length;
+        const wordsPerSegment = Math.round((secondsPerSegment - 0.6) * config.speakingRateWps);
 
         const prompt = `Adjust these segment commentaries to be ${direction}.
 
-Current segments:
+Current segments (Count: ${segments.length}):
 ${JSON.stringify(segments, null, 2)}
 
-Target: ~${wordsPerSegment} words per segment for ${targetDurationSeconds}s total.
+Target Duration: ${targetDurationSeconds}s total.
+Target Word Budget: ~${wordsPerSegment} words per segment.
 
 Rules:
-- Make each commentary ${direction === 'shorter' ? 'more concise' : 'slightly more developed'}
-- Keep the same meaning and impact
-- Maintain the character and voice style defined in your system prompt
-- Keep image prompts unchanged
+1. You MUST return EXACTLY ${segments.length} segment objects. Do NOT truncate or merge them.
+2. Make each commentary ${direction === 'shorter' ? 'more concise' : 'slightly more developed'} to hit the target budget.
+3. Keep the same meaning and impact
+4. Maintain the character and voice style defined in your system prompt
+5. Keep image prompts and captions unchanged
 
 RESPOND ONLY WITH VALID JSON in this format:
 {

@@ -27,7 +27,8 @@ export class OpenRouterImageClient implements IImageClient {
     }
 
     async generateImage(prompt: string): Promise<{ imageUrl: string }> {
-        const enhancedPrompt = this.buildSequentialPrompt(prompt);
+        // Simple, clean prompt focus. Avoid heavy "Sequential" context which confuses smaller models.
+        const finalPrompt = `${prompt}. Style: Cinematic, high quality, 8k, photorealistic. Aspect Ratio: 9:16 Vertical.`;
 
         try {
             console.log(`[OpenRouter] Generating image with ${this.model}...`);
@@ -38,19 +39,11 @@ export class OpenRouterImageClient implements IImageClient {
                     model: this.model,
                     messages: [{
                         role: 'user',
-                        content: `Generate an image: ${enhancedPrompt}`
+                        content: finalPrompt
                     }],
-                    // CRITICAL: Required for Flux on OpenRouter
-                    // @ts-ignore - modalities is not in standard types but required
-                    modalities: ['image', 'text'],
-                    temperature: 0.7,
-                    // OpenRouter generic way to request image output from capable models
-                    provider: {
-                        require_parameters: true
-                    }
-                    // Note: 'modalities' is not standard OpenAI, but used by some providers on OpenRouter. 
-                    // However, for Flux on OpenRouter, simple prompt usually works if routed correctly.
-                    // We will add it if using 'flux' in the model name to be safe.
+                    // Required for image models on OpenRouter
+                    // @ts-ignore
+                    modalities: ['image'],
                 },
                 {
                     headers: {
@@ -67,9 +60,6 @@ export class OpenRouterImageClient implements IImageClient {
             const imageUrl = this.extractImageFromResponse(response.data);
 
             console.log(`[OpenRouter] Image generated successfully`);
-
-            this.previousPrompt = prompt;
-            this.sequenceIndex++;
 
             return { imageUrl };
         } catch (error) {

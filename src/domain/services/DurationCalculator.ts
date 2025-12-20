@@ -1,9 +1,9 @@
+import { getConfig } from '../../config';
+
 /**
  * DurationCalculator provides utilities for estimating and adjusting
  * voiceover duration based on word count and speaking rate.
  */
-
-const DEFAULT_SPEAKING_RATE_WPS = 2.3; // words per second (≈138 WPM, calm delivery)
 
 export interface DurationEstimate {
     estimatedSeconds: number;
@@ -14,33 +14,37 @@ export interface DurationEstimate {
 /**
  * Estimates the speaking duration for a given text.
  * @param text The text to estimate duration for
- * @param speakingRateWps Words per second (default: 2.3)
+ * @param speakingRateWps Optional override for words per second
  */
 export function estimateSpeakingDuration(
     text: string,
-    speakingRateWps: number = DEFAULT_SPEAKING_RATE_WPS
+    speakingRateWps?: number
 ): DurationEstimate {
+    const config = getConfig();
+    const rate = speakingRateWps ?? config.speakingRateWps;
     const words = text.trim().split(/\s+/).filter(w => w.length > 0);
     const wordCount = words.length;
-    const estimatedSeconds = wordCount / speakingRateWps;
+    const estimatedSeconds = wordCount / rate;
 
     return {
         estimatedSeconds,
         wordCount,
-        speakingRate: speakingRateWps,
+        speakingRate: rate,
     };
 }
 
 /**
  * Calculates the target word count for a desired duration.
  * @param targetSeconds Desired duration in seconds
- * @param speakingRateWps Words per second (default: 2.3)
+ * @param speakingRateWps Optional override for words per second
  */
 export function calculateTargetWordCount(
     targetSeconds: number,
-    speakingRateWps: number = DEFAULT_SPEAKING_RATE_WPS
+    speakingRateWps?: number
 ): number {
-    return Math.round(targetSeconds * speakingRateWps);
+    const config = getConfig();
+    const rate = speakingRateWps ?? config.speakingRateWps;
+    return Math.round(targetSeconds * rate);
 }
 
 /**
