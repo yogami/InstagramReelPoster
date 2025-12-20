@@ -155,7 +155,7 @@ export function loadConfig(): Config {
         // OpenRouter
         openrouterApiKey: getEnvVar('OPENROUTER_API_KEY', ''),
         openrouterBaseUrl: getEnvVar('OPENROUTER_BASE_URL', 'https://openrouter.ai/api/v1'),
-        openrouterModel: getEnvVar('OPENROUTER_MODEL', 'black-forest-labs/flux-1-schnell'),
+        openrouterModel: getEnvVar('OPENROUTER_MODEL', 'black-forest-labs/FLUX.1-schnell-Free'),
 
         // Kie.ai
         kieApiKey: getEnvVar('KIE_API_KEY', ''),

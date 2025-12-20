@@ -469,7 +469,7 @@ export class ReelOrchestrator {
                         const { imageUrl } = await this.deps.primaryImageClient.generateImage(segment.imagePrompt);
                         finalImageUrl = imageUrl;
                     } catch (primaryError) {
-                        console.warn(`Primary image client failed for segment ${index}, falling back to DALL-E:`, primaryError);
+                        console.warn(`Primary image client failed for segment ${index}, falling back to secondary client:`, primaryError);
                         const { imageUrl } = await this.deps.fallbackImageClient.generateImage(segment.imagePrompt);
                         finalImageUrl = imageUrl;
                     }
