@@ -88,6 +88,8 @@ export class ReelOrchestrator {
                 this.logMemoryUsage('Step 1: Transcription');
             }
 
+            console.log(`[${jobId}] TRANSCRIPT: "${transcript}"`);
+
             // Personal Clone: Collect voice sample for training if enabled
             const config = getConfig();
             if (config.featureFlags.personalCloneTrainingMode && transcript) {
@@ -108,11 +110,17 @@ export class ReelOrchestrator {
             let targetDurationSeconds = job.targetDurationSeconds;
             // For now, we replan if haven't passed planning, but we need the plan object for next steps
             await this.updateJobStatus(jobId, 'planning', 'Planning reel structure...');
+
+            console.log(`[${jobId}] Planning reel with range: ${job.targetDurationRange.min}s - ${job.targetDurationRange.max}s`);
+
             const plan = await this.deps.llmClient.planReel(transcript, {
                 minDurationSeconds: job.targetDurationRange.min,
                 maxDurationSeconds: job.targetDurationRange.max,
                 moodOverrides: job.moodOverrides,
             });
+
+            console.log(`[${jobId}] LLM Plan: target=${plan.targetDurationSeconds}s, segments=${plan.segmentCount}`);
+
             if (!targetDurationSeconds) {
                 await this.deps.jobManager.updateJob(jobId, { targetDurationSeconds: plan.targetDurationSeconds });
             }
@@ -169,6 +177,8 @@ export class ReelOrchestrator {
                     fullCommentary,
                     plan.targetDurationSeconds
                 );
+                console.log(`[${jobId}] Voiceover generated: duration=${voiceoverDuration}s`);
+
                 await this.deps.jobManager.updateJob(jobId, {
                     fullCommentary,
                     voiceoverUrl,
