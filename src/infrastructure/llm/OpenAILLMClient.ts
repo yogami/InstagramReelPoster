@@ -133,9 +133,9 @@ Each segment object MUST have these fields:
 CRITICAL: For each segment, provide a JSON object with these EXACT fields:
 
 {
-  "commentary": "1-2 punchy sentences (~${wordsPerSegment} words) - Focus on the MESSAGE, not the visual",
+  "commentary": "1-2 sentences of CREATIVE, ARTISTIC NARRATION that tells the story or delivers the insight (~${wordsPerSegment} words).",
   "imagePrompt": "100-140 word detailed visual description (see rules below)",
-  "caption": "SHORT HOOK or SUMMARY (2-5 words). MUST be different from commentary. Example: 'The Hidden Trap' or 'True Freedom'",
+  "caption": "A clear, direct description of the INTENT or TOPIC (2-6 words). MUST be distinct from commentary. Example: 'The Biology of Attraction'",
   "visualSpecs": {
     "shot": "close-up | medium | wide",
     "lens": "35mm | 50mm | 85mm",
