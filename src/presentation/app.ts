@@ -16,6 +16,7 @@ import { PixabayImageClient } from '../infrastructure/images/PixabayImageClient'
 import { OpenAISubtitlesClient } from '../infrastructure/subtitles/OpenAISubtitlesClient';
 import { ShortstackVideoRenderer } from '../infrastructure/video/ShortstackVideoRenderer';
 import { FFmpegVideoRenderer } from '../infrastructure/video/FFmpegVideoRenderer';
+import { KieVideoClient } from '../infrastructure/video/KieVideoClient';
 import { CloudinaryStorageClient } from '../infrastructure/storage/CloudinaryStorageClient';
 import { TelegramService } from './services/TelegramService';
 import { TelegramNotificationClient } from '../infrastructure/notifications/TelegramNotificationClient';
@@ -24,6 +25,7 @@ import { IVideoRenderer } from '../domain/ports/IVideoRenderer';
 import { OpenAITTSClient } from '../infrastructure/tts/OpenAITTSClient';
 import { XTTSTTSClient } from '../infrastructure/tts/XTTSTTSClient';
 import { LocalLLMClient } from '../infrastructure/llm/LocalLLMClient';
+import { MockAnimatedVideoClient } from '../infrastructure/video/MockAnimatedVideoClient';
 
 // Route imports
 import { createReelRoutes } from './routes/reelRoutes';
@@ -189,6 +191,10 @@ function createDependencies(config: Config): {
         ? new TelegramNotificationClient(telegramService)
         : undefined;
 
+    const animatedVideoClient = config.kieApiKey
+        ? new KieVideoClient(config.kieApiKey, config.kieVideoBaseUrl, config.kieVideoModel)
+        : new MockAnimatedVideoClient();
+
     const deps: OrchestratorDependencies = {
         transcriptionClient,
         llmClient,
@@ -197,6 +203,7 @@ function createDependencies(config: Config): {
         fallbackImageClient: fallbackImageClient,
         subtitlesClient,
         videoRenderer,
+        animatedVideoClient,
         musicSelector,
         jobManager,
         notificationClient,

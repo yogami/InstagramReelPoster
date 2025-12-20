@@ -47,8 +47,16 @@ interface ShotstackClip {
 
 type ShotstackAsset =
     | ShotstackImageAsset
+    | ShotstackVideoAsset
     | ShotstackAudioAsset
     | ShotstackCaptionAsset;
+
+interface ShotstackVideoAsset {
+    type: 'video';
+    src: string;
+    trim?: number;
+    volume?: number;
+}
 
 interface ShotstackImageAsset {
     type: 'image';
@@ -141,20 +149,40 @@ export class ShortstackVideoRenderer implements IVideoRenderer {
      */
     private mapManifestToShotstackEdit(manifest: ReelManifest): ShotstackEdit {
         // Track 1: Images (bottom layer)
-        const imageClips: ShotstackClip[] = manifest.segments.map((segment, index) => ({
-            asset: {
-                type: 'image' as const,
-                src: segment.imageUrl,
-            },
-            start: segment.start,
-            length: segment.end - segment.start,
-            fit: 'contain' as const,
-            transition: {
-                in: index === 0 ? 'fade' as const : undefined,
-                out: 'fade' as const,
-            },
-            effect: 'zoomIn' as const,
-        }));
+        // Track 1: Visuals (Video or Images)
+        let visualClips: ShotstackClip[];
+
+        if (manifest.animatedVideoUrl) {
+            // Animated Video Path
+            visualClips = [{
+                asset: {
+                    type: 'video',
+                    src: manifest.animatedVideoUrl,
+                    volume: 0, // Mute the background video to ensure voiceover is clear
+                },
+                start: 0,
+                length: manifest.durationSeconds,
+                fit: 'cover', // Cover the 9:16 frame
+            }];
+        } else if (manifest.segments) {
+            // Image Path
+            visualClips = manifest.segments.map((segment, index) => ({
+                asset: {
+                    type: 'image',
+                    src: segment.imageUrl,
+                },
+                start: segment.start,
+                length: segment.end - segment.start,
+                fit: 'contain',
+                transition: {
+                    in: index === 0 ? 'fade' : undefined,
+                    out: 'fade',
+                },
+                effect: 'zoomIn',
+            }));
+        } else {
+            throw new Error('Manifest has neither animatedVideoUrl nor segments');
+        }
 
         // Track 2: Voiceover audio (middle layer)
         const voiceoverClip: ShotstackClip = {
@@ -221,7 +249,7 @@ export class ShortstackVideoRenderer implements IVideoRenderer {
         const tracks: { clips: ShotstackClip[] }[] = [
             { clips: [captionClip] },    // Top: Subtitles
             { clips: [voiceoverClip] },  // Middle: Voiceover audio
-            { clips: imageClips },       // Bottom: Images
+            { clips: visualClips },      // Bottom: Visuals (Video or Images)
         ];
 
         // Insert music track if available (between voiceover and images)

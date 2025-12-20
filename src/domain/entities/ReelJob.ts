@@ -7,11 +7,13 @@ import { ReelManifest } from './ReelManifest';
 export type ReelJobStatus =
     | 'pending'
     | 'transcribing'
+    | 'detecting_intent'
     | 'planning'
     | 'generating_commentary'
     | 'synthesizing_voiceover'
     | 'selecting_music'
     | 'generating_images'
+    | 'generating_animated_video'
     | 'generating_subtitles'
     | 'building_manifest'
     | 'rendering'
@@ -89,6 +91,11 @@ export interface ReelJob {
     manifest?: ReelManifest;
     /** URL to the final rendered video */
     finalVideoUrl?: string;
+
+    /** Whether this reel uses animated video instead of images */
+    isAnimatedVideoMode?: boolean;
+    /** URL to the generated animated video (for animated mode) */
+    animatedVideoUrl?: string;
 
     /** Error message if the job failed */
     error?: string;

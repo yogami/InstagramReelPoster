@@ -4,6 +4,7 @@ import {
     ReelPlan,
     SegmentContent,
     PlanningConstraints,
+    ReelModeDetectionResult,
 } from '../../domain/ports/ILLMClient';
 import { getConfig } from '../../config';
 
@@ -42,7 +43,55 @@ export class LocalLLMClient implements ILLMClient {
     }
 
     /**
+     * Detects whether the user wants an animated video reel based on their transcript.
+     * Uses generic intent detection prompt for likely less capable local models.
+     */
+    async detectReelMode(transcript: string): Promise<ReelModeDetectionResult> {
+        if (!transcript || transcript.trim().length === 0) {
+            return {
+                isAnimatedMode: false,
+                reason: 'Empty transcript defaults to image-based reel',
+            };
+        }
+
+        const prompt = `Analyze this transcript. Does the user want an ANIMATED VIDEO (moving visuals) or standard IMAGES?
+
+Transcript: "${transcript}"
+
+Rules:
+1. isAnimatedMode = true ONLY if they say "animated", "animation", "video", "motion", "moving visuals".
+2. Default is false.
+
+Respond ONLY with JSON:
+{
+  "isAnimatedMode": boolean,
+  "storyline": "optional string if they describe a specific animation story",
+  "reason": "short explanation"
+}`;
+
+        try {
+            const response = await this.callOllama(prompt);
+            const parsed = this.parseJSON<ReelModeDetectionResult>(response);
+
+            console.log(`[LocalLLM] Reel mode detection: ${parsed.isAnimatedMode ? 'ANIMATED' : 'IMAGES'} - ${parsed.reason}`);
+
+            return {
+                isAnimatedMode: parsed.isAnimatedMode ?? false,
+                storyline: parsed.storyline,
+                reason: parsed.reason ?? 'Detection completed',
+            };
+        } catch (error) {
+            console.warn('[LocalLLM] Reel mode detection failed, defaulting to image mode:', error);
+            return {
+                isAnimatedMode: false,
+                reason: 'Detection failed, defaulting to image-based reel',
+            };
+        }
+    }
+
+    /**
      * Plans the structure of a reel based on the transcript.
+     * SEGMENT COUNT is calculated mathematically, NOT by LLM.
      */
     async planReel(transcript: string, constraints: PlanningConstraints): Promise<ReelPlan> {
         const prompt = `Plan a short-form video reel from this voice note.

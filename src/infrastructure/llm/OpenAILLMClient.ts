@@ -4,6 +4,7 @@ import {
     ReelPlan,
     SegmentContent,
     PlanningConstraints,
+    ReelModeDetectionResult,
 } from '../../domain/ports/ILLMClient';
 import { getConfig } from '../../config';
 
@@ -52,6 +53,67 @@ export class OpenAILLMClient implements ILLMClient {
         this.apiKey = apiKey;
         this.model = model;
         this.baseUrl = baseUrl;
+    }
+
+    /**
+     * Detects whether the user wants an animated video reel based on their transcript.
+     * Uses LLM to interpret natural language intent.
+     */
+    async detectReelMode(transcript: string): Promise<ReelModeDetectionResult> {
+        if (!transcript || transcript.trim().length === 0) {
+            return {
+                isAnimatedMode: false,
+                reason: 'Empty transcript defaults to image-based reel',
+            };
+        }
+
+        const prompt = `Analyze this voice note transcript and determine if the user wants an ANIMATED VIDEO reel or a standard IMAGE-based reel.
+
+Transcript:
+"""
+${transcript}
+"""
+
+DETECTION RULES:
+1. Return isAnimatedMode: true if the user mentions ANY of these:
+   - "animated", "animation", "animate"
+   - "video" (in context of wanting motion/movement)
+   - "motion", "moving", "movement"
+   - "dynamic visuals", "moving visuals"
+   - "cinematic video", "video reel"
+   
+2. Return isAnimatedMode: false (default) if:
+   - No animation-related keywords are found
+   - User talks about "images", "pictures", "photos", "slides"
+   - User doesn't specify visual preference at all
+
+3. If user describes a specific storyline for the animated video, extract it.
+
+Respond with a JSON object:
+{
+  "isAnimatedMode": boolean,
+  "storyline": "optional string - only if user described a specific storyline for the animation",
+  "reason": "brief explanation of why you made this decision"
+}`;
+
+        try {
+            const response = await this.callOpenAIForDetection(prompt);
+            const parsed = this.parseJSON<ReelModeDetectionResult>(response);
+
+            console.log(`[LLM] Reel mode detection: ${parsed.isAnimatedMode ? 'ANIMATED' : 'IMAGES'} - ${parsed.reason}`);
+
+            return {
+                isAnimatedMode: parsed.isAnimatedMode ?? false,
+                storyline: parsed.storyline,
+                reason: parsed.reason ?? 'Detection completed',
+            };
+        } catch (error) {
+            console.warn('[LLM] Reel mode detection failed, defaulting to image mode:', error);
+            return {
+                isAnimatedMode: false,
+                reason: 'Detection failed, defaulting to image-based reel',
+            };
+        }
     }
 
     /**
@@ -413,6 +475,36 @@ Respond with exactly ${segments.length} adjusted segments in the JSON structure 
         }
 
         throw new Error('LLM call failed after max retries');
+    }
+
+    /**
+     * Calls OpenAI for intent detection with neutral system prompt.
+     * Used for reel mode detection where we don't want the Challenging View voice.
+     */
+    private async callOpenAIForDetection(prompt: string): Promise<string> {
+        const response = await axios.post(
+            `${this.baseUrl}/v1/chat/completions`,
+            {
+                model: this.model,
+                messages: [
+                    {
+                        role: 'system',
+                        content: 'You are an intent detection assistant. Analyze user input and return structured JSON responses. Be precise and factual.'
+                    },
+                    { role: 'user', content: prompt },
+                ],
+                temperature: 0.3, // Lower temperature for more deterministic detection
+                response_format: { type: 'json_object' },
+            },
+            {
+                headers: {
+                    Authorization: `Bearer ${this.apiKey}`,
+                    'Content-Type': 'application/json',
+                },
+            }
+        );
+
+        return response.data.choices[0].message.content;
     }
 
     private parseJSON<T>(response: string): T {

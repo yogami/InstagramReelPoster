@@ -4,6 +4,7 @@ export * from './ITTSClient';
 export * from './IMusicCatalogClient';
 export * from './IMusicGeneratorClient';
 export * from './IImageClient';
+export * from './IAnimatedVideoClient';
 export * from './ISubtitlesClient';
 export * from './IVideoRenderer';
 export * from './INotificationClient';

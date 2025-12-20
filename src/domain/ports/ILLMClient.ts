@@ -64,11 +64,30 @@ export interface PlanningConstraints {
 }
 
 /**
+ * Result from reel mode detection.
+ */
+export interface ReelModeDetectionResult {
+    /** Whether the user wants an animated video instead of static images */
+    isAnimatedMode: boolean;
+    /** Optional storyline if the user specified one */
+    storyline?: string;
+    /** Reason for the detection decision */
+    reason: string;
+}
+
+/**
  * ILLMClient - Port for LLM services.
  * Handles reel planning, commentary generation, and prompt synthesis.
  * Implementations: OpenAILLMClient
  */
 export interface ILLMClient {
+    /**
+     * Detects whether the user wants an animated video reel based on their transcript.
+     * @param transcript The transcribed user voice note
+     * @returns Detection result with isAnimatedMode flag and optional storyline
+     */
+    detectReelMode(transcript: string): Promise<ReelModeDetectionResult>;
+
     /**
      * Plans the structure of a reel based on the transcript.
      * @param transcript The transcribed user voice note

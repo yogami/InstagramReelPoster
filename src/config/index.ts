@@ -41,6 +41,8 @@ export interface Config {
     // Kie.ai
     kieApiKey: string;
     kieApiBaseUrl: string;
+    kieVideoBaseUrl: string;
+    kieVideoModel: string;
 
     // Video Renderer
     videoRenderer: 'shortstack' | 'ffmpeg';
@@ -87,7 +89,7 @@ function getEnvVar(key: string, defaultValue?: string): string {
         if (defaultValue !== undefined) {
             return defaultValue;
         }
-        throw new Error(`Missing required environment variable: ${key}`);
+        throw new Error(`Missing required environment variable: ${key} `);
     }
 
     // Proactive cleanup: trim whitespace and remove wrapping quotes
@@ -105,7 +107,7 @@ function getEnvVarNumber(key: string, defaultValue?: number): number {
     const value = getEnvVar(key, defaultValue?.toString());
     const parsed = parseFloat(value);
     if (isNaN(parsed)) {
-        throw new Error(`Environment variable ${key} must be a number, got: ${value}`);
+        throw new Error(`Environment variable ${key} must be a number, got: ${value} `);
     }
     return parsed;
 }
@@ -116,7 +118,7 @@ function getEnvVarBoolean(key: string, defaultValue?: boolean): boolean {
         if (defaultValue !== undefined) {
             return defaultValue;
         }
-        throw new Error(`Missing required environment variable: ${key}`);
+        throw new Error(`Missing required environment variable: ${key} `);
     }
     return value.toLowerCase() === 'true';
 }
@@ -160,6 +162,8 @@ export function loadConfig(): Config {
         // Kie.ai
         kieApiKey: getEnvVar('KIE_API_KEY', ''),
         kieApiBaseUrl: getEnvVar('KIE_API_BASE_URL', 'https://api.kie.ai/suno'),
+        kieVideoBaseUrl: getEnvVar('KIE_API_VIDEO_BASE_URL', 'https://api.kie.ai/api/v1'),
+        kieVideoModel: getEnvVar('KIE_VIDEO_MODEL', 'KLING_V2_5_TURBO'),
 
         // Video Renderer
         videoRenderer: getEnvVar('VIDEO_RENDERER', 'shortstack') as 'shortstack' | 'ffmpeg',

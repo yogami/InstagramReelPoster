@@ -210,6 +210,8 @@ describe('ReelJob', () => {
                 'generating_subtitles',
                 'building_manifest',
                 'rendering',
+                'detecting_intent',
+                'generating_animated_video',
             ] as const;
 
             for (const status of statuses) {
@@ -224,6 +226,64 @@ describe('ReelJob', () => {
 
                 expect(isJobTerminal(job)).toBe(false);
             }
+        });
+    });
+
+    describe('Animated Video Mode Fields', () => {
+        it('should allow isAnimatedVideoMode flag on ReelJob', () => {
+            const job: ReelJob = {
+                id: 'job-123',
+                status: 'pending',
+                sourceAudioUrl: 'https://example.com/audio.ogg',
+                targetDurationRange: { min: 10, max: 90 },
+                isAnimatedVideoMode: true,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+            };
+
+            expect(job.isAnimatedVideoMode).toBe(true);
+        });
+
+        it('should allow animatedVideoUrl field on ReelJob', () => {
+            const job: ReelJob = {
+                id: 'job-123',
+                status: 'completed',
+                sourceAudioUrl: 'https://example.com/audio.ogg',
+                targetDurationRange: { min: 10, max: 90 },
+                isAnimatedVideoMode: true,
+                animatedVideoUrl: 'https://example.com/animated-video.mp4',
+                createdAt: new Date(),
+                updatedAt: new Date(),
+            };
+
+            expect(job.animatedVideoUrl).toBe('https://example.com/animated-video.mp4');
+        });
+
+        it('should default isAnimatedVideoMode to undefined when not set', () => {
+            const input: ReelJobInput = {
+                sourceAudioUrl: 'https://example.com/audio.ogg',
+            };
+
+            const job = createReelJob('job-123', input, defaultDurationRange);
+
+            expect(job.isAnimatedVideoMode).toBeUndefined();
+        });
+
+        it('should preserve isAnimatedVideoMode when updating job status', () => {
+            const job: ReelJob = {
+                id: 'job-123',
+                status: 'pending',
+                sourceAudioUrl: 'https://example.com/audio.ogg',
+                targetDurationRange: { min: 10, max: 90 },
+                isAnimatedVideoMode: true,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+            };
+
+            const updated = updateJobStatus(job, 'generating_animated_video', 'Creating animated video...');
+
+            expect(updated.isAnimatedVideoMode).toBe(true);
+            expect(updated.status).toBe('generating_animated_video');
         });
     });
 });

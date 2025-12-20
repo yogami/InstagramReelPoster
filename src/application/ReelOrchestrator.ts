@@ -21,6 +21,7 @@ import { IImageClient } from '../domain/ports/IImageClient';
 import { ISubtitlesClient } from '../domain/ports/ISubtitlesClient';
 import { IVideoRenderer } from '../domain/ports/IVideoRenderer';
 import { INotificationClient } from '../domain/ports/INotificationClient';
+import { IAnimatedVideoClient } from '../domain/ports/IAnimatedVideoClient';
 import { MusicSelector, MusicSource } from './MusicSelector';
 import { JobManager } from './JobManager';
 import { CloudinaryStorageClient } from '../infrastructure/storage/CloudinaryStorageClient';
@@ -34,6 +35,7 @@ export interface OrchestratorDependencies {
     fallbackTTSClient?: ITTSClient;
     primaryImageClient?: IImageClient; // OpenRouter (optional)
     fallbackImageClient: IImageClient; // DALL-E (required)
+    animatedVideoClient?: IAnimatedVideoClient;
     subtitlesClient: ISubtitlesClient;
     videoRenderer: IVideoRenderer;
     musicSelector: MusicSelector;
@@ -104,6 +106,24 @@ export class ReelOrchestrator {
                 } catch (err) {
                     console.warn('[PersonalClone] Failed to collect voice sample:', err);
                 }
+            }
+
+            // Step 1.5: Detect reel mode (images vs animated video)
+            // Use local variable to store result throughout this execution
+            let detectionResult: { isAnimatedMode: boolean; storyline?: string } = { isAnimatedMode: false };
+
+            // Only run detection if not already set in job (or if we want to re-run?)
+            // For now, we run if not explicitly set.
+            if (job.isAnimatedVideoMode === undefined) {
+                await this.updateJobStatus(jobId, 'detecting_intent', 'Analyzing request for animation...');
+                detectionResult = await this.deps.llmClient.detectReelMode(transcript);
+                console.log(`[${jobId}] Reel Mode: ${detectionResult.isAnimatedMode ? 'ANIMATED VIDEO' : 'IMAGES'}`);
+
+                await this.deps.jobManager.updateJob(jobId, {
+                    isAnimatedVideoMode: detectionResult.isAnimatedMode
+                });
+            } else {
+                detectionResult = { isAnimatedMode: job.isAnimatedVideoMode };
             }
 
             // Step 2: Plan reel
@@ -207,14 +227,56 @@ export class ReelOrchestrator {
                 this.logMemoryUsage('Step 6: Music');
             }
 
-            // Step 7: Generate images
-            // Check if ANY image is missing
-            const needsImages = segments.some(s => !s.imageUrl);
-            if (needsImages) {
-                await this.updateJobStatus(jobId, 'generating_images', 'Creating visuals...');
-                segments = await this.generateImages(segments, jobId);
-                await this.deps.jobManager.updateJob(jobId, { segments });
-                this.logMemoryUsage('Step 7: Images');
+            // Step 7: Visuals (Images or Animated Video)
+            const isAnimated = currentJob.isAnimatedVideoMode;
+
+            if (isAnimated && this.deps.animatedVideoClient) {
+                // Animated Video Path
+                if (!currentJob.animatedVideoUrl) {
+                    await this.updateJobStatus(jobId, 'generating_animated_video', 'Generating animated video...');
+
+                    const animatedResult = await this.deps.animatedVideoClient.generateAnimatedVideo({
+                        durationSeconds: voiceoverDuration,
+                        theme: plan.summary || plan.mainCaption,
+                        storyline: detectionResult.storyline, // Use local variable from Step 1.5
+                        mood: plan.mood,
+                    });
+
+                    let finalVideoUrl = animatedResult.videoUrl;
+
+                    // ZERO WASTE POLICY: Immediately upload to persistent storage to prevent loss of paid asset
+                    if (this.deps.storageClient) {
+                        try {
+                            console.log(`[${jobId}] Persisting animated video to Cloudinary...`);
+                            const uploadResult = await this.deps.storageClient.uploadVideo(finalVideoUrl, {
+                                folder: 'instagram-reels/animated-generated',
+                                publicId: `anim_${jobId}_${Date.now()}`
+                            });
+                            finalVideoUrl = uploadResult.url;
+                            console.log(`[${jobId}] Persisted to: ${finalVideoUrl}`);
+                        } catch (err) {
+                            console.error(`[${jobId}] Failed to persist video to storage (using original URL):`, err);
+                        }
+                    }
+
+                    await this.deps.jobManager.updateJob(jobId, {
+                        animatedVideoUrl: finalVideoUrl
+                    });
+                    currentJob.animatedVideoUrl = finalVideoUrl; // Update local state for Step 9
+                    console.log(`[${jobId}] Animated video generated: ${finalVideoUrl}`);
+
+                    // Clear segments from manifest requirement effectively by ignoring them later
+                }
+            } else {
+                // Image Path (Existing)
+                // Check if ANY image is missing
+                const needsImages = segments.some(s => !s.imageUrl);
+                if (needsImages) {
+                    await this.updateJobStatus(jobId, 'generating_images', 'Creating visuals...');
+                    segments = await this.generateImages(segments, jobId);
+                    await this.deps.jobManager.updateJob(jobId, { segments });
+                    this.logMemoryUsage('Step 7: Images');
+                }
             }
 
             // Step 8: Generate subtitles
@@ -233,7 +295,8 @@ export class ReelOrchestrator {
                 await this.updateJobStatus(jobId, 'building_manifest', 'Preparing render manifest...');
                 manifest = createReelManifest({
                     durationSeconds: voiceoverDuration,
-                    segments: segments,
+                    segments: currentJob.animatedVideoUrl ? undefined : segments, // Only omit segments if we actually generated a video
+                    animatedVideoUrl: currentJob.animatedVideoUrl,
                     voiceoverUrl,
                     musicUrl: musicUrl,
                     musicDurationSeconds: musicDurationSeconds || voiceoverDuration,
