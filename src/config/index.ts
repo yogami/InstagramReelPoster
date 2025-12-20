@@ -155,7 +155,7 @@ export function loadConfig(): Config {
         // OpenRouter
         openrouterApiKey: getEnvVar('OPENROUTER_API_KEY', ''),
         openrouterBaseUrl: getEnvVar('OPENROUTER_BASE_URL', 'https://openrouter.ai/api/v1'),
-        openrouterModel: getEnvVar('OPENROUTER_MODEL', 'openai/gpt-5-image-1-mini'),
+        openrouterModel: getEnvVar('OPENROUTER_MODEL', 'google/gemini-2.0-flash-exp'),
 
         // Kie.ai
         kieApiKey: getEnvVar('KIE_API_KEY', ''),
