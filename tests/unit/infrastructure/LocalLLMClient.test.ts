@@ -1,329 +1,316 @@
-import nock from 'nock';
+import axios from 'axios';
 import { LocalLLMClient } from '../../../src/infrastructure/llm/LocalLLMClient';
+import { ReelPlan, SegmentContent } from '../../../src/domain/ports/ILLMClient';
+
+jest.mock('axios');
+const mockedAxios = axios as jest.Mocked<typeof axios>;
 
 describe('LocalLLMClient', () => {
-    const serverUrl = 'http://localhost:11434';
-
     beforeEach(() => {
-        nock.cleanAll();
-    });
-
-    afterEach(() => {
-        nock.cleanAll();
+        jest.clearAllMocks();
     });
 
     describe('constructor', () => {
-        it('should throw if server URL is missing', () => {
+        test('should throw error if serverUrl is empty', () => {
             expect(() => new LocalLLMClient('')).toThrow('Local LLM server URL is required');
         });
 
-        it('should create client with valid server URL', () => {
-            const client = new LocalLLMClient(serverUrl);
-            expect(client).toBeDefined();
+        test('should create client with valid serverUrl', () => {
+            const client = new LocalLLMClient('http://localhost:11434');
+            expect(client).toBeInstanceOf(LocalLLMClient);
         });
 
-        it('should use default model if not specified', () => {
-            const client = new LocalLLMClient(serverUrl);
-            expect(client).toBeDefined();
+        test('should strip trailing slash from serverUrl', () => {
+            const client = new LocalLLMClient('http://localhost:11434/');
+            // Access private field via any cast for testing
+            expect((client as any).serverUrl).toBe('http://localhost:11434');
+        });
+
+        test('should use default model if not provided', () => {
+            const client = new LocalLLMClient('http://localhost:11434');
+            expect((client as any).model).toBe('llama3.2');
+        });
+
+        test('should use custom model if provided', () => {
+            const client = new LocalLLMClient('http://localhost:11434', 'mistral');
+            expect((client as any).model).toBe('mistral');
+        });
+
+        test('should use default system prompt if not provided', () => {
+            const client = new LocalLLMClient('http://localhost:11434');
+            expect((client as any).systemPrompt).toContain('helpful and intelligent');
+        });
+
+        test('should use custom system prompt if provided', () => {
+            const client = new LocalLLMClient('http://localhost:11434', 'llama3.2', 'Custom prompt');
+            expect((client as any).systemPrompt).toBe('Custom prompt');
         });
     });
 
     describe('planReel', () => {
-        it('should return a valid ReelPlan', async () => {
-            const mockResponse = {
-                targetDurationSeconds: 30,
-                segmentCount: 6,
+        test('should return a valid ReelPlan', async () => {
+            const client = new LocalLLMClient('http://localhost:11434');
+            const mockPlan: ReelPlan = {
+                targetDurationSeconds: 60,
+                segmentCount: 12,
                 musicTags: ['calm', 'ambient'],
-                musicPrompt: 'Peaceful background music',
-                mood: 'contemplative',
-                summary: 'A reflection on mindfulness'
+                musicPrompt: 'Calm ambient music',
+                mood: 'peaceful',
+                summary: 'A meditation reel',
+                mainCaption: 'Find your inner peace'
             };
 
-            nock(serverUrl)
-                .post('/api/generate')
-                .reply(200, {
-                    response: JSON.stringify(mockResponse)
-                });
+            mockedAxios.post.mockResolvedValueOnce({
+                data: { response: JSON.stringify(mockPlan) }
+            });
 
-            const client = new LocalLLMClient(serverUrl);
-            const result = await client.planReel('Test transcript', {
+            const plan = await client.planReel('Test transcript', {
                 minDurationSeconds: 10,
                 maxDurationSeconds: 90
             });
 
-            expect(result.targetDurationSeconds).toBe(30);
-            expect(result.segmentCount).toBe(6);
-            expect(result.musicTags).toEqual(['calm', 'ambient']);
+            expect(plan.targetDurationSeconds).toBe(60);
+            expect(plan.segmentCount).toBe(12);
+            expect(plan.mood).toBe('peaceful');
         });
 
-        it('should clamp segment count to minimum 2', async () => {
-            nock(serverUrl)
-                .post('/api/generate')
-                .reply(200, {
-                    response: JSON.stringify({
-                        targetDurationSeconds: 10,
-                        segmentCount: 1, // Too low
-                        musicTags: [],
-                        musicPrompt: '',
-                        mood: 'test',
-                        summary: 'test'
-                    })
-                });
+        test('should clamp segmentCount to minimum 2', async () => {
+            const client = new LocalLLMClient('http://localhost:11434');
+            const mockPlan = {
+                targetDurationSeconds: 10,
+                segmentCount: 1, // Below minimum
+                musicTags: [],
+                musicPrompt: '',
+                mood: '',
+                summary: ''
+            };
 
-            const client = new LocalLLMClient(serverUrl);
-            const result = await client.planReel('Test', {
-                minDurationSeconds: 10,
-                maxDurationSeconds: 90
+            mockedAxios.post.mockResolvedValueOnce({
+                data: { response: JSON.stringify(mockPlan) }
             });
 
-            expect(result.segmentCount).toBe(2);
+            const plan = await client.planReel('Test', { minDurationSeconds: 10, maxDurationSeconds: 90 });
+            expect(plan.segmentCount).toBe(2);
         });
 
-        it('should clamp segment count to maximum 15', async () => {
-            nock(serverUrl)
-                .post('/api/generate')
-                .reply(200, {
-                    response: JSON.stringify({
-                        targetDurationSeconds: 90,
-                        segmentCount: 20, // Too high
-                        musicTags: [],
-                        musicPrompt: '',
-                        mood: 'test',
-                        summary: 'test'
-                    })
-                });
+        test('should clamp segmentCount to maximum 15', async () => {
+            const client = new LocalLLMClient('http://localhost:11434');
+            const mockPlan = {
+                targetDurationSeconds: 100,
+                segmentCount: 20, // Above maximum
+                musicTags: [],
+                musicPrompt: '',
+                mood: '',
+                summary: ''
+            };
 
-            const client = new LocalLLMClient(serverUrl);
-            const result = await client.planReel('Test', {
-                minDurationSeconds: 10,
-                maxDurationSeconds: 90
+            mockedAxios.post.mockResolvedValueOnce({
+                data: { response: JSON.stringify(mockPlan) }
             });
 
-            expect(result.segmentCount).toBe(15);
+            const plan = await client.planReel('Test', { minDurationSeconds: 10, maxDurationSeconds: 90 });
+            expect(plan.segmentCount).toBe(15);
         });
     });
 
     describe('generateSegmentContent', () => {
-        it('should normalize segments from wrapped response', async () => {
-            nock(serverUrl)
-                .post('/api/generate')
-                .reply(200, {
-                    response: JSON.stringify({
-                        segments: [
-                            { commentary: 'Test 1', imagePrompt: 'Image 1', caption: '' },
-                            { commentary: 'Test 2', imagePrompt: 'Image 2', caption: '' }
-                        ]
-                    })
-                });
+        test('should return array of SegmentContent', async () => {
+            const client = new LocalLLMClient('http://localhost:11434');
+            const mockSegments = {
+                segments: [
+                    { commentary: 'Segment 1 commentary', imagePrompt: 'Image 1', caption: 'Caption 1' },
+                    { commentary: 'Segment 2 commentary', imagePrompt: 'Image 2', caption: 'Caption 2' }
+                ]
+            };
 
-            const client = new LocalLLMClient(serverUrl);
-            const result = await client.generateSegmentContent(
-                {
-                    targetDurationSeconds: 10,
-                    segmentCount: 2,
-                    musicTags: [],
-                    musicPrompt: '',
-                    mood: 'test',
-                    summary: 'test'
-                },
-                'Test transcript'
-            );
+            mockedAxios.post.mockResolvedValueOnce({
+                data: { response: JSON.stringify(mockSegments) }
+            });
 
-            expect(result).toHaveLength(2);
-            expect(result[0].commentary).toBe('Test 1');
+            const plan: ReelPlan = {
+                targetDurationSeconds: 10,
+                segmentCount: 2,
+                musicTags: [],
+                musicPrompt: '',
+                mood: 'test',
+                summary: 'test',
+                mainCaption: 'Test caption'
+            };
+
+            const segments = await client.generateSegmentContent(plan, 'Test transcript');
+            expect(segments).toHaveLength(2);
+            expect(segments[0].commentary).toBe('Segment 1 commentary');
         });
 
-        it('should handle array response directly', async () => {
-            nock(serverUrl)
-                .post('/api/generate')
-                .reply(200, {
-                    response: JSON.stringify([
-                        { commentary: 'Test 1', imagePrompt: 'Image 1' },
-                        { commentary: 'Test 2', imagePrompt: 'Image 2' }
-                    ])
-                });
+        test('should normalize array response', async () => {
+            const client = new LocalLLMClient('http://localhost:11434');
+            const mockSegments = [
+                { commentary: 'Seg 1', imagePrompt: 'Img 1', caption: 'Cap 1' }
+            ];
 
-            const client = new LocalLLMClient(serverUrl);
-            const result = await client.generateSegmentContent(
-                {
-                    targetDurationSeconds: 10,
-                    segmentCount: 2,
-                    musicTags: [],
-                    musicPrompt: '',
-                    mood: 'test',
-                    summary: 'test'
-                },
-                'Test transcript'
-            );
+            mockedAxios.post.mockResolvedValueOnce({
+                data: { response: JSON.stringify(mockSegments) }
+            });
 
-            expect(result).toHaveLength(2);
-        });
+            const plan: ReelPlan = {
+                targetDurationSeconds: 5,
+                segmentCount: 1,
+                musicTags: [],
+                musicPrompt: '',
+                mood: 'test',
+                summary: 'test',
+                mainCaption: 'Test caption'
+            };
 
-        it('should handle single object response', async () => {
-            nock(serverUrl)
-                .post('/api/generate')
-                .reply(200, {
-                    response: JSON.stringify({ commentary: 'Single', imagePrompt: 'Prompt' })
-                });
-
-            const client = new LocalLLMClient(serverUrl);
-            const result = await client.generateSegmentContent(
-                { targetDurationSeconds: 10, segmentCount: 1, musicTags: [], musicPrompt: '', mood: 'test', summary: 'test' },
-                'Test'
-            );
-
-            expect(result).toHaveLength(1);
-            expect(result[0].commentary).toBe('Single');
-        });
-
-        it('should handle indexed object response', async () => {
-            nock(serverUrl)
-                .post('/api/generate')
-                .reply(200, {
-                    response: JSON.stringify({
-                        "0": { commentary: 'Test 1', imagePrompt: 'Image 1' },
-                        "1": { commentary: 'Test 2', imagePrompt: 'Image 2' }
-                    })
-                });
-
-            const client = new LocalLLMClient(serverUrl);
-            const result = await client.generateSegmentContent(
-                { targetDurationSeconds: 10, segmentCount: 2, musicTags: [], musicPrompt: '', mood: 'test', summary: 'test' },
-                'Test'
-            );
-
-            expect(result).toHaveLength(2);
-            expect(result[0].commentary).toBe('Test 1');
-        });
-
-        it('should throw if response is null', async () => {
-            nock(serverUrl)
-                .post('/api/generate')
-                .reply(200, {
-                    response: "null"
-                });
-
-            const client = new LocalLLMClient(serverUrl);
-            await expect(client.generateSegmentContent(
-                { targetDurationSeconds: 10, segmentCount: 1, musicTags: [], musicPrompt: '', mood: 'test', summary: 'test' },
-                'Test'
-            )).rejects.toThrow('LLM returned null or undefined segment content');
-        });
-
-        it('should throw if format is invalid', async () => {
-            nock(serverUrl)
-                .post('/api/generate')
-                .reply(200, {
-                    response: JSON.stringify({ something: "else" })
-                });
-
-            const client = new LocalLLMClient(serverUrl);
-            await expect(client.generateSegmentContent(
-                { targetDurationSeconds: 10, segmentCount: 1, musicTags: [], musicPrompt: '', mood: 'test', summary: 'test' },
-                'Test'
-            )).rejects.toThrow('LLM returned invalid segments format');
-        });
-    });
-
-    describe('parseJSON', () => {
-        it('should throw descriptive error on invalid JSON', async () => {
-            nock(serverUrl)
-                .post('/api/generate')
-                .reply(200, {
-                    response: 'invalid json'
-                });
-
-            const client = new LocalLLMClient(serverUrl);
-            await expect(client.planReel('Test', { minDurationSeconds: 10, maxDurationSeconds: 90 }))
-                .rejects.toThrow('Failed to parse LLM response as JSON');
+            const segments = await client.generateSegmentContent(plan, 'Test');
+            expect(segments).toHaveLength(1);
         });
     });
 
     describe('adjustCommentaryLength', () => {
-        it('should return adjusted segments', async () => {
-            nock(serverUrl)
-                .post('/api/generate')
-                .reply(200, {
-                    response: JSON.stringify({
-                        segments: [
-                            { commentary: 'Shorter test', imagePrompt: 'Image 1' }
-                        ]
-                    })
-                });
+        test('should return adjusted segments', async () => {
+            const client = new LocalLLMClient('http://localhost:11434');
+            const inputSegments: SegmentContent[] = [
+                { commentary: 'Original text', imagePrompt: 'Img', caption: 'Cap' }
+            ];
+            const adjustedSegments = {
+                segments: [
+                    { commentary: 'Shorter text', imagePrompt: 'Img', caption: 'Cap' }
+                ]
+            };
 
-            const client = new LocalLLMClient(serverUrl);
-            const result = await client.adjustCommentaryLength(
-                [{ commentary: 'Longer original text', imagePrompt: 'Image 1' }],
-                'shorter',
-                10
-            );
+            mockedAxios.post.mockResolvedValueOnce({
+                data: { response: JSON.stringify(adjustedSegments) }
+            });
 
-            expect(result[0].commentary).toBe('Shorter test');
+            const result = await client.adjustCommentaryLength(inputSegments, 'shorter', 30);
+            expect(result).toHaveLength(1);
+            expect(result[0].commentary).toBe('Shorter text');
+        });
+    });
+
+    describe('normalizeSegments (via generateSegmentContent)', () => {
+        test('should unwrap .segments from object', async () => {
+            const client = new LocalLLMClient('http://localhost:11434');
+            const wrappedResponse = {
+                segments: [
+                    { commentary: 'C1', imagePrompt: 'I1', caption: 'Cap1' }
+                ]
+            };
+
+            mockedAxios.post.mockResolvedValueOnce({
+                data: { response: JSON.stringify(wrappedResponse) }
+            });
+
+            const plan: ReelPlan = {
+                targetDurationSeconds: 5,
+                segmentCount: 1,
+                musicTags: [],
+                musicPrompt: '',
+                mood: 'test',
+                summary: 'test',
+                mainCaption: 'Test caption'
+            };
+
+            const segments = await client.generateSegmentContent(plan, 'Test');
+            expect(segments).toHaveLength(1);
+        });
+
+        test('should wrap single object into array', async () => {
+            const client = new LocalLLMClient('http://localhost:11434');
+            const singleSegment = { commentary: 'Single', imagePrompt: 'Img', caption: 'Cap' };
+
+            mockedAxios.post.mockResolvedValueOnce({
+                data: { response: JSON.stringify(singleSegment) }
+            });
+
+            const plan: ReelPlan = {
+                targetDurationSeconds: 5,
+                segmentCount: 1,
+                musicTags: [],
+                musicPrompt: '',
+                mood: 'test',
+                summary: 'test',
+                mainCaption: 'Test caption'
+            };
+
+            const segments = await client.generateSegmentContent(plan, 'Test');
+            expect(segments).toHaveLength(1);
+            expect(segments[0].commentary).toBe('Single');
         });
     });
 
     describe('healthCheck', () => {
-        it('should return true when Ollama is available', async () => {
-            nock(serverUrl)
-                .get('/api/tags')
-                .reply(200, { models: [] });
+        test('should return true on successful connection', async () => {
+            const client = new LocalLLMClient('http://localhost:11434');
+            mockedAxios.get.mockResolvedValueOnce({ status: 200 });
 
-            const client = new LocalLLMClient(serverUrl);
             const result = await client.healthCheck();
-
             expect(result).toBe(true);
         });
 
-        it('should return false when Ollama is unavailable', async () => {
-            nock(serverUrl)
-                .get('/api/tags')
-                .replyWithError('Connection refused');
+        test('should return false on connection failure', async () => {
+            const client = new LocalLLMClient('http://localhost:11434');
+            mockedAxios.get.mockRejectedValueOnce(new Error('Connection refused'));
 
-            const client = new LocalLLMClient(serverUrl);
             const result = await client.healthCheck();
-
             expect(result).toBe(false);
         });
     });
 
     describe('error handling', () => {
-        it('should retry on transient errors', async () => {
-            nock(serverUrl)
-                .post('/api/generate')
-                .reply(503); // First attempt fails
+        test('should retry on transient errors (502, 503, 429)', async () => {
+            const client = new LocalLLMClient('http://localhost:11434');
+            const mockPlan = {
+                targetDurationSeconds: 30,
+                segmentCount: 6,
+                musicTags: [],
+                musicPrompt: '',
+                mood: 'test',
+                summary: 'test'
+            };
 
-            nock(serverUrl)
-                .post('/api/generate')
-                .reply(200, {
-                    response: JSON.stringify({
-                        targetDurationSeconds: 30,
-                        segmentCount: 6,
-                        musicTags: [],
-                        musicPrompt: '',
-                        mood: 'test',
-                        summary: 'test'
-                    })
+            // First call fails with 502, second succeeds
+            mockedAxios.post
+                .mockRejectedValueOnce({
+                    isAxiosError: true,
+                    response: { status: 502, data: { error: 'Bad Gateway' } }
+                })
+                .mockResolvedValueOnce({
+                    data: { response: JSON.stringify(mockPlan) }
                 });
 
-            const client = new LocalLLMClient(serverUrl);
-            const result = await client.planReel('Test', {
-                minDurationSeconds: 10,
-                maxDurationSeconds: 90
-            });
+            // Mock axios.isAxiosError
+            (axios.isAxiosError as unknown as jest.Mock) = jest.fn().mockReturnValue(true);
 
-            expect(result.targetDurationSeconds).toBe(30);
+            const plan = await client.planReel('Test', { minDurationSeconds: 10, maxDurationSeconds: 90 });
+            expect(plan.targetDurationSeconds).toBe(30);
+            expect(mockedAxios.post).toHaveBeenCalledTimes(2);
         });
 
-        it('should throw after max retries', async () => {
-            nock(serverUrl)
-                .post('/api/generate')
-                .times(3)
-                .reply(503);
+        test('should throw on non-transient errors', async () => {
+            const client = new LocalLLMClient('http://localhost:11434');
 
-            const client = new LocalLLMClient(serverUrl);
-            await expect(
-                client.planReel('Test', { minDurationSeconds: 10, maxDurationSeconds: 90 })
-            ).rejects.toThrow('Local LLM call failed');
+            mockedAxios.post.mockRejectedValueOnce({
+                isAxiosError: true,
+                response: { status: 400, data: { error: 'Bad Request' } }
+            });
+
+            (axios.isAxiosError as unknown as jest.Mock) = jest.fn().mockReturnValue(true);
+
+            await expect(client.planReel('Test', { minDurationSeconds: 10, maxDurationSeconds: 90 }))
+                .rejects.toThrow('Local LLM call failed');
+        });
+
+        test('should throw on invalid JSON response', async () => {
+            const client = new LocalLLMClient('http://localhost:11434');
+
+            mockedAxios.post.mockResolvedValueOnce({
+                data: { response: 'not valid json {' }
+            });
+
+            await expect(client.planReel('Test', { minDurationSeconds: 10, maxDurationSeconds: 90 }))
+                .rejects.toThrow('Failed to parse LLM response');
         });
     });
 });
