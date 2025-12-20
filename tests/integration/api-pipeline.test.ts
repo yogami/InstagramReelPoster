@@ -56,7 +56,7 @@ describe('Integration: LLM Segment Count Invariants', () => {
 
         const client = new OpenAILLMClient('test-key');
         const result = await client.generateSegmentContent(
-            { targetDurationSeconds: 15, segmentCount, mood: 'calm', summary: 'test', musicTags: [], musicPrompt: '' },
+            { targetDurationSeconds: 15, segmentCount, mood: 'calm', summary: 'test', musicTags: [], musicPrompt: '', mainCaption: 'Test caption' },
             'Test transcript'
         );
 
@@ -81,7 +81,7 @@ describe('Integration: LLM Segment Count Invariants', () => {
 
         const client = new OpenAILLMClient('test-key');
         const result = await client.generateSegmentContent(
-            { targetDurationSeconds: 10, segmentCount: 2, mood: 'calm', summary: 'test', musicTags: [], musicPrompt: '' },
+            { targetDurationSeconds: 10, segmentCount: 2, mood: 'calm', summary: 'test', musicTags: [], musicPrompt: '', mainCaption: 'Test caption' },
             'Test transcript'
         );
 
@@ -107,7 +107,7 @@ describe('Integration: LLM Segment Count Invariants', () => {
 
         const client = new OpenAILLMClient('test-key');
         const result = await client.generateSegmentContent(
-            { targetDurationSeconds: 5, segmentCount: 1, mood: 'calm', summary: 'meditation', musicTags: [], musicPrompt: '' },
+            { targetDurationSeconds: 5, segmentCount: 1, mood: 'calm', summary: 'meditation', musicTags: [], musicPrompt: '', mainCaption: 'Test caption' },
             'Meditation scene'
         );
 
@@ -211,7 +211,8 @@ describe('Integration: Music Fallback Behavior', () => {
         const selector = new MusicSelector(mockCatalog, null, null);
         const result = await selector.selectMusic(['ambient'], 30, 'calm music');
 
-        expect(result.source).toBe('internal');
+        expect(result).not.toBeNull();
+        expect(result!.source).toBe('internal');
         expect(mockCatalog.searchTracks).toHaveBeenCalled();
     });
 
@@ -229,7 +230,8 @@ describe('Integration: Music Fallback Behavior', () => {
         const selector = new MusicSelector(emptyCatalog, null, mockGenerator);
         const result = await selector.selectMusic(['ambient'], 30, 'calm music');
 
-        expect(result.source).toBe('ai');
+        expect(result).not.toBeNull();
+        expect(result!.source).toBe('ai');
         expect(mockGenerator.generateMusic).toHaveBeenCalled();
     });
 
@@ -253,8 +255,9 @@ describe('Integration: Music Fallback Behavior', () => {
         const selector = new MusicSelector(internalCatalog, externalCatalog, null);
         const result = await selector.selectMusic(['ambient'], 30, 'calm music');
 
-        expect(result.source).toBe('catalog'); // external = 'catalog'
-        expect(result.track.id).toBe('external');
+        expect(result).not.toBeNull();
+        expect(result!.source).toBe('catalog'); // external = 'catalog'
+        expect(result!.track.id).toBe('external');
     });
 });
 

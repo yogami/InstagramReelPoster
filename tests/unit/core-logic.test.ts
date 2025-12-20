@@ -93,8 +93,9 @@ describe('MusicSelector', () => {
 
             const result = await selector.selectMusic(['ambient'], 30, 'calm music');
 
-            expect(result.source).toBe('internal');
-            expect(result.track).toEqual(mockTrack);
+            expect(result).not.toBeNull();
+            expect(result!.source).toBe('internal');
+            expect(result!.track).toEqual(mockTrack);
         });
 
         it('should prefer external catalog over internal when both have matches', async () => {
@@ -105,8 +106,9 @@ describe('MusicSelector', () => {
 
             const result = await selector.selectMusic(['ambient'], 30, 'calm music');
 
-            expect(result.source).toBe('catalog');
-            expect(result.track.id).toBe('external-1');
+            expect(result).not.toBeNull();
+            expect(result!.source).toBe('catalog');
+            expect(result!.track.id).toBe('external-1');
         });
     });
 
@@ -118,7 +120,8 @@ describe('MusicSelector', () => {
 
             const result = await selector.selectMusic(['ambient'], 30, 'calm music');
 
-            expect(result.source).toBe('internal');
+            expect(result).not.toBeNull();
+            expect(result!.source).toBe('internal');
         });
 
         it('should fall back to AI generator when both catalogs have no matches', async () => {
@@ -129,8 +132,9 @@ describe('MusicSelector', () => {
 
             const result = await selector.selectMusic(['ambient'], 30, 'calm music');
 
-            expect(result.source).toBe('ai');
-            expect(result.track.id).toBe('ai-generated');
+            expect(result).not.toBeNull();
+            expect(result!.source).toBe('ai');
+            expect(result!.track.id).toBe('ai-generated');
         });
 
         it('should return backup track when all sources fail or empty and no generator', async () => {
@@ -138,8 +142,9 @@ describe('MusicSelector', () => {
             const selector = new MusicSelector(emptyCatalog, null, null);
 
             const result = await selector.selectMusic(['ambient'], 30, 'calm music');
-            expect(result.track.id).toBe('backup-safety-track');
-            expect(result.source).toBe('internal');
+            expect(result).not.toBeNull();
+            expect(result!.track.id).toBe('backup-safety-track');
+            expect(result!.source).toBe('internal');
         });
 
         it('should return backup track when all sources including generator fail', async () => {
@@ -148,8 +153,9 @@ describe('MusicSelector', () => {
             const selector = new MusicSelector(emptyCatalog, null, failingGenerator);
 
             const result = await selector.selectMusic(['ambient'], 30, 'calm music');
-            expect(result.track.id).toBe('backup-safety-track');
-            expect(result.source).toBe('internal');
+            expect(result).not.toBeNull();
+            expect(result!.track.id).toBe('backup-safety-track');
+            expect(result!.source).toBe('internal');
         });
     });
 });
