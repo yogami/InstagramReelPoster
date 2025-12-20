@@ -30,8 +30,15 @@ describe('KieVideoClient', () => {
 
             // Mock polling status - pending then success
             mockedAxios.get
-                .mockResolvedValueOnce({ data: { status: 'processing' } })
-                .mockResolvedValueOnce({ data: { status: 'completed', video_url: mockVideoUrl } });
+                .mockResolvedValueOnce({ data: { data: { state: 'processing' } } })
+                .mockResolvedValueOnce({
+                    data: {
+                        data: {
+                            state: 'success',
+                            resultJson: JSON.stringify({ resultUrls: [mockVideoUrl] })
+                        }
+                    }
+                });
 
             const result = await client.generateAnimatedVideo(options);
 
@@ -68,7 +75,7 @@ describe('KieVideoClient', () => {
 
         it('should throw error if production fails', async () => {
             mockedAxios.post.mockResolvedValueOnce({ data: { data: { taskId: 'job-err' } } });
-            mockedAxios.get.mockResolvedValueOnce({ data: { status: 'failed', error: 'Content policy violation' } });
+            mockedAxios.get.mockResolvedValueOnce({ data: { data: { state: 'failed', error: 'Content policy violation' } } });
 
             await expect(client.generateAnimatedVideo({
                 theme: 'Test',
@@ -78,7 +85,7 @@ describe('KieVideoClient', () => {
 
         it('should timeout if max attempts reached', async () => {
             mockedAxios.post.mockResolvedValueOnce({ data: { data: { taskId: 'job-timeout' } } });
-            mockedAxios.get.mockResolvedValue({ data: { status: 'processing' } });
+            mockedAxios.get.mockResolvedValue({ data: { data: { state: 'processing' } } });
 
             await expect(client.generateAnimatedVideo({
                 theme: 'Test',

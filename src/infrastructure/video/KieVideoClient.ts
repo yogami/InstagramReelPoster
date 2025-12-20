@@ -109,10 +109,25 @@ export class KieVideoClient implements IAnimatedVideoClient {
                 });
 
                 const data = response.data;
-                const status = (data.status || '').toLowerCase();
+                // Kie.ai unified API nesting: { code: 200, data: { state: 'success', resultJson: '...', ... } }
+                const resultData = data.data || data;
+                const state = (resultData.state || resultData.status || '').toLowerCase();
 
-                if (status === 'completed' || status === 'success' || status === 'succeeded') {
-                    const videoUrl = data.video_url || data.videoUrl || (data.result && data.result.videoUrl);
+                if (state === 'completed' || state === 'success' || state === 'succeeded') {
+                    // Result URL is often in resultJson (stringified)
+                    let videoUrl = resultData.video_url || resultData.videoUrl;
+
+                    if (!videoUrl && resultData.resultJson) {
+                        try {
+                            const result = JSON.parse(resultData.resultJson);
+                            if (result.resultUrls && result.resultUrls.length > 0) {
+                                videoUrl = result.resultUrls[0];
+                            }
+                        } catch (e) {
+                            console.warn('[Kie.ai] Failed to parse resultJson:', e);
+                        }
+                    }
+
                     if (!videoUrl) {
                         throw new Error('Kie.ai task completed but no video URL found in response');
                     }
@@ -120,14 +135,15 @@ export class KieVideoClient implements IAnimatedVideoClient {
                     return videoUrl;
                 }
 
-                if (status === 'failed' || status === 'error') {
-                    const errorMsg = data.error || data.message || 'Unknown provider error';
+                if (state === 'failed' || state === 'error' || state === 'fail') {
+                    const errorMsg = resultData.failMsg || resultData.error || resultData.message || 'Unknown provider error';
                     throw new Error(`Kie.ai video generation failed: ${errorMsg}`);
                 }
 
-                // Still processing
+                // Still processing (may be 'processing', 'pending', etc.)
+                const currentStatus = state || 'queued';
                 if (attempt % 3 === 0) {
-                    console.log(`[Kie.ai] Task ${jobId} status: ${status} (Attempt ${attempt}/${this.maxPollAttempts})...`);
+                    console.log(`[Kie.ai] Task ${jobId} status: ${currentStatus} (Attempt ${attempt}/${this.maxPollAttempts})...`);
                 }
 
                 await this.sleep(this.pollIntervalMs);
