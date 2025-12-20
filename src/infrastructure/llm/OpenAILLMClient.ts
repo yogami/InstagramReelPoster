@@ -66,7 +66,8 @@ ${transcript}
 Constraints:
 - Duration must be between ${constraints.minDurationSeconds} and ${constraints.maxDurationSeconds} seconds
 - Target ~5 seconds per segment.
-- If the transcript explicitly requests a duration (e.g. "1 minute"), HONOR IT.
+- PRIORITY RULE: If the transcript requests a specific duration (e.g. "1 minute", "60 seconds"), you MUST stretch the content to meet that duration.
+- Plan enough segments to fill the requested time (e.g. 60s = ~12 segments).
 - If no duration is requested, choose a duration fitting the content depth.
 
 Respond with a JSON object containing:
