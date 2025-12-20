@@ -133,13 +133,16 @@ export class KieVideoClient implements IAnimatedVideoClient {
                 await this.sleep(this.pollIntervalMs);
             } catch (error) {
                 // If 404, assume it's still propagating on their end for a few attempts
-                if (axios.isAxiosError(error) && error.response?.status === 404 && attempt < 5) {
+                if (axios.isAxiosError(error) && error.response?.status === 404 && attempt < 10) {
                     await this.sleep(this.pollIntervalMs);
                     continue;
                 }
 
                 if (axios.isAxiosError(error)) {
-                    console.warn(`[Kie.ai] Polling warning (Task ${jobId}): ${error.message}`);
+                    // Don't warn on 404s at all unless we've exceeded the grace period above
+                    if (error.response?.status !== 404) {
+                        console.warn(`[Kie.ai] Polling warning (Task ${jobId}): ${error.message}`);
+                    }
                     // Don't throw immediately on network errors during polling unless max attempts reached
                     await this.sleep(this.pollIntervalMs);
                     continue;
