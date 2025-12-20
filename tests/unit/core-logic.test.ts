@@ -137,25 +137,23 @@ describe('MusicSelector', () => {
             expect(result!.track.id).toBe('ai-generated');
         });
 
-        it('should return backup track when all sources fail or empty and no generator', async () => {
+        it('should return null when all sources fail or empty and no generator (music is optional)', async () => {
             const emptyCatalog = createMockCatalog([]);
             const selector = new MusicSelector(emptyCatalog, null, null);
 
             const result = await selector.selectMusic(['ambient'], 30, 'calm music');
-            expect(result).not.toBeNull();
-            expect(result!.track.id).toBe('backup-safety-track');
-            expect(result!.source).toBe('internal');
+            // Music is optional, so null is returned when unavailable
+            expect(result).toBeNull();
         });
 
-        it('should return backup track when all sources including generator fail', async () => {
+        it('should return null when all sources including generator fail (music is optional)', async () => {
             const emptyCatalog = createMockCatalog([]);
             const failingGenerator = createFailingGenerator();
             const selector = new MusicSelector(emptyCatalog, null, failingGenerator);
 
             const result = await selector.selectMusic(['ambient'], 30, 'calm music');
-            expect(result).not.toBeNull();
-            expect(result!.track.id).toBe('backup-safety-track');
-            expect(result!.source).toBe('internal');
+            // Music is optional, so null is returned when all sources fail
+            expect(result).toBeNull();
         });
     });
 });

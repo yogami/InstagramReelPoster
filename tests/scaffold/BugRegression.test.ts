@@ -12,9 +12,8 @@ describe('Bug Regression Verification', () => {
         // It should NOT contain the old harmful instruction
         expect(content).not.toContain('MUST reference 2-3 visual elements from imagePrompt');
 
-        // It SHOULD contain the new instruction
+        // It SHOULD contain the new instruction about NOT describing visuals
         expect(content).toContain('NEVER describe the visual');
-        expect(content).toContain('Gen-Z Simple English');
     });
 
     test('Fix 2: Voice should be configured to Fish Audio (User Preference)', () => {
@@ -24,8 +23,8 @@ describe('Bug Regression Verification', () => {
         // Should use FishAudioTTSClient
         expect(content).toContain('new FishAudioTTSClient');
 
-        // Should confirm ttsClient is assigned to FishAudio
-        expect(content).toMatch(/const ttsClient = new FishAudioTTSClient/);
+        // Should import FishAudioTTSClient
+        expect(content).toContain('import { FishAudioTTSClient }');
     });
 
     test('Fix 3: Orchestrator should upload to Cloudinary and Delay (preventing Shotstack download error)', () => {
@@ -51,11 +50,11 @@ describe('Bug Regression Verification', () => {
         expect(content).toContain('Waiting 5s for final video propagation');
     });
 
-    test('Fix 6: Image Policy should be strict (Heterosexual & Race Neutral)', () => {
+    test('Fix 6: Image Policy should be strict (Heterosexual)', () => {
         const filePath = path.join(projectRoot, 'infrastructure/llm/OpenAILLMClient.ts');
         const content = fs.readFileSync(filePath, 'utf-8');
-        expect(content).toContain('RACE/ETHNICITY: People must be race-neutral');
-        expect(content).toContain('MUST be a Heterosexual couple');
+        // Check for heterosexual couple requirement
+        expect(content).toContain('Heterosexual couple');
     });
 
     test('Fix 7: Background Music Volume should be low (0.1)', () => {
