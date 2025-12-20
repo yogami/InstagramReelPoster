@@ -20,7 +20,7 @@ export class KieVideoClient implements IAnimatedVideoClient {
         baseUrl: string = 'https://api.kie.ai/api/v1',
         defaultModel: string = 'KLING_V2_5_TURBO',
         pollIntervalMs: number = 10000, // Video takes longer than music
-        maxPollAttempts: number = 40 // ~400 seconds max
+        maxPollAttempts: number = 60 // ~600 seconds (10 mins) max
     ) {
         if (!apiKey) {
             throw new Error('Kie.ai API key is required');
@@ -133,17 +133,21 @@ export class KieVideoClient implements IAnimatedVideoClient {
                 await this.sleep(this.pollIntervalMs);
             } catch (error) {
                 // If 404, assume it's still propagating on their end for a few attempts
-                if (axios.isAxiosError(error) && error.response?.status === 404 && attempt < 10) {
+                if (axios.isAxiosError(error) && error.response?.status === 404 && attempt < 15) {
+                    if (attempt % 5 === 0) {
+                        console.log(`[Kie.ai] Task ${jobId} is still initializing on server (Attempt ${attempt}/${this.maxPollAttempts})...`);
+                    }
                     await this.sleep(this.pollIntervalMs);
                     continue;
                 }
 
                 if (axios.isAxiosError(error)) {
-                    // Don't warn on 404s at all unless we've exceeded the grace period above
-                    if (error.response?.status !== 404) {
+                    // Don't warn on 404s unless we've exceeded the grace period
+                    if (error.response?.status === 404) {
+                        console.log(`[Kie.ai] Status check returned 404. Waiting for task to propagate...`);
+                    } else {
                         console.warn(`[Kie.ai] Polling warning (Task ${jobId}): ${error.message}`);
                     }
-                    // Don't throw immediately on network errors during polling unless max attempts reached
                     await this.sleep(this.pollIntervalMs);
                     continue;
                 }
