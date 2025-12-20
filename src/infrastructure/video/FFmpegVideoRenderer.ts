@@ -176,7 +176,7 @@ export class FFmpegVideoRenderer implements IVideoRenderer {
                 cmd.inputOptions([`-loop 1`, `-t ${duration}`]);
 
                 complexFilter.push(
-                    `${inputTag}scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,setsar=1,format=yuv420p${outputTag}`
+                    `${inputTag}scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1,format=yuv420p${outputTag}`
                 );
                 imageInputs.push(outputTag);
 

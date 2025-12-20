@@ -21,6 +21,8 @@ import { TelegramNotificationClient } from '../infrastructure/notifications/Tele
 import { IVideoRenderer } from '../domain/ports/IVideoRenderer';
 
 import { OpenAITTSClient } from '../infrastructure/tts/OpenAITTSClient';
+import { XTTSTTSClient } from '../infrastructure/tts/XTTSTTSClient';
+import { LocalLLMClient } from '../infrastructure/llm/LocalLLMClient';
 
 // Route imports
 import { createReelRoutes } from './routes/reelRoutes';
@@ -93,12 +95,30 @@ function createDependencies(config: Config): {
     // Infrastructure clients - OpenAI for transcription/LLM, Fish Audio for TTS, OpenRouter for images  
     // Use OpenAI Whisper (now enhanced with local FFmpeg compression for large files)
     const transcriptionClient = new OpenAITranscriptionClient(config.openaiApiKey);
-    const llmClient = new OpenAILLMClient(config.openaiApiKey, config.openaiModel);
-    const ttsClient = new FishAudioTTSClient(
-        config.fishAudioApiKey,
-        config.fishAudioVoiceId,
-        config.fishAudioBaseUrl
-    );
+
+    // LLM Client Selection (Personal Clone feature flag)
+    const llmClient = config.featureFlags.usePersonalCloneLLM
+        ? (() => {
+            console.log('🧠 Using Local LLM (Personal Clone mode)');
+            return new LocalLLMClient(
+                config.personalClone.localLLMUrl,
+                'llama3.2',
+                config.personalClone.systemPrompt
+            );
+        })()
+        : new OpenAILLMClient(config.openaiApiKey, config.openaiModel);
+
+    // TTS Client Selection (Personal Clone feature flag)
+    const ttsClient = config.featureFlags.usePersonalCloneTTS
+        ? (() => {
+            console.log('🎙️ Using XTTS Local TTS (Personal Clone mode)');
+            return new XTTSTTSClient(config.personalClone.xttsServerUrl);
+        })()
+        : new FishAudioTTSClient(
+            config.fishAudioApiKey,
+            config.fishAudioVoiceId,
+            config.fishAudioBaseUrl
+        );
     // Image clients - OpenRouter is now REQUIRED (no more DALL-E)
     if (!config.openrouterApiKey) {
         throw new Error('OPENROUTER_API_KEY is required for image generation');

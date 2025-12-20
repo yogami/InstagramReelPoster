@@ -77,6 +77,7 @@ export interface Config {
         xttsServerUrl: string;  // Local XTTS inference server URL
         localLLMUrl: string;    // Local LLM server URL (e.g., Ollama)
         trainingDataPath: string; // Path to store training data
+        systemPrompt: string;   // The default personality for the Personal Twin
     };
 }
 
@@ -195,6 +196,7 @@ export function loadConfig(): Config {
             xttsServerUrl: getEnvVar('XTTS_SERVER_URL', 'http://localhost:8020'),
             localLLMUrl: getEnvVar('LOCAL_LLM_URL', 'http://localhost:11434'),
             trainingDataPath: getEnvVar('PERSONAL_CLONE_DATA_PATH', './data/personal_clone'),
+            systemPrompt: getEnvVar('PERSONAL_CLONE_SYSTEM_PROMPT', 'You are a helpful and intelligent personal AI twin. Write in a natural, conversational tone that reflects the user\'s perspective.'),
         },
     };
 }

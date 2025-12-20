@@ -148,7 +148,7 @@ export class ShortstackVideoRenderer implements IVideoRenderer {
             },
             start: segment.start,
             length: segment.end - segment.start,
-            fit: 'cover' as const,
+            fit: 'contain' as const,
             transition: {
                 in: index === 0 ? 'fade' as const : undefined,
                 out: 'fade' as const,

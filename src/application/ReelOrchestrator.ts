@@ -24,6 +24,8 @@ import { INotificationClient } from '../domain/ports/INotificationClient';
 import { MusicSelector, MusicSource } from './MusicSelector';
 import { JobManager } from './JobManager';
 import { CloudinaryStorageClient } from '../infrastructure/storage/CloudinaryStorageClient';
+import { TrainingDataCollector } from '../infrastructure/training/TrainingDataCollector';
+import { getConfig } from '../config';
 
 export interface OrchestratorDependencies {
     transcriptionClient: ITranscriptionClient;
@@ -86,6 +88,22 @@ export class ReelOrchestrator {
                 this.logMemoryUsage('Step 1: Transcription');
             }
 
+            // Personal Clone: Collect voice sample for training if enabled
+            const config = getConfig();
+            if (config.featureFlags.personalCloneTrainingMode && transcript) {
+                try {
+                    const collector = new TrainingDataCollector();
+                    await collector.collectVoiceSample(
+                        job.sourceAudioUrl,
+                        transcript,
+                        job.targetDurationSeconds || 30 // Estimate if not set yet
+                    );
+                    console.log('[PersonalClone] Collected voice sample for training');
+                } catch (err) {
+                    console.warn('[PersonalClone] Failed to collect voice sample:', err);
+                }
+            }
+
             // Step 2: Plan reel
             let targetDurationSeconds = job.targetDurationSeconds;
             // For now, we replan if haven't passed planning, but we need the plan object for next steps
@@ -105,6 +123,21 @@ export class ReelOrchestrator {
             if (!segments || segments.length === 0 || !segments[0].commentary) {
                 await this.updateJobStatus(jobId, 'generating_commentary', 'Writing commentary...');
                 let segmentContent = await this.deps.llmClient.generateSegmentContent(plan, transcript);
+
+                // Personal Clone: Collect text samples for training if enabled
+                if (config.featureFlags.personalCloneTrainingMode && segmentContent) {
+                    try {
+                        const collector = new TrainingDataCollector();
+                        for (const segment of (Array.isArray(segmentContent) ? segmentContent : [])) {
+                            if (segment.commentary) {
+                                await collector.collectTextSample(segment.commentary, 'commentary');
+                            }
+                        }
+                        console.log('[PersonalClone] Collected text samples for training');
+                    } catch (err) {
+                        console.warn('[PersonalClone] Failed to collect text samples:', err);
+                    }
+                }
 
                 // DEFENSIVE: Ensure segmentContent is always an array (catch any LLM normalization failures)
                 if (!Array.isArray(segmentContent)) {
