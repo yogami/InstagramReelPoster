@@ -148,9 +148,16 @@ export class MusicSelector {
             return { track, score: totalScore };
         });
 
-        // Sort by score descending and return best match
+        // Sort by score descending
         scoredTracks.sort((a, b) => b.score - a.score);
-        return scoredTracks[0].track;
+
+        // VARIETY INJECTION:
+        // Instead of always picking index 0, pick randomly from the top 3 (or fewer if not enough)
+        // This ensures identical inputs don't always get identical music
+        const topCandidates = scoredTracks.slice(0, 3);
+        const randomCandidate = topCandidates[Math.floor(Math.random() * topCandidates.length)];
+
+        return randomCandidate.track;
     }
 
     /**
