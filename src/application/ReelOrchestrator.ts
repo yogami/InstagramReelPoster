@@ -457,10 +457,14 @@ export class ReelOrchestrator {
             }
 
             // Step 7: Visuals (Images or Animated Video)
-            // Parables with animated mode use multi-clip generation (one video per beat)
+            // PARABLES: Always use image mode (proven method for faceless content)
+            // Each beat gets one image with Ken Burns effect
             const isParableContent = contentMode === 'parable';
-            const isAnimated = currentJob.isAnimatedVideoMode;
+            const isAnimated = currentJob.isAnimatedVideoMode && !isParableContent;
 
+            if (isParableContent) {
+                console.log(`[${jobId}] Parable mode: Using IMAGE rendering (4 beats → 4 images + Ken Burns)`);
+            }
 
             if (isAnimated && this.deps.animatedVideoClient) {
                 // Animated Video Path

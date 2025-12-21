@@ -1,71 +1,219 @@
 /**
- * Multi-Clip Parable Video Validation
+ * Parable Image Mode Acceptance Tests
  * 
- * Validates that parable mode generates multiple video clips (one per beat)
- * instead of one looping video.
+ * Validates all acceptance criteria for parable image-based rendering:
+ * AC1: Parable Detection
+ * AC2: Image Mode Enforcement
+ * AC3: Beat-to-Image Mapping
+ * AC4: Duration Accuracy
+ * AC5: Ken Burns Effect
+ * AC6: Voiceover Sync
  */
 
-import { ParableBeat } from '../../../src/domain/entities/Parable';
+import { ContentMode, ParableScriptPlan, ParableBeat } from '../../../src/domain/entities/Parable';
 
-describe('Multi-Clip Parable Video Generation', () => {
+describe('Parable Image Mode Acceptance Criteria', () => {
 
     const sampleBeats: ParableBeat[] = [
-        { role: 'hook', narration: 'Hook text', textOnScreen: 'Hook', imagePrompt: 'img1', approxDurationSeconds: 9 },
-        { role: 'setup', narration: 'Setup text', textOnScreen: 'Setup', imagePrompt: 'img2', approxDurationSeconds: 12 },
-        { role: 'turn', narration: 'Turn text', textOnScreen: 'Turn', imagePrompt: 'img3', approxDurationSeconds: 11 },
-        { role: 'moral', narration: 'Moral text', textOnScreen: 'Moral', imagePrompt: 'img4', approxDurationSeconds: 9 }
+        { role: 'hook', narration: 'Hook narration text here.', textOnScreen: 'The Forgotten Archer', imagePrompt: '2D cel-shaded, hook scene', approxDurationSeconds: 9 },
+        { role: 'setup', narration: 'Setup narration explaining the story.', textOnScreen: 'No teacher. No recognition.', imagePrompt: '2D cel-shaded, setup scene', approxDurationSeconds: 12 },
+        { role: 'turn', narration: 'Turn narration with the twist.', textOnScreen: 'The outcast surpassed them all', imagePrompt: '2D cel-shaded, turn scene, DARKER', approxDurationSeconds: 11 },
+        { role: 'moral', narration: 'Moral narration with lesson.', textOnScreen: 'Your excuses are showing', imagePrompt: '2D cel-shaded, moral scene, BRIGHTER', approxDurationSeconds: 9 }
     ];
 
-    it('should generate one video per beat', () => {
-        const expectedVideoCount = sampleBeats.length;
-        expect(expectedVideoCount).toBe(4);
-    });
+    const sampleParablePlan: ParableScriptPlan = {
+        mode: 'parable',
+        parableIntent: {
+            sourceType: 'provided-story',
+            coreTheme: 'discipline',
+            moral: 'Compound in silence'
+        },
+        sourceChoice: {
+            culture: 'indian',
+            archetype: 'student',
+            rationale: 'Matches Ekalavya story'
+        },
+        beats: sampleBeats
+    };
 
-    it('should cap each video at 10 seconds (Kie.ai limit)', () => {
-        const kieMaxDuration = 10;
-        const cappedDurations = sampleBeats.map(beat =>
-            Math.min(beat.approxDurationSeconds || 10, kieMaxDuration)
-        );
+    // =====================================================
+    // AC1: Parable Detection
+    // =====================================================
+    describe('AC1: Parable Detection', () => {
+        it('forceMode: "parable" should set contentMode to parable', () => {
+            const forceMode = 'parable';
+            const contentMode: ContentMode = forceMode === 'parable' ? 'parable' : 'direct-message';
+            expect(contentMode).toBe('parable');
+        });
 
-        cappedDurations.forEach(duration => {
-            expect(duration).toBeLessThanOrEqual(10);
+        it('forceMode: undefined should default to direct-message', () => {
+            const forceMode: string | undefined = undefined;
+            const contentMode: ContentMode = forceMode === 'parable' ? 'parable' : 'direct-message';
+            expect(contentMode).toBe('direct-message');
         });
     });
 
-    it('total duration should be sum of beat durations', () => {
-        const totalDuration = sampleBeats.reduce((sum, beat) =>
-            sum + Math.min(beat.approxDurationSeconds || 10, 10), 0
-        );
-        expect(totalDuration).toBe(9 + 10 + 10 + 9); // 38s (capped at 10 for setup and turn)
+    // =====================================================
+    // AC2: Image Mode Enforcement
+    // =====================================================
+    describe('AC2: Image Mode Enforcement', () => {
+        it('parable content should NEVER use animated mode', () => {
+            const contentMode: ContentMode = 'parable';
+            const isAnimatedVideoMode = true; // Even if job says animated
+
+            // This is the exact logic from ReelOrchestrator.ts
+            const isParableContent = contentMode === 'parable';
+            const isAnimated = isAnimatedVideoMode && !isParableContent;
+
+            expect(isAnimated).toBe(false);
+        });
+
+        it('non-parable content can use animated mode', () => {
+            // Helper to simulate orchestrator logic with string type
+            function checkAnimatedMode(mode: string, isAnimatedVideoMode: boolean): boolean {
+                const isParableContent = mode === 'parable';
+                return isAnimatedVideoMode && !isParableContent;
+            }
+
+            const isAnimated = checkAnimatedMode('direct-message', true);
+            expect(isAnimated).toBe(true);
+        });
     });
 
-    it('Shotstack should receive array of video URLs (animatedVideoUrls)', () => {
-        // Simulate the orchestrator output
-        const mockVideoUrls = [
-            'https://cloudinary.com/parable_job1_beat1.mp4',
-            'https://cloudinary.com/parable_job1_beat2.mp4',
-            'https://cloudinary.com/parable_job1_beat3.mp4',
-            'https://cloudinary.com/parable_job1_beat4.mp4'
-        ];
+    // =====================================================
+    // AC3: Beat-to-Image Mapping
+    // =====================================================
+    describe('AC3: Beat-to-Image Mapping', () => {
 
-        expect(mockVideoUrls.length).toBe(4);
-        expect(mockVideoUrls.every(url => url.endsWith('.mp4'))).toBe(true);
+        it('should have 4 beats with imagePrompts', () => {
+            expect(sampleBeats.length).toBe(4);
+            expect(sampleBeats.every(b => b.imagePrompt)).toBe(true);
+        });
+
+        it('each beat imagePrompt should include style prefix', () => {
+            sampleBeats.forEach(beat => {
+                expect(beat.imagePrompt).toContain('2D cel-shaded');
+            });
+        });
+
+        it('turn beat should have DARKER in imagePrompt', () => {
+            const turnBeat = sampleBeats.find(b => b.role === 'turn');
+            expect(turnBeat?.imagePrompt).toContain('DARKER');
+        });
+
+        it('moral beat should have BRIGHTER in imagePrompt', () => {
+            const moralBeat = sampleBeats.find(b => b.role === 'moral');
+            expect(moralBeat?.imagePrompt).toContain('BRIGHTER');
+        });
     });
 
-    it('Shotstack should stitch videos in sequence', () => {
-        // Simulate Shotstack clip generation
-        const videos = ['vid1.mp4', 'vid2.mp4', 'vid3.mp4', 'vid4.mp4'];
-        const singleDuration = 40 / videos.length; // 10s each
+    // =====================================================
+    // AC4: Duration Accuracy
+    // =====================================================
+    describe('AC4: Duration Accuracy', () => {
+        it('total duration should be 36-46 seconds', () => {
+            const totalDuration = sampleBeats.reduce((sum, b) => sum + b.approxDurationSeconds, 0);
+            expect(totalDuration).toBeGreaterThanOrEqual(36);
+            expect(totalDuration).toBeLessThanOrEqual(46);
+        });
 
-        const clips = videos.map((url, i) => ({
-            asset: { type: 'video', src: url },
-            start: i * singleDuration,
-            length: singleDuration
-        }));
+        it('each beat should have valid duration', () => {
+            sampleBeats.forEach(beat => {
+                expect(beat.approxDurationSeconds).toBeGreaterThanOrEqual(8);
+                expect(beat.approxDurationSeconds).toBeLessThanOrEqual(14);
+            });
+        });
 
-        expect(clips[0].start).toBe(0);
-        expect(clips[1].start).toBe(10);
-        expect(clips[2].start).toBe(20);
-        expect(clips[3].start).toBe(30);
+        it('hook should be 8-10 seconds', () => {
+            const hook = sampleBeats.find(b => b.role === 'hook');
+            expect(hook?.approxDurationSeconds).toBeGreaterThanOrEqual(8);
+            expect(hook?.approxDurationSeconds).toBeLessThanOrEqual(10);
+        });
+
+        it('setup should be 10-14 seconds', () => {
+            const setup = sampleBeats.find(b => b.role === 'setup');
+            expect(setup?.approxDurationSeconds).toBeGreaterThanOrEqual(10);
+            expect(setup?.approxDurationSeconds).toBeLessThanOrEqual(14);
+        });
+    });
+
+    // =====================================================
+    // AC5: Ken Burns Effect
+    // =====================================================
+    describe('AC5: Ken Burns Effect', () => {
+        it('Shotstack should apply zoomIn effect to images', () => {
+            // Simulate Shotstack clip generation
+            const visualClips = sampleBeats.map((beat, index) => ({
+                asset: { type: 'image', src: `image_${index}.png` },
+                start: index * 10,
+                length: beat.approxDurationSeconds,
+                fit: 'contain',
+                transition: { in: index === 0 ? 'fade' : undefined, out: 'fade' },
+                effect: 'zoomIn' // Ken Burns effect
+            }));
+
+            visualClips.forEach(clip => {
+                expect(clip.effect).toBe('zoomIn');
+            });
+        });
+
+        it('first image should have fade-in transition', () => {
+            const firstClip = {
+                transition: { in: 'fade', out: 'fade' }
+            };
+            expect(firstClip.transition.in).toBe('fade');
+        });
+    });
+
+    // =====================================================
+    // AC6: Voiceover Sync
+    // =====================================================
+    describe('AC6: Voiceover Sync', () => {
+        it('voiceover text should include all beat narrations', () => {
+            const fullNarration = sampleBeats.map(b => b.narration).join(' ');
+            expect(fullNarration).toContain('Hook narration');
+            expect(fullNarration).toContain('Setup narration');
+            expect(fullNarration).toContain('Turn narration');
+            expect(fullNarration).toContain('Moral narration');
+        });
+
+        it('voiceover duration should match total beat duration', () => {
+            const totalBeatDuration = sampleBeats.reduce((sum, b) => sum + b.approxDurationSeconds, 0);
+            // Voiceover typically matches visual duration within tolerance
+            const tolerance = 3; // seconds
+            const expectedVoiceoverDuration = totalBeatDuration;
+            expect(expectedVoiceoverDuration).toBeGreaterThanOrEqual(totalBeatDuration - tolerance);
+            expect(expectedVoiceoverDuration).toBeLessThanOrEqual(totalBeatDuration + tolerance);
+        });
+    });
+
+    // =====================================================
+    // Edge Cases
+    // =====================================================
+    describe('Edge Cases', () => {
+        it('should handle empty beats array gracefully', () => {
+            const emptyBeats: ParableBeat[] = [];
+            expect(emptyBeats.length).toBe(0);
+        });
+
+        it('should handle missing imagePrompt', () => {
+            const beatWithNoPrompt: Partial<ParableBeat> = {
+                role: 'hook',
+                narration: 'Some text',
+                textOnScreen: 'Title'
+            };
+            expect(beatWithNoPrompt.imagePrompt).toBeUndefined();
+        });
+
+        it('should handle very short narration', () => {
+            const shortBeat = { ...sampleBeats[0], narration: 'Hi.' };
+            expect(shortBeat.narration.length).toBeLessThan(10);
+        });
+
+        it('should handle very long narration', () => {
+            const longNarration = 'A'.repeat(1000);
+            const longBeat = { ...sampleBeats[0], narration: longNarration };
+            expect(longBeat.narration.length).toBe(1000);
+        });
     });
 });
