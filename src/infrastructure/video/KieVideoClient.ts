@@ -109,7 +109,8 @@ export class KieVideoClient implements IAnimatedVideoClient {
      * Polls Kie.ai for the status of a job.
      */
     private async pollForCompletion(jobId: string): Promise<string> {
-        const statusEndpoint = `${this.baseUrl}/jobs/status/${jobId}`;
+        // Updated to use the recordInfo endpoint with query parameter as per docs
+        const statusEndpoint = `${this.baseUrl}/jobs/recordInfo?taskId=${jobId}`;
 
         for (let attempt = 1; attempt <= this.maxPollAttempts; attempt++) {
             try {
@@ -120,11 +121,18 @@ export class KieVideoClient implements IAnimatedVideoClient {
                 });
 
                 const data = response.data;
-                // Kie.ai unified API nesting: { code: 200, data: { state: 'success', resultJson: '...', ... } }
-                const resultData = data.data || data;
-                const state = (resultData.state || resultData.status || '').toLowerCase();
+                // Kie.ai API response: { code: 200, data: { state: 'success', resultJson: '...', ... } }
+                const resultData = data.data;
+                if (!resultData) {
+                    console.warn(`[Kie.ai] Polling response missing data field:`, JSON.stringify(data));
+                    await this.sleep(this.pollIntervalMs);
+                    continue;
+                }
 
-                if (state === 'completed' || state === 'success' || state === 'succeeded') {
+                const state = (resultData.state || resultData.status || '').toLowerCase();
+                console.log(`[Kie.ai] Task ${jobId} state: ${state} (Attempt ${attempt}/${this.maxPollAttempts})`);
+
+                if (state === 'success' || state === 'completed' || state === 'succeeded') {
                     // Result URL is often in resultJson (stringified)
                     let videoUrl = resultData.video_url || resultData.videoUrl;
 
