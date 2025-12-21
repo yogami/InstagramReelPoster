@@ -1,6 +1,7 @@
 import { Segment } from './Segment';
 import { ReelManifest } from './ReelManifest';
 import { HookPlan } from './Growth';
+import { ContentMode, ForceMode, ParableIntent, ParableScriptPlan } from './Parable';
 
 /**
  * Possible statuses for a ReelJob.
@@ -54,6 +55,8 @@ export interface ReelJobInput {
     seriesNumber?: number;
     /** Optional reel mode: 'discovery' (10-20s) or 'deep-dive' (25-40s) */
     reelMode?: ReelMode;
+    /** Force content mode: 'direct' or 'parable' (overrides auto-detection) */
+    forceMode?: ForceMode;
 }
 
 /**
@@ -132,6 +135,14 @@ export interface ReelJob {
     captionBody?: string;
     /** Array of optimized hashtags */
     hashtags?: string[];
+
+    // Parable Mode:
+    /** Content mode: direct-message or parable */
+    contentMode?: ContentMode;
+    /** Extracted parable intent (if parable mode) */
+    parableIntent?: ParableIntent;
+    /** Parable script plan (if parable mode) */
+    parableScriptPlan?: ParableScriptPlan;
 
     /** Timestamps */
     createdAt: Date;

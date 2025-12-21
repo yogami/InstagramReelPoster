@@ -4,6 +4,11 @@
 export type HookStyle = 'call-out' | 'question' | 'paradox' | 'statement' | 'shocking-fact' | 'other';
 
 /**
+ * Content mode for analytics segmentation.
+ */
+export type { ContentMode } from './Parable';
+
+/**
  * Structure for optimized reel hooks.
  */
 export interface HookPlan {
@@ -42,6 +47,8 @@ export interface ReelAnalytics {
     postedAt: string;
     /** Topic cluster for slicing data */
     topicCluster?: string;
+    /** Content mode for performance comparison */
+    contentMode?: 'direct-message' | 'parable';
 
     // social metrics (filled later via Make.com/IG export)
     views?: number;
