@@ -18,7 +18,7 @@ export class KieVideoClient implements IAnimatedVideoClient {
     constructor(
         apiKey: string,
         baseUrl: string = 'https://api.kie.ai/api/v1',
-        defaultModel: string = 'KLING_V2_5_TURBO',
+        defaultModel: string = 'kling-v1.5/text-to-video',
         pollIntervalMs: number = 10000, // Video takes longer than music
         maxPollAttempts: number = 60 // ~600 seconds (10 mins) max
     ) {
@@ -175,7 +175,7 @@ export class KieVideoClient implements IAnimatedVideoClient {
     }
 
     private buildPrompt(options: AnimatedVideoOptions): string {
-        let prompt = `A cinematic animated video about ${options.theme}.`;
+        let prompt = `A stylized 2D cartoon animation about ${options.theme}.`;
         if (options.mood) {
             prompt += ` Mood: ${options.mood}.`;
         }
@@ -183,8 +183,8 @@ export class KieVideoClient implements IAnimatedVideoClient {
             prompt += ` Visual Storyline: ${options.storyline}`;
         }
 
-        // Add style weight to ensure it's not "real" if we are in animated mode
-        prompt += ' Style: high quality 3D animation, vivid colors, smooth motion, cinematic lighting.';
+        // Enforce cheaper, simpler cartoon style
+        prompt += ' Style: high quality 2D digital animation, cel-shaded, flat colors, clean line art, stylized characters. NO realism, NO 3D, NO photorealistic details.';
 
         return prompt;
     }

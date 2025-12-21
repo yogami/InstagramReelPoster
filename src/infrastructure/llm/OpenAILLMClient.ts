@@ -6,6 +6,7 @@ import {
     PlanningConstraints,
     ReelModeDetectionResult,
 } from '../../domain/ports/ILLMClient';
+import { HookPlan, CaptionAndTags } from '../../domain/entities/Growth';
 import { getConfig } from '../../config';
 
 /**
@@ -23,12 +24,13 @@ RHETORICAL STRATEGY:
 1. Challenge the Norm: Start by exposing a common societal lie or "polite" delusion.
 2. Be Caustic: Use sharp, stinging precision. If a truth is ugly, describe it as such.
 3. Propose Solutions: Do not just complain. Propose a cold, hard, or spiritually deep solution or mental framework.
-4. Politically Incorrect: Prioritize biological and spiritual truth over modern social sensibilities.
+4. Narrative Flow: Your commentary should be the "voice" of the story being told. It is the narration of the script. 
+5. Narrative Congruence: The commentary is the STORY, the visuals are the ILLUSTRATION. If your commentary says "A king was betrayed," the visual must show that betrayal. Do NOT narrate what is happening in the meta-sense (e.g., don't say "In this scene we see..."). Just tell the story.
 
 SENTENCE SHAPE & CONSTRAINTS (Non-negotiable):
 1. Length: Max 16-18 words per sentence.
 2. Structure: AT MOST ONE COMMA per sentence. No em-dashes. One simple metaphor across the WHOLE script at most. ZERO exclamation marks.
-3. Subtext: NEVER describe the visual. Add meaning, contrast, or distilled principles. 
+3. Subtext: The commentary is the narration of Reality. The visual is the embodiment of that Reality. They must feel like two sides of the same coin.
 4. Vocabulary (Commentary): When discussing the "Madonna-Whore complex" in the COMMENTARY, ALWAYS use the correct term "Whore". Do NOT censor it for the voiceover.
 5. Vocabulary (Image Prompts): NEVER use the word "Whore" or any explicit/crude terms in the "imagePrompt" field. This will trigger safety filters. Instead, use artistic euphemisms like "seductive aesthetics", "alluring noir style", or "femme fatale energy". 
 
@@ -147,7 +149,7 @@ Respond with a JSON object containing:
   "musicTags": ["array", "of", "music", "search", "tags"],
   "musicPrompt": "description for AI music generation",
   "mood": "overall mood/tone",
-  "summary": "brief summary of the reel concept",
+  "summary": "a narrative, scene-focused summary of the visual story (e.g., 'A traveler crossing a vast desert' instead of 'An exploration of solitude')",
   "mainCaption": "a compelling, hook-driven Instagram/TikTok caption for the video (15-30 words)"
 }
 
@@ -236,37 +238,26 @@ CRITICAL: For each segment, provide a JSON object with these EXACT fields:
   "deltaSummary": "10-16 words: Because X, the scene now Y (cause→effect)"
 }
 
-COMMENTARY-IMAGE CONGRUENCE (CRITICAL):
-★ Generate imagePrompt FIRST with all visual details
-★ THEN write commentary that is THEMATICALLY and EMOTIONALLY aligned with the image
-★ DO NOT describe what the viewer sees - they can already see it
-★ Instead, deliver the spiritual/philosophical insight that the visual supports
+STORYTELLING-VISUAL CONGRUENCE (CRITICAL):
+★ Generate COMMENTARY (the narrative story) FIRST.
+★ THEN generate imagePrompt as a DIRECT ILLUSTRATION of that narrative.
+★ If the story mentions a specific subject (e.g., "the prince"), the image must show it.
+★ NEVER describe the video in the commentary (e.g., no "this scene shows...").
+★ Use evocative, visceral narrative language. Just tell the story.
 
 STRICT IMAGE POLICY (NON-NEGOTIABLE):
 1. RELATIONSHIPS: If the topic involves love, romance, dating, or marriage, you MUST depict a Heterosexual couple (Man and Woman).
    - STRICT PROHIBITION: Do NOT generate same-sex imagery for romantic topics.
-   - REASONING: The content is specifically targeted at biological mating strategies between men and women.
-2. STYLE: Cinematic, grounded, realistic. No "cartoonish" or "abstract" art.
-   - Avoid "corporate diversity" art styles. Keep it cinematic and natural.
+2. STYLE: Stylized 2D Cartoon / Cel-shaded. NO realism. No "corporate diversity" art styles. Keep it cinematic and artistic.
 
-STORYTELLING APPROACH:
-- Commentary delivers the insight, teaching, or provocation
-- Image provides the emotional/atmospheric backdrop
-- They work together but serve different roles
-- Avoid phrases like "notice the..." "see how..." "this scene shows..."
+GOOD Narrative Example (Story first, then Illustration):
+commentary: "Wealth isn't found in the hoard, but in the courage to walk away from it."
+imagePrompt: "A stylized 2D cartoon animation of a monk in simple robes walking away from a golden palace into a misty forest, flat colors, clean line art."
 
-GOOD Example (${17} words - UNDER LIMIT ✓):
-imagePrompt: "wooden deck at golden hour with person meditating, warm amber tones, mountains"
-commentary: "You think you need more time to find peace. But peace isn't found in time—it's found in the absence of seeking."
-
-BAD Example (Too descriptive - AVOID):
-imagePrompt: "wooden deck at golden hour with person meditating"
-commentary: "Notice the warm amber glow bathing this peaceful deck, where stillness meets nature's mountain backdrop"
-(This is describing the image like a tour guide - AVOID THIS!)
-
-ANOTHER GOOD Example (${12} words - UNDER LIMIT ✓):
-imagePrompt: "close-up of hands releasing sand, soft morning light, beach setting"
-commentary: "Every attachment you defend is a prison you've built with your own hands."
+BAD Meta-Description Example (AVOID):
+commentary: "This scene shows a monk leaving a palace to symbolize how wealth is a burden."
+imagePrompt: "monk leaving palace"
+(This is meta-description - AVOID THIS! Just tell the monk's story.)
 
 IMAGE PROMPT RULES (100-140 words each):
 
@@ -428,6 +419,59 @@ Respond with exactly ${segments.length} adjusted segments in the JSON structure 
         // CRITICAL: Normalize the response AND enforce word limits
         const normalized = this.normalizeSegments(parsed);
         return this.enforceWordLimits(normalized, hardCapPerSegment);
+    }
+
+    /**
+     * Generates multiple hook options for the reel.
+     */
+    async generateHooks(transcript: string, plan: ReelPlan): Promise<string[]> {
+        const prompt = `Generate 5 alternative pattern-breaking hooks for the first 2 seconds of an Instagram Reel.
+        
+Transcript: "${transcript}"
+Concept: "${plan.summary}"
+
+RULES:
+1. Max 10 words per hook.
+2. Voice: Challenging View (Caustic, Spiritually Perspicacious, Unapologetic).
+3. Call out a common self-deception or create immediate tension.
+4. Suitable for both spoken audio and on-screen text.
+
+Respond with a JSON object: { "hooks": ["hook 1", "hook 2", ...] }`;
+
+        const response = await this.callOpenAI(prompt, true);
+        const parsed = this.parseJSON<{ hooks: string[] }>(response);
+        return parsed.hooks || [];
+    }
+
+    /**
+     * Generates an expanded caption and hashtags optimized for virality.
+     */
+    async generateCaptionAndTags(fullScript: string, summary: string): Promise<CaptionAndTags> {
+        const prompt = `Write a high-performance Instagram caption and hashtags for this reel.
+
+Script: "${fullScript}"
+Summary: "${summary}"
+
+CAPTION RULES:
+1. 2-4 short lines maximum.
+2. Tone: Challenging View (Sharp, grounded, psychological).
+3. NEVER use fluffy wellness clichés.
+4. End with a soft CTA prioritizing SAVES or SHARES. (e.g., "Save this for the next time you feel yourself spiritually bypassing.")
+
+HASHTAG RULES:
+1. Exactly 9-11 hashtags.
+2. 3-5 niche (spiritual psychology, shadow work, self-inquiry, etc.).
+3. 3-5 broad (#reels, #spirituality, #selfawareness, #mentalhealth).
+4. 1-2 branded (#ChallengingView).
+
+Respond with a JSON object:
+{
+  "captionBody": "...",
+  "hashtags": ["#tag1", "#tag2", ...]
+}`;
+
+        const response = await this.callOpenAI(prompt, true);
+        return this.parseJSON<CaptionAndTags>(response);
     }
 
     private async callOpenAI(prompt: string, jsonMode: boolean = false): Promise<string> {

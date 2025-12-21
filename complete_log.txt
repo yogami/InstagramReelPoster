@@ -1,0 +1,559 @@
+  console.log
+    [Memory] Start processJob: 390.67 MB
+
+      at ReelOrchestrator.logMemoryUsage (src/application/ReelOrchestrator.ts:61:17)
+
+  console.log
+    [job-animated-123] transcribing: Transcribing voice note...
+
+      at ReelOrchestrator.updateJobStatus (src/application/ReelOrchestrator.ts:616:17)
+
+  console.log
+    [Memory] Step 1: Transcription: 391.58 MB
+
+      at ReelOrchestrator.logMemoryUsage (src/application/ReelOrchestrator.ts:61:17)
+
+  console.log
+    [job-animated-123] TRANSCRIPT: "Test transcription requiring animation"
+
+      at ReelOrchestrator.processJob (src/application/ReelOrchestrator.ts:93:21)
+
+  console.log
+    [job-animated-123] detecting_intent: Analyzing request for animation...
+
+      at ReelOrchestrator.updateJobStatus (src/application/ReelOrchestrator.ts:616:17)
+
+  console.log
+    [job-animated-123] Reel Mode: ANIMATED VIDEO
+
+      at ReelOrchestrator.processJob (src/application/ReelOrchestrator.ts:120:25)
+
+  console.log
+    [job-animated-123] planning: Planning reel structure...
+
+      at ReelOrchestrator.updateJobStatus (src/application/ReelOrchestrator.ts:616:17)
+
+  console.log
+    [job-animated-123] Planning reel with range: 30s - 60s
+
+      at ReelOrchestrator.processJob (src/application/ReelOrchestrator.ts:134:21)
+
+  console.log
+    [job-animated-123] LLM Plan: target=45s, segments=3
+
+      at ReelOrchestrator.processJob (src/application/ReelOrchestrator.ts:142:21)
+
+  console.log
+    [Memory] Step 2: Planning: 391.67 MB
+
+      at ReelOrchestrator.logMemoryUsage (src/application/ReelOrchestrator.ts:61:17)
+
+  console.log
+    [job-animated-123] generating_commentary: Writing commentary...
+
+      at ReelOrchestrator.updateJobStatus (src/application/ReelOrchestrator.ts:616:17)
+
+  console.log
+    [job-animated-123] synthesizing_voiceover: Creating voiceover...
+
+      at ReelOrchestrator.updateJobStatus (src/application/ReelOrchestrator.ts:616:17)
+
+  console.log
+    [TTS] Attempting synthesis with primary client (Fish Audio)...
+
+      at ReelOrchestrator.synthesizeWithAdjustment (src/application/ReelOrchestrator.ts:438:21)
+
+  console.log
+    [job-animated-123] Voiceover generated: duration=45s
+
+      at ReelOrchestrator.processJob (src/application/ReelOrchestrator.ts:187:25)
+
+  console.log
+    [Memory] Steps 3-5: Content & Voiceover: 391.75 MB
+
+      at ReelOrchestrator.logMemoryUsage (src/application/ReelOrchestrator.ts:61:17)
+
+  console.log
+    [job-animated-123] selecting_music: Finding background music...
+
+      at ReelOrchestrator.updateJobStatus (src/application/ReelOrchestrator.ts:616:17)
+
+  console.log
+    [Memory] Step 6: Music: 391.75 MB
+
+      at ReelOrchestrator.logMemoryUsage (src/application/ReelOrchestrator.ts:61:17)
+
+  console.log
+    [job-animated-123] generating_animated_video: Generating animated video...
+
+      at ReelOrchestrator.updateJobStatus (src/application/ReelOrchestrator.ts:616:17)
+
+  console.log
+    [job-animated-123] Persisting animated video to Cloudinary...
+
+      at ReelOrchestrator.processJob (src/application/ReelOrchestrator.ts:250:37)
+
+  console.log
+    [job-animated-123] Persisted to: https://cloudinary.com/persisted_anim.mp4
+
+      at ReelOrchestrator.processJob (src/application/ReelOrchestrator.ts:256:37)
+
+  console.log
+    [job-animated-123] Animated video generated: https://cloudinary.com/persisted_anim.mp4
+
+      at ReelOrchestrator.processJob (src/application/ReelOrchestrator.ts:266:29)
+
+  console.log
+    [job-animated-123] generating_subtitles: Creating subtitles...
+
+      at ReelOrchestrator.updateJobStatus (src/application/ReelOrchestrator.ts:616:17)
+
+  console.log
+    [Memory] Step 8: Subtitles: 391.77 MB
+
+      at ReelOrchestrator.logMemoryUsage (src/application/ReelOrchestrator.ts:61:17)
+
+  console.log
+    [job-animated-123] building_manifest: Preparing render manifest...
+
+      at ReelOrchestrator.updateJobStatus (src/application/ReelOrchestrator.ts:616:17)
+
+  console.log
+    [job-animated-123] rendering: Rendering final video...
+
+      at ReelOrchestrator.updateJobStatus (src/application/ReelOrchestrator.ts:616:17)
+
+  console.log
+    [Memory] Starting Step 10: Rendering: 391.78 MB
+
+      at ReelOrchestrator.logMemoryUsage (src/application/ReelOrchestrator.ts:61:17)
+
+  console.log
+    [Memory] Step 10: Finished Rendering: 391.78 MB
+
+      at ReelOrchestrator.logMemoryUsage (src/application/ReelOrchestrator.ts:61:17)
+
+  console.log
+    [job-animated-123] uploading: Uploading to permanent storage...
+
+      at ReelOrchestrator.updateJobStatus (src/application/ReelOrchestrator.ts:616:17)
+
+  console.log
+    [job-animated-123] Uploading final video to Cloudinary for permanent storage...
+
+      at ReelOrchestrator.processJob (src/application/ReelOrchestrator.ts:320:29)
+
+  console.log
+    [job-animated-123] Video uploaded successfully: https://cloudinary.com/persisted_anim.mp4
+
+      at ReelOrchestrator.processJob (src/application/ReelOrchestrator.ts:327:29)
+
+  console.log
+    [job-animated-123] Waiting 5s for final video propagation...
+
+      at ReelOrchestrator.processJob (src/application/ReelOrchestrator.ts:331:29)
+
+  console.log
+    [Memory] Start processJob: 408.78 MB
+
+      at ReelOrchestrator.logMemoryUsage (src/application/ReelOrchestrator.ts:61:17)
+
+  console.log
+    [job-animated-123] transcribing: Transcribing voice note...
+
+      at ReelOrchestrator.updateJobStatus (src/application/ReelOrchestrator.ts:616:17)
+
+  console.log
+    [Memory] Step 1: Transcription: 408.8 MB
+
+      at ReelOrchestrator.logMemoryUsage (src/application/ReelOrchestrator.ts:61:17)
+
+  console.log
+    [job-animated-123] TRANSCRIPT: "Test transcription requiring animation"
+
+      at ReelOrchestrator.processJob (src/application/ReelOrchestrator.ts:93:21)
+
+  console.log
+    [job-animated-123] detecting_intent: Analyzing request for animation...
+
+      at ReelOrchestrator.updateJobStatus (src/application/ReelOrchestrator.ts:616:17)
+
+  console.log
+    [job-animated-123] Reel Mode: IMAGES
+
+      at ReelOrchestrator.processJob (src/application/ReelOrchestrator.ts:120:25)
+
+  console.log
+    [job-animated-123] planning: Planning reel structure...
+
+      at ReelOrchestrator.updateJobStatus (src/application/ReelOrchestrator.ts:616:17)
+
+  console.log
+    [job-animated-123] Planning reel with range: 30s - 60s
+
+      at ReelOrchestrator.processJob (src/application/ReelOrchestrator.ts:134:21)
+
+  console.log
+    [job-animated-123] LLM Plan: target=45s, segments=3
+
+      at ReelOrchestrator.processJob (src/application/ReelOrchestrator.ts:142:21)
+
+  console.log
+    [Memory] Step 2: Planning: 408.8 MB
+
+      at ReelOrchestrator.logMemoryUsage (src/application/ReelOrchestrator.ts:61:17)
+
+  console.log
+    [job-animated-123] generating_commentary: Writing commentary...
+
+      at ReelOrchestrator.updateJobStatus (src/application/ReelOrchestrator.ts:616:17)
+
+  console.log
+    [job-animated-123] synthesizing_voiceover: Creating voiceover...
+
+      at ReelOrchestrator.updateJobStatus (src/application/ReelOrchestrator.ts:616:17)
+
+  console.log
+    [TTS] Attempting synthesis with primary client (Fish Audio)...
+
+      at ReelOrchestrator.synthesizeWithAdjustment (src/application/ReelOrchestrator.ts:438:21)
+
+  console.log
+    [job-animated-123] Voiceover generated: duration=45s
+
+      at ReelOrchestrator.processJob (src/application/ReelOrchestrator.ts:187:25)
+
+  console.log
+    [Memory] Steps 3-5: Content & Voiceover: 408.81 MB
+
+      at ReelOrchestrator.logMemoryUsage (src/application/ReelOrchestrator.ts:61:17)
+
+  console.log
+    [job-animated-123] selecting_music: Finding background music...
+
+      at ReelOrchestrator.updateJobStatus (src/application/ReelOrchestrator.ts:616:17)
+
+  console.log
+    [Memory] Step 6: Music: 408.81 MB
+
+      at ReelOrchestrator.logMemoryUsage (src/application/ReelOrchestrator.ts:61:17)
+
+  console.log
+    [job-animated-123] generating_images: Creating visuals...
+
+      at ReelOrchestrator.updateJobStatus (src/application/ReelOrchestrator.ts:616:17)
+
+  console.log
+    Generating images for 3 segments...
+
+      at ReelOrchestrator.generateImages (src/application/ReelOrchestrator.ts:523:17)
+
+  console.log
+    [job-animated-123] generating_images: Creating visual 1 of 3...
+
+      at ReelOrchestrator.updateJobStatus (src/application/ReelOrchestrator.ts:616:17)
+
+  console.log
+    [job-animated-123] generating_images: Creating visual 2 of 3...
+
+      at ReelOrchestrator.updateJobStatus (src/application/ReelOrchestrator.ts:616:17)
+
+  console.log
+    [job-animated-123] generating_images: Creating visual 3 of 3...
+
+      at ReelOrchestrator.updateJobStatus (src/application/ReelOrchestrator.ts:616:17)
+
+  console.log
+    Waiting 2s for asset propagation...
+
+      at ReelOrchestrator.generateImages (src/application/ReelOrchestrator.ts:580:21)
+
+  console.log
+    [Memory] Step 7: Images: 408.94 MB
+
+      at ReelOrchestrator.logMemoryUsage (src/application/ReelOrchestrator.ts:61:17)
+
+  console.log
+    [job-animated-123] generating_subtitles: Creating subtitles...
+
+      at ReelOrchestrator.updateJobStatus (src/application/ReelOrchestrator.ts:616:17)
+
+  console.log
+    [Memory] Step 8: Subtitles: 408.94 MB
+
+      at ReelOrchestrator.logMemoryUsage (src/application/ReelOrchestrator.ts:61:17)
+
+  console.log
+    [job-animated-123] building_manifest: Preparing render manifest...
+
+      at ReelOrchestrator.updateJobStatus (src/application/ReelOrchestrator.ts:616:17)
+
+  console.log
+    [job-animated-123] rendering: Rendering final video...
+
+      at ReelOrchestrator.updateJobStatus (src/application/ReelOrchestrator.ts:616:17)
+
+  console.log
+    [Memory] Starting Step 10: Rendering: 408.94 MB
+
+      at ReelOrchestrator.logMemoryUsage (src/application/ReelOrchestrator.ts:61:17)
+
+  console.log
+    [Memory] Step 10: Finished Rendering: 408.94 MB
+
+      at ReelOrchestrator.logMemoryUsage (src/application/ReelOrchestrator.ts:61:17)
+
+  console.log
+    [job-animated-123] uploading: Uploading to permanent storage...
+
+      at ReelOrchestrator.updateJobStatus (src/application/ReelOrchestrator.ts:616:17)
+
+  console.log
+    [job-animated-123] Uploading final video to Cloudinary for permanent storage...
+
+      at ReelOrchestrator.processJob (src/application/ReelOrchestrator.ts:320:29)
+
+  console.log
+    [job-animated-123] Video uploaded successfully: https://cloudinary.com/persisted_anim.mp4
+
+      at ReelOrchestrator.processJob (src/application/ReelOrchestrator.ts:327:29)
+
+  console.log
+    [job-animated-123] Waiting 5s for final video propagation...
+
+      at ReelOrchestrator.processJob (src/application/ReelOrchestrator.ts:331:29)
+
+  console.log
+    [Memory] Start processJob: 294.48 MB
+
+      at ReelOrchestrator.logMemoryUsage (src/application/ReelOrchestrator.ts:61:17)
+
+  console.log
+    [job-animated-123] transcribing: Transcribing voice note...
+
+      at ReelOrchestrator.updateJobStatus (src/application/ReelOrchestrator.ts:616:17)
+
+  console.log
+    [Memory] Step 1: Transcription: 294.5 MB
+
+      at ReelOrchestrator.logMemoryUsage (src/application/ReelOrchestrator.ts:61:17)
+
+  console.log
+    [job-animated-123] TRANSCRIPT: "Test transcription requiring animation"
+
+      at ReelOrchestrator.processJob (src/application/ReelOrchestrator.ts:93:21)
+
+  console.log
+    [job-animated-123] detecting_intent: Analyzing request for animation...
+
+      at ReelOrchestrator.updateJobStatus (src/application/ReelOrchestrator.ts:616:17)
+
+  console.log
+    [job-animated-123] Reel Mode: ANIMATED VIDEO
+
+      at ReelOrchestrator.processJob (src/application/ReelOrchestrator.ts:120:25)
+
+  console.log
+    [job-animated-123] planning: Planning reel structure...
+
+      at ReelOrchestrator.updateJobStatus (src/application/ReelOrchestrator.ts:616:17)
+
+  console.log
+    [job-animated-123] Planning reel with range: 30s - 60s
+
+      at ReelOrchestrator.processJob (src/application/ReelOrchestrator.ts:134:21)
+
+  console.log
+    [job-animated-123] LLM Plan: target=45s, segments=3
+
+      at ReelOrchestrator.processJob (src/application/ReelOrchestrator.ts:142:21)
+
+  console.log
+    [Memory] Step 2: Planning: 294.91 MB
+
+      at ReelOrchestrator.logMemoryUsage (src/application/ReelOrchestrator.ts:61:17)
+
+  console.log
+    [job-animated-123] generating_commentary: Writing commentary...
+
+      at ReelOrchestrator.updateJobStatus (src/application/ReelOrchestrator.ts:616:17)
+
+  console.log
+    [job-animated-123] synthesizing_voiceover: Creating voiceover...
+
+      at ReelOrchestrator.updateJobStatus (src/application/ReelOrchestrator.ts:616:17)
+
+  console.log
+    [TTS] Attempting synthesis with primary client (Fish Audio)...
+
+      at ReelOrchestrator.synthesizeWithAdjustment (src/application/ReelOrchestrator.ts:438:21)
+
+  console.log
+    [job-animated-123] Voiceover generated: duration=45s
+
+      at ReelOrchestrator.processJob (src/application/ReelOrchestrator.ts:187:25)
+
+  console.log
+    [Memory] Steps 3-5: Content & Voiceover: 295.28 MB
+
+      at ReelOrchestrator.logMemoryUsage (src/application/ReelOrchestrator.ts:61:17)
+
+  console.log
+    [job-animated-123] selecting_music: Finding background music...
+
+      at ReelOrchestrator.updateJobStatus (src/application/ReelOrchestrator.ts:616:17)
+
+  console.log
+    [Memory] Step 6: Music: 295.44 MB
+
+      at ReelOrchestrator.logMemoryUsage (src/application/ReelOrchestrator.ts:61:17)
+
+  console.log
+    [job-animated-123] generating_images: Creating visuals...
+
+      at ReelOrchestrator.updateJobStatus (src/application/ReelOrchestrator.ts:616:17)
+
+  console.log
+    Generating images for 3 segments...
+
+      at ReelOrchestrator.generateImages (src/application/ReelOrchestrator.ts:523:17)
+
+  console.log
+    [job-animated-123] generating_images: Creating visual 1 of 3...
+
+      at ReelOrchestrator.updateJobStatus (src/application/ReelOrchestrator.ts:616:17)
+
+  console.log
+    [job-animated-123] generating_images: Creating visual 2 of 3...
+
+      at ReelOrchestrator.updateJobStatus (src/application/ReelOrchestrator.ts:616:17)
+
+  console.log
+    [job-animated-123] generating_images: Creating visual 3 of 3...
+
+      at ReelOrchestrator.updateJobStatus (src/application/ReelOrchestrator.ts:616:17)
+
+  console.log
+    Waiting 2s for asset propagation...
+
+      at ReelOrchestrator.generateImages (src/application/ReelOrchestrator.ts:580:21)
+
+  console.log
+    [Memory] Step 7: Images: 296.06 MB
+
+      at ReelOrchestrator.logMemoryUsage (src/application/ReelOrchestrator.ts:61:17)
+
+  console.log
+    [job-animated-123] generating_subtitles: Creating subtitles...
+
+      at ReelOrchestrator.updateJobStatus (src/application/ReelOrchestrator.ts:616:17)
+
+  console.log
+    [Memory] Step 8: Subtitles: 296.06 MB
+
+      at ReelOrchestrator.logMemoryUsage (src/application/ReelOrchestrator.ts:61:17)
+
+  console.log
+    [job-animated-123] building_manifest: Preparing render manifest...
+
+      at ReelOrchestrator.updateJobStatus (src/application/ReelOrchestrator.ts:616:17)
+
+  console.log
+    [job-animated-123] rendering: Rendering final video...
+
+      at ReelOrchestrator.updateJobStatus (src/application/ReelOrchestrator.ts:616:17)
+
+  console.log
+    [Memory] Starting Step 10: Rendering: 296.06 MB
+
+      at ReelOrchestrator.logMemoryUsage (src/application/ReelOrchestrator.ts:61:17)
+
+  console.log
+    [Memory] Step 10: Finished Rendering: 296.06 MB
+
+      at ReelOrchestrator.logMemoryUsage (src/application/ReelOrchestrator.ts:61:17)
+
+  console.log
+    [job-animated-123] uploading: Uploading to permanent storage...
+
+      at ReelOrchestrator.updateJobStatus (src/application/ReelOrchestrator.ts:616:17)
+
+  console.log
+    [job-animated-123] Uploading final video to Cloudinary for permanent storage...
+
+      at ReelOrchestrator.processJob (src/application/ReelOrchestrator.ts:320:29)
+
+  console.log
+    [job-animated-123] Video uploaded successfully: https://cloudinary.com/persisted_anim.mp4
+
+      at ReelOrchestrator.processJob (src/application/ReelOrchestrator.ts:327:29)
+
+  console.log
+    [job-animated-123] Waiting 5s for final video propagation...
+
+      at ReelOrchestrator.processJob (src/application/ReelOrchestrator.ts:331:29)
+
+(node:21418) Warning: `--localstorage-file` was provided without a valid path
+(Use `node --trace-warnings ...` to show where the warning was created)
+FAIL tests/unit/application/ReelOrchestrator.animatedVideo.test.ts (15.412 s)
+  ReelOrchestrator - Animated Video Flow
+    ✕ should detect animated video intent and update job (5003 ms)
+    ✕ should fall back to image generation if detectReelMode returns false (5002 ms)
+    ✕ should fall back to image generation if animatedVideoClient is missing (5002 ms)
+
+  ● ReelOrchestrator - Animated Video Flow › should detect animated video intent and update job
+
+    thrown: "Exceeded timeout of 5000 ms for a test.
+    Add a timeout value to this test to increase the timeout, if this is a long-running test. See https://jestjs.io/docs/api#testname-fn-timeout."
+
+      116 |     });
+      117 |
+    > 118 |     it('should detect animated video intent and update job', async () => {
+          |     ^
+      119 |         // Setup intent detection to return true
+      120 |         mockDeps.llmClient.detectReelMode.mockResolvedValue({
+      121 |             isAnimatedMode: true,
+
+      at tests/unit/application/ReelOrchestrator.animatedVideo.test.ts:118:5
+      at Object.<anonymous> (tests/unit/application/ReelOrchestrator.animatedVideo.test.ts:14:1)
+
+  ● ReelOrchestrator - Animated Video Flow › should fall back to image generation if detectReelMode returns false
+
+    thrown: "Exceeded timeout of 5000 ms for a test.
+    Add a timeout value to this test to increase the timeout, if this is a long-running test. See https://jestjs.io/docs/api#testname-fn-timeout."
+
+      166 |     });
+      167 |
+    > 168 |     it('should fall back to image generation if detectReelMode returns false', async () => {
+          |     ^
+      169 |         // Setup intent detection to return false
+      170 |         mockDeps.llmClient.detectReelMode.mockResolvedValue({
+      171 |             isAnimatedMode: false,
+
+      at tests/unit/application/ReelOrchestrator.animatedVideo.test.ts:168:5
+      at Object.<anonymous> (tests/unit/application/ReelOrchestrator.animatedVideo.test.ts:14:1)
+
+  ● ReelOrchestrator - Animated Video Flow › should fall back to image generation if animatedVideoClient is missing
+
+    thrown: "Exceeded timeout of 5000 ms for a test.
+    Add a timeout value to this test to increase the timeout, if this is a long-running test. See https://jestjs.io/docs/api#testname-fn-timeout."
+
+      193 |     });
+      194 |
+    > 195 |     it('should fall back to image generation if animatedVideoClient is missing', async () => {
+          |     ^
+      196 |         // Setup intent detection to return true
+      197 |         mockDeps.llmClient.detectReelMode.mockResolvedValue({
+      198 |             isAnimatedMode: true,
+
+      at tests/unit/application/ReelOrchestrator.animatedVideo.test.ts:195:5
+      at Object.<anonymous> (tests/unit/application/ReelOrchestrator.animatedVideo.test.ts:14:1)
+
+Test Suites: 1 failed, 1 total
+Tests:       3 failed, 3 total
+Snapshots:   0 total
+Time:        15.515 s, estimated 16 s
+Ran all test suites matching tests/unit/application/ReelOrchestrator.animatedVideo.test.ts.
+Jest did not exit one second after the test run has completed.
+
+'This usually means that there are asynchronous operations that weren't stopped in your tests. Consider running Jest with `--detectOpenHandles` to troubleshoot this issue.

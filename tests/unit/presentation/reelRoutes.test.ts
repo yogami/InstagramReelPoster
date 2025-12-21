@@ -1,6 +1,7 @@
 import { createReelRoutes } from '../../../src/presentation/routes/reelRoutes';
 import { JobManager } from '../../../src/application/JobManager';
 import { ReelOrchestrator } from '../../../src/application/ReelOrchestrator';
+import { IGrowthInsightsService } from '../../../src/domain/ports/IGrowthInsightsService';
 
 // Mock express Router
 const mockRouter = {
@@ -23,6 +24,7 @@ jest.mock('../../../src/config', () => ({
 describe('createReelRoutes', () => {
     let mockJobManager: jest.Mocked<JobManager>;
     let mockOrchestrator: jest.Mocked<ReelOrchestrator>;
+    let mockGrowthInsightsService: jest.Mocked<IGrowthInsightsService>;
     let routeHandlers: Map<string, Function>;
 
     beforeEach(() => {
@@ -41,6 +43,12 @@ describe('createReelRoutes', () => {
             processJob: jest.fn()
         } as any;
 
+        mockGrowthInsightsService = {
+            recordAnalytics: jest.fn(),
+            getAnalyticsForReel: jest.fn(),
+            getAggregatedInsights: jest.fn()
+        } as any;
+
         // Capture route handlers when registered
         mockRouter.get.mockImplementation((path: string, handler: Function) => {
             routeHandlers.set(`GET ${path}`, handler);
@@ -54,17 +62,17 @@ describe('createReelRoutes', () => {
 
     describe('route registration', () => {
         test('should register POST /process-reel route', () => {
-            createReelRoutes(mockJobManager, mockOrchestrator);
+            createReelRoutes(mockJobManager, mockOrchestrator, mockGrowthInsightsService);
             expect(mockRouter.post).toHaveBeenCalledWith('/process-reel', expect.any(Function));
         });
 
         test('should register POST /retry-last route', () => {
-            createReelRoutes(mockJobManager, mockOrchestrator);
+            createReelRoutes(mockJobManager, mockOrchestrator, mockGrowthInsightsService);
             expect(mockRouter.post).toHaveBeenCalledWith('/retry-last', expect.any(Function));
         });
 
         test('should return a router instance', () => {
-            const router = createReelRoutes(mockJobManager, mockOrchestrator);
+            const router = createReelRoutes(mockJobManager, mockOrchestrator, mockGrowthInsightsService);
             expect(router).toBeDefined();
         });
     });

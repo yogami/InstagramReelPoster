@@ -1,5 +1,6 @@
 import { Segment } from './Segment';
 import { ReelManifest } from './ReelManifest';
+import { HookPlan } from './Growth';
 
 /**
  * Possible statuses for a ReelJob.
@@ -101,6 +102,14 @@ export interface ReelJob {
 
     /** Error message if the job failed */
     error?: string;
+
+    // Phase 2 Growth Layer:
+    /** Optimized hook plan */
+    hookPlan?: HookPlan;
+    /** Expanded caption body (re-generated for virality) */
+    captionBody?: string;
+    /** Array of optimized hashtags */
+    hashtags?: string[];
 
     /** Timestamps */
     createdAt: Date;

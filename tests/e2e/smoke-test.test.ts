@@ -32,7 +32,7 @@ describe('Smoke Test - Real API Integration', () => {
         let orchestrator: ReelOrchestrator;
         let jobManager: JobManager;
 
-        beforeAll(() => {
+        beforeAll(async () => {
             // Load real configuration
             const config = getConfig();
 
@@ -81,6 +81,13 @@ describe('Smoke Test - Real API Integration', () => {
 
             const subtitlesClient = new OpenAISubtitlesClient(
                 config.openaiApiKey,
+                config.cloudinaryCloudName && config.cloudinaryApiKey
+                    ? new (await import('../../src/infrastructure/storage/CloudinaryStorageClient')).CloudinaryStorageClient(
+                        config.cloudinaryCloudName,
+                        config.cloudinaryApiKey,
+                        config.cloudinaryApiSecret
+                    )
+                    : null as any, // Smoke test requires Cloudinary for subtitles
                 'https://api.openai.com'
             );
             const videoRenderer = new ShortstackVideoRenderer(
@@ -119,7 +126,7 @@ describe('Smoke Test - Real API Integration', () => {
 
             console.log(`📝 Input: ${testVoiceSampleUrl}`);
 
-            const job = jobManager.createJob({
+            const job = await jobManager.createJob({
                 sourceAudioUrl: testVoiceSampleUrl,
                 targetDurationRange: { min: 10, max: 15 }
             });

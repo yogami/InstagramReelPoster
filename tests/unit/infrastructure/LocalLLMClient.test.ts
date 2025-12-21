@@ -310,7 +310,7 @@ describe('LocalLLMClient', () => {
             });
 
             await expect(client.planReel('Test', { minDurationSeconds: 10, maxDurationSeconds: 90 }))
-                .rejects.toThrow('Failed to parse LLM response');
+                .rejects.toThrow('Failed to parse JSON');
         });
     });
 });

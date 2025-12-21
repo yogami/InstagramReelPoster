@@ -22,6 +22,9 @@ import { ISubtitlesClient } from '../domain/ports/ISubtitlesClient';
 import { IVideoRenderer } from '../domain/ports/IVideoRenderer';
 import { INotificationClient } from '../domain/ports/INotificationClient';
 import { IAnimatedVideoClient } from '../domain/ports/IAnimatedVideoClient';
+import { IHookAndStructureService } from '../domain/ports/IHookAndStructureService';
+import { ICaptionService } from '../domain/ports/ICaptionService';
+import { IGrowthInsightsService } from '../domain/ports/IGrowthInsightsService';
 import { MusicSelector, MusicSource } from './MusicSelector';
 import { JobManager } from './JobManager';
 import { CloudinaryStorageClient } from '../infrastructure/storage/CloudinaryStorageClient';
@@ -40,6 +43,9 @@ export interface OrchestratorDependencies {
     videoRenderer: IVideoRenderer;
     musicSelector: MusicSelector;
     jobManager: JobManager;
+    hookAndStructureService?: IHookAndStructureService;
+    captionService?: ICaptionService;
+    growthInsightsService?: IGrowthInsightsService;
     storageClient?: CloudinaryStorageClient;
     callbackToken?: string;
     callbackHeader?: string;
@@ -133,13 +139,36 @@ export class ReelOrchestrator {
 
             console.log(`[${jobId}] Planning reel with range: ${job.targetDurationRange.min}s - ${job.targetDurationRange.max}s`);
 
-            const plan = await this.deps.llmClient.planReel(transcript, {
+            let plan = await this.deps.llmClient.planReel(transcript, {
                 minDurationSeconds: job.targetDurationRange.min,
                 maxDurationSeconds: job.targetDurationRange.max,
                 moodOverrides: job.moodOverrides,
             });
 
-            console.log(`[${jobId}] LLM Plan: target=${plan.targetDurationSeconds}s, segments=${plan.segmentCount}`);
+            console.log(`[${jobId}] LLM Initial Plan: target=${plan.targetDurationSeconds}s, segments=${plan.segmentCount}`);
+
+            // Phase 2: Hook & Structure Optimization
+            if (this.deps.hookAndStructureService) {
+                try {
+                    console.log(`[${jobId}] Optimizing structure & hooks...`);
+                    const hookPlan = await this.deps.hookAndStructureService.optimizeStructure(transcript, plan);
+
+                    await this.deps.jobManager.updateJob(jobId, {
+                        hookPlan,
+                        targetDurationSeconds: hookPlan.targetDurationSeconds,
+                        // Combine hook with planning caption as a fallback
+                        mainCaption: `${hookPlan.chosenHook}\n\n${plan.mainCaption}`
+                    });
+
+                    // Update local plan with optimized values for logic below
+                    plan.targetDurationSeconds = hookPlan.targetDurationSeconds;
+                    plan.segmentCount = hookPlan.segmentCount;
+
+                    console.log(`[${jobId}] Optimization complete: target=${plan.targetDurationSeconds}s, segments=${plan.segmentCount}`);
+                } catch (err) {
+                    console.warn(`[${jobId}] Hook optimization failed, using default plan:`, err);
+                }
+            }
 
             await this.deps.jobManager.updateJob(jobId, {
                 targetDurationSeconds: plan.targetDurationSeconds,
@@ -195,6 +224,22 @@ export class ReelOrchestrator {
                 // Step 5: Build segments with timing
                 segments = this.buildSegments(segmentContent, voiceoverDuration);
                 await this.deps.jobManager.updateJob(jobId, { segments });
+
+                // Step 5.5: Phase 2 Caption & Hashtag Optimization
+                if (this.deps.captionService) {
+                    try {
+                        console.log(`[${jobId}] Generating optimized caption & hashtags...`);
+                        const captionResult = await this.deps.captionService.generateCaption(fullCommentary, plan.summary);
+                        await this.deps.jobManager.updateJob(jobId, {
+                            captionBody: captionResult.captionBody,
+                            hashtags: captionResult.hashtags
+                        });
+                        console.log(`[${jobId}] Caption optimization complete.`);
+                    } catch (err) {
+                        console.warn(`[${jobId}] Caption optimization failed:`, err);
+                    }
+                }
+
                 this.logMemoryUsage('Steps 3-5: Content & Voiceover');
             }
 
@@ -232,7 +277,9 @@ export class ReelOrchestrator {
 
             if (isAnimated && this.deps.animatedVideoClient) {
                 // Animated Video Path
-                if (!currentJob.animatedVideoUrl) {
+                const hasExistingVideos = (currentJob.animatedVideoUrls && currentJob.animatedVideoUrls.length > 0) || !!currentJob.animatedVideoUrl;
+
+                if (!hasExistingVideos) {
                     await this.updateJobStatus(jobId, 'generating_animated_video', 'Generating animated video...');
 
                     const animatedResult = await this.deps.animatedVideoClient.generateAnimatedVideo({
@@ -266,6 +313,8 @@ export class ReelOrchestrator {
                     console.log(`[${jobId}] Animated video generated: ${finalVideoUrl}`);
 
                     // Clear segments from manifest requirement effectively by ignoring them later
+                } else {
+                    console.log(`[${jobId}] Using pre-existing animated video(s). Skipping generation.`);
                 }
             } else {
                 // Image Path (Existing)
@@ -350,6 +399,22 @@ export class ReelOrchestrator {
             // Notify callback if present
             if (completedJob && completedJob.callbackUrl) {
                 await this.notifyCallback(completedJob);
+            }
+
+            // Step 11: Phase 2 Record Analytics (Target vs Actual)
+            if (completedJob && this.deps.growthInsightsService) {
+                try {
+                    await this.deps.growthInsightsService.recordAnalytics({
+                        reelId: jobId,
+                        hookUsed: completedJob.hookPlan?.chosenHook || 'None',
+                        targetDurationSeconds: completedJob.targetDurationSeconds || 0,
+                        actualDurationSeconds: completedJob.voiceoverDurationSeconds || 0,
+                        postedAt: new Date().toISOString()
+                    });
+                    console.log(`[${jobId}] Post-run analytics recorded.`);
+                } catch (err) {
+                    console.warn(`[${jobId}] Failed to record post-run analytics:`, err);
+                }
             }
 
             // Send success notification to Telegram
@@ -663,7 +728,10 @@ export class ReelOrchestrator {
             const payload: any = {
                 jobId: job.id,
                 status: job.status,
-                caption: caption,
+                caption: job.captionBody || caption, // Prefer viral captionBody
+                hashtags: job.hashtags ? job.hashtags.join(' ') : '',
+                captionBody: job.captionBody,
+                originalHashtags: job.hashtags,
             };
 
             // Add video URL only if present (Make.com validates this field)
@@ -683,7 +751,8 @@ export class ReelOrchestrator {
                 duration: job.voiceoverDurationSeconds,
                 createdAt: job.createdAt,
                 completedAt: job.updatedAt,
-                mainCaption: job.mainCaption, // Add mainCaption to metadata
+                mainCaption: job.mainCaption,
+                hook: job.hookPlan?.chosenHook,
             };
 
             console.log(`[${job.id}] Sending callback payload:`, JSON.stringify(payload, null, 2));

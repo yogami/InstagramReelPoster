@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { ReelJobInput } from '../../domain/entities/ReelJob';
 import { JobManager } from '../../application/JobManager';
 import { ReelOrchestrator } from '../../application/ReelOrchestrator';
+import { IGrowthInsightsService } from '../../domain/ports/IGrowthInsightsService';
 import { asyncHandler, BadRequestError } from '../middleware/errorHandler';
 import { getConfig } from '../../config';
 
@@ -10,7 +11,8 @@ import { getConfig } from '../../config';
  */
 export function createReelRoutes(
     jobManager: JobManager,
-    orchestrator: ReelOrchestrator
+    orchestrator: ReelOrchestrator,
+    growthInsightsService: IGrowthInsightsService
 ): Router {
     const config = getConfig();
     const router = Router();
@@ -118,6 +120,33 @@ export function createReelRoutes(
                 status: job.status,
                 message: 'Retry processing started',
                 originalJobId: lastJob.id
+            });
+        })
+    );
+
+    /**
+     * POST /reels/:id/analytics
+     * 
+     * Ingests performance metrics for a specific reel.
+     */
+    router.post(
+        '/reels/:id/analytics',
+        asyncHandler(async (req: Request, res: Response) => {
+            const { id } = req.params;
+            const analytics = req.body;
+
+            if (!analytics) {
+                throw new BadRequestError('Analytics data is required');
+            }
+
+            await growthInsightsService.recordAnalytics({
+                ...analytics,
+                reelId: id,
+            });
+
+            res.status(200).json({
+                message: 'Analytics recorded successfully',
+                reelId: id
             });
         })
     );

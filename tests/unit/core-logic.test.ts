@@ -215,7 +215,7 @@ describe('ReelManifest', () => {
                 musicUrl: 'https://example.com/m.mp3',
                 musicDurationSeconds: 30,
                 subtitlesUrl: 'https://example.com/s.srt',
-            })).toThrow('at least one segment');
+            })).toThrow('Manifest must have either segments or animatedVideoUrl(s)');
         });
 
         it('should throw on empty voiceover URL', () => {
@@ -265,12 +265,12 @@ describe('ReelManifest', () => {
                 subtitlesUrl: 'https://example.com/s.srt',
             });
 
-            expect(manifest.segments[0].start).toBe(0);
-            expect(manifest.segments[0].end).toBe(4.5);
-            expect(manifest.segments[1].start).toBe(4.5);
-            expect(manifest.segments[1].end).toBe(9);
-            expect(manifest.segments[2].start).toBe(9);
-            expect(manifest.segments[2].end).toBe(12);
+            expect(manifest.segments![0].start).toBe(0);
+            expect(manifest.segments![0].end).toBe(4.5);
+            expect(manifest.segments![1].start).toBe(4.5);
+            expect(manifest.segments![1].end).toBe(9);
+            expect(manifest.segments![2].start).toBe(9);
+            expect(manifest.segments![2].end).toBe(12);
         });
 
         it('should trim whitespace from URLs', () => {

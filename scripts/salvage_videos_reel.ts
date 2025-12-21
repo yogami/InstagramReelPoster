@@ -8,6 +8,8 @@ import { ShortstackVideoRenderer } from '../src/infrastructure/video/ShortstackV
 import { FFmpegVideoRenderer } from '../src/infrastructure/video/FFmpegVideoRenderer';
 import { MusicSelector } from '../src/application/MusicSelector';
 import { InMemoryMusicCatalogClient } from '../src/infrastructure/music/InMemoryMusicCatalogClient';
+import { KieMusicGeneratorClient } from '../src/infrastructure/music/KieMusicGeneratorClient';
+import { KieVideoClient } from '../src/infrastructure/video/KieVideoClient';
 import { CloudinaryStorageClient } from '../src/infrastructure/storage/CloudinaryStorageClient';
 import { getConfig } from '../src/config';
 import * as dotenv from 'dotenv';
@@ -26,26 +28,35 @@ async function salvageVideos() {
 
     console.log("🚀 Starting Salvage Operation...");
 
-    // Initialize dependencies
-    const jobManager = new JobManager(10, 90, process.env.REDIS_URL);
+    // Initialize dependencies (matching app.ts logic)
+    const cloudinaryClient = config.cloudinaryCloudName && config.cloudinaryApiKey
+        ? new CloudinaryStorageClient(config.cloudinaryCloudName, config.cloudinaryApiKey, config.cloudinaryApiSecret)
+        : null;
+
+    if (!cloudinaryClient) {
+        throw new Error('Cloudinary required for salvage operation (subtitles + hosting)');
+    }
+
+    const jobManager = new JobManager(config.minReelSeconds, config.maxReelSeconds, config.redisUrl);
     const transcriptionClient = new OpenAITranscriptionClient(config.openaiApiKey);
     const llmClient = new OpenAILLMClient(config.openaiApiKey, config.openaiModel);
-    const ttsClient = new FishAudioTTSClient(config.fishAudioApiKey, config.fishAudioVoiceId);
-    const subtitlesClient = new OpenAISubtitlesClient(config.openaiApiKey);
+    const ttsClient = new FishAudioTTSClient(config.fishAudioApiKey, config.fishAudioVoiceId, config.fishAudioBaseUrl);
+    const subtitlesClient = new OpenAISubtitlesClient(config.openaiApiKey, cloudinaryClient);
 
-    const storageClient = new CloudinaryStorageClient(
-        config.cloudinaryCloudName!,
-        config.cloudinaryApiKey!,
-        config.cloudinaryApiSecret!
-    );
-
-    const renderer = config.videoRenderer === 'ffmpeg'
-        ? new FFmpegVideoRenderer(storageClient)
+    // Video Renderer
+    const videoRenderer = config.videoRenderer === 'ffmpeg'
+        ? new FFmpegVideoRenderer(cloudinaryClient)
         : new ShortstackVideoRenderer(config.shotstackApiKey, config.shotstackBaseUrl);
 
-    const musicCatalog = new InMemoryMusicCatalogClient(config.internalMusicCatalogPath);
-    // Use only internal catalog for now
-    const musicSelector = new MusicSelector(musicCatalog, null, null);
+    // Music
+    const internalMusicCatalog = new InMemoryMusicCatalogClient(config.internalMusicCatalogPath);
+    const musicGenerator = config.kieApiKey
+        ? new KieMusicGeneratorClient(config.kieApiKey, config.kieApiBaseUrl)
+        : null;
+    const musicSelector = new MusicSelector(internalMusicCatalog, null, musicGenerator);
+
+    // Kie Video Client (needed even if we skip gen, part of orchestrator deps)
+    const animatedVideoClient = new KieVideoClient(config.kieApiKey, config.kieVideoBaseUrl, config.kieVideoModel);
 
     const orchestrator = new ReelOrchestrator({
         transcriptionClient,
@@ -53,10 +64,11 @@ async function salvageVideos() {
         ttsClient,
         fallbackImageClient: {} as any,
         subtitlesClient,
-        videoRenderer: renderer,
+        videoRenderer,
+        animatedVideoClient,
         musicSelector,
         jobManager,
-        storageClient,
+        storageClient: cloudinaryClient,
         callbackToken: config.callbackToken,
         callbackHeader: config.callbackHeader
     });
@@ -69,7 +81,7 @@ async function salvageVideos() {
         callbackUrl: config.makeWebhookUrl
     }, jobId);
 
-    // Pre-populate job
+    // Pre-populate job with transcript and URLs
     await jobManager.updateJob(jobId, {
         transcript,
         isAnimatedVideoMode: true,

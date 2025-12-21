@@ -111,11 +111,13 @@ describe('OpenAIImageClient', () => {
             );
         });
 
-        it('should handle 429 rate limit', async () => {
+        it('should handle 429 rate limit after retries', async () => {
             const client = new OpenAIImageClient(apiKey, baseUrl);
 
+            // Mock 3 consecutive 429 errors (maxRetries = 3)
             nock(baseUrl)
                 .post('/v1/images/generations')
+                .times(3)
                 .reply(429, {
                     error: { message: 'Rate limit exceeded' }
                 });

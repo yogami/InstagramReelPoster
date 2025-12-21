@@ -1,4 +1,5 @@
 import { Segment } from '../entities/Segment';
+import { HookPlan, CaptionAndTags } from '../entities/Growth';
 
 /**
  * ReelPlan represents the LLM's planning output for a reel.
@@ -116,4 +117,19 @@ export interface ILLMClient {
         direction: 'shorter' | 'longer',
         targetDurationSeconds: number
     ): Promise<SegmentContent[]>;
+    /**
+     * Generates multiple hook options for the reel.
+     * @param transcript Full transcript
+     * @param plan Current reel plan
+     * @returns Array of optimized hooks
+     */
+    generateHooks(transcript: string, plan: ReelPlan): Promise<string[]>;
+
+    /**
+     * Generates an expanded caption and hashtags optimized for virality.
+     * @param fullScript Final voiceover script
+     * @param summary Core story summary
+     * @returns Optimized caption and hashtags
+     */
+    generateCaptionAndTags(fullScript: string, summary: string): Promise<CaptionAndTags>;
 }

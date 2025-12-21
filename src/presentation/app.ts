@@ -27,6 +27,11 @@ import { XTTSTTSClient } from '../infrastructure/tts/XTTSTTSClient';
 import { LocalLLMClient } from '../infrastructure/llm/LocalLLMClient';
 import { MockAnimatedVideoClient } from '../infrastructure/video/MockAnimatedVideoClient';
 
+// Growth Layer Imports
+import { HookAndStructureService } from '../application/HookAndStructureService';
+import { CaptionService } from '../application/CaptionService';
+import { GrowthInsightsService } from '../application/GrowthInsightsService';
+
 // Route imports
 import { createReelRoutes } from './routes/reelRoutes';
 import { createJobRoutes } from './routes/jobRoutes';
@@ -53,7 +58,7 @@ export function createApp(config: Config): Application {
     });
 
     // Create dependencies
-    const { jobManager, orchestrator, cloudinaryClient } = createDependencies(config);
+    const { jobManager, orchestrator, growthInsightsService, cloudinaryClient } = createDependencies(config);
 
     // Auto-resume interrupted jobs
     import('../application/ResumeService').then(({ ResumeService }) => {
@@ -62,7 +67,7 @@ export function createApp(config: Config): Application {
     });
 
     // Routes
-    app.use(createReelRoutes(jobManager, orchestrator));
+    app.use('/api', createReelRoutes(jobManager, orchestrator, growthInsightsService));
     app.use(createJobRoutes(jobManager));
     app.use(createTelegramWebhookRoutes(jobManager, orchestrator));
 
@@ -78,6 +83,7 @@ export function createApp(config: Config): Application {
 function createDependencies(config: Config): {
     jobManager: JobManager;
     orchestrator: ReelOrchestrator;
+    growthInsightsService: GrowthInsightsService;
     cloudinaryClient: CloudinaryStorageClient | null;
 } {
     // Cloudinary storage client
@@ -195,6 +201,11 @@ function createDependencies(config: Config): {
         ? new KieVideoClient(config.kieApiKey, config.kieVideoBaseUrl, config.kieVideoModel)
         : new MockAnimatedVideoClient();
 
+    // Phase 2: Growth Layer Services
+    const hookAndStructureService = new HookAndStructureService(llmClient);
+    const captionService = new CaptionService(llmClient);
+    const growthInsightsService = new GrowthInsightsService();
+
     const deps: OrchestratorDependencies = {
         transcriptionClient,
         llmClient,
@@ -206,6 +217,9 @@ function createDependencies(config: Config): {
         animatedVideoClient,
         musicSelector,
         jobManager,
+        hookAndStructureService,
+        captionService,
+        growthInsightsService,
         notificationClient,
         fallbackTTSClient,
         storageClient: cloudinaryClient || undefined,
@@ -217,5 +231,5 @@ function createDependencies(config: Config): {
 
     const orchestrator = new ReelOrchestrator(deps);
 
-    return { jobManager, orchestrator, cloudinaryClient };
+    return { jobManager, orchestrator, growthInsightsService, cloudinaryClient };
 }
