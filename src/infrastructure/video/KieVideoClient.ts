@@ -18,7 +18,7 @@ export class KieVideoClient implements IAnimatedVideoClient {
     constructor(
         apiKey: string,
         baseUrl: string = 'https://api.kie.ai/api/v1',
-        defaultModel: string = 'kling-v1',
+        defaultModel: string = 'kling-2.6/text-to-video',
         pollIntervalMs: number = 10000, // Video takes longer than music
         maxPollAttempts: number = 60 // ~600 seconds (10 mins) max
     ) {
@@ -27,7 +27,7 @@ export class KieVideoClient implements IAnimatedVideoClient {
         }
         this.apiKey = apiKey;
         this.baseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
-        this.defaultModel = defaultModel || 'kling-v1';
+        this.defaultModel = defaultModel || 'kling-2.6/text-to-video';
         this.pollIntervalMs = pollIntervalMs;
         this.maxPollAttempts = maxPollAttempts;
     }
@@ -59,17 +59,19 @@ export class KieVideoClient implements IAnimatedVideoClient {
         console.log(`[Kie.ai] Creating task at: ${endpoint} with model: ${this.defaultModel}`);
 
         try {
+            const payload = {
+                model: this.defaultModel,
+                input: {
+                    prompt: prompt.substring(0, 1000),
+                    duration: options.durationSeconds <= 5 ? "5" : "10", // MUST be string "5" or "10"
+                    aspect_ratio: '9:16',
+                    sound: false // REQUIRED boolean
+                }
+            };
+
             const response = await axios.post(
                 endpoint,
-                {
-                    model: this.defaultModel,
-                    input: {
-                        prompt: prompt.substring(0, 1000), // Documented max length
-                        duration: options.durationSeconds <= 5 ? 5 : 10, // Try as number if string failed
-                        aspect_ratio: '9:16'
-                        // removed sound: false as it might be model-dependent
-                    }
-                },
+                payload,
                 {
                     headers: {
                         'Authorization': `Bearer ${this.apiKey}`,
@@ -78,17 +80,25 @@ export class KieVideoClient implements IAnimatedVideoClient {
                 }
             );
 
-            // Documented response: { "code": 200, "data": { "taskId": "..." } }
-            const jobId = response.data?.data?.taskId || response.data?.taskId || response.data?.id;
+            // Detailed check for Kie.ai error codes
+            const data = response.data;
+            if (data.code !== 200) {
+                const errorDesc = data.msg || data.message || 'Unknown error';
+                console.error(`[Kie.ai] API Error (${data.code}): ${errorDesc}`);
+                throw new Error(`Kie.ai API error ${data.code}: ${errorDesc}`);
+            }
+
+            const jobId = data.data?.taskId || data.taskId || data.id;
             if (!jobId) {
-                console.error('[Kie.ai] Response body:', JSON.stringify(response.data));
+                console.error('[Kie.ai] Missing taskId in response:', JSON.stringify(data));
                 throw new Error('Kie.ai did not return a job ID');
             }
 
             return jobId;
         } catch (error) {
             if (axios.isAxiosError(error)) {
-                const message = error.response?.data?.error?.message || error.response?.data?.message || error.message;
+                const data = error.response?.data;
+                const message = data?.msg || data?.message || data?.error?.message || error.message;
                 throw new Error(`Failed to create Kie.ai video task: ${message}`);
             }
             throw error;
