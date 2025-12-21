@@ -138,6 +138,20 @@ export class ReelOrchestrator {
                 detectionResult = { isAnimatedMode: job.isAnimatedVideoMode };
             }
 
+            // Check forceMode early to determine if we should override animated mode for parable
+            const refreshedJobForForceMode = await this.deps.jobManager.getJob(jobId);
+            const forceMode = (refreshedJobForForceMode as any)?.forceMode;
+
+            // CRITICAL FIX: Force IMAGE mode for parables because Kie.ai only supports 10s max videos
+            // Parables need 36-46s which requires image-per-beat rendering, not single animated video
+            if (forceMode === 'parable') {
+                if (detectionResult.isAnimatedMode) {
+                    console.log(`[${jobId}] OVERRIDE: Forcing IMAGE mode for parable (Kie.ai 10s limit incompatible with 36-46s parable)`);
+                    detectionResult.isAnimatedMode = false;
+                    await this.deps.jobManager.updateJob(jobId, { isAnimatedVideoMode: false });
+                }
+            }
+
             // Step 1.6: Detect content mode (direct-message vs parable)
             let contentMode: ContentMode = job.contentMode || 'direct-message';
             let parableScriptPlan: ParableScriptPlan | undefined = job.parableScriptPlan;
