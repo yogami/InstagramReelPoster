@@ -440,6 +440,8 @@ RULES:
 3. Call out a common self-deception or create immediate tension.
 4. Suitable for both spoken audio and on-screen text.
 5. Include a mix of styles: questions, call-outs, paradoxes, and shocking facts.
+6. PREFER call-out and paradox hooks - these historically score highest on saves and shares.
+7. Only use question or shocking-fact when the idea strongly suggests it.
 
 Respond with a JSON object: { "hooks": ["hook 1", "hook 2", ...] }`;
 
@@ -461,13 +463,17 @@ CAPTION RULES:
 1. 2-4 short lines maximum.
 2. Tone: Challenging View (Sharp, grounded, psychological).
 3. NEVER use fluffy wellness clichés.
-4. End with a soft CTA prioritizing SAVES or SHARES. (e.g., "Save this for the next time you feel yourself spiritually bypassing.")
+4. ALWAYS end with one concise call-to-action optimized for SAVES or SHARES, not likes.
+5. Make the CTA feel like a personal challenge or reminder, NOT a marketing line.
+6. Good CTAs: "Save this for when you need it." / "Send this to someone who needs to hear it."
+7. Bad CTAs: "Like if you agree!" / "Follow for more!" / "Double tap!"
 
 HASHTAG RULES:
 1. Exactly 9-11 hashtags.
 2. 3-5 niche (spiritual psychology, shadow work, self-inquiry, etc.).
 3. 3-5 broad (#reels, #spirituality, #selfawareness, #mentalhealth).
 4. 1-2 branded (#ChallengingView).
+5. DO NOT repeat the exact same hashtag bundle every time - rotate to avoid hashtag fatigue.
 
 Respond with a JSON object:
 {

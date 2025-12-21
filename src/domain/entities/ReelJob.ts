@@ -23,6 +23,13 @@ export type ReelJobStatus =
     | 'failed';
 
 /**
+ * Reel mode controls duration optimization strategy.
+ * - 'discovery': Optimized for reach (10-20s), higher completion rates
+ * - 'deep-dive': Longer format (25-40s), for series and complex topics
+ */
+export type ReelMode = 'discovery' | 'deep-dive';
+
+/**
  * Input parameters for creating a new reel job.
  */
 export interface ReelJobInput {
@@ -45,6 +52,8 @@ export interface ReelJobInput {
     seriesName?: string;
     /** Optional series number (e.g., "Part 3 of 10") */
     seriesNumber?: number;
+    /** Optional reel mode: 'discovery' (10-20s) or 'deep-dive' (25-40s) */
+    reelMode?: ReelMode;
 }
 
 /**
