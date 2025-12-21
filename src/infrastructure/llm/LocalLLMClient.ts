@@ -146,7 +146,26 @@ Respond ONLY with JSON: { "hooks": ["hook1", "hook2", ...] }`;
 Respond ONLY with JSON: { "captionBody": "...", "hashtags": ["#tag1", ...] }`;
 
         const response = await this.callOllama(prompt);
-        return this.parseJSON<CaptionAndTags>(response);
+        const parsed = this.parseJSON<CaptionAndTags>(response);
+
+        // Ensure hashtags is at least an empty array to prevent undefined errors
+        if (!parsed.hashtags || !Array.isArray(parsed.hashtags) || parsed.hashtags.length === 0) {
+            console.warn('[LocalLLM] generateCaptionAndTags returned no hashtags, providing defaults');
+            parsed.hashtags = [
+                '#ChallengingView',
+                '#spirituality',
+                '#reels',
+                '#growth',
+                '#selfawareness',
+                '#mentalhealth',
+                '#selfinquiry',
+                '#shadowwork',
+                '#psychology',
+                '#mindset'
+            ];
+        }
+
+        return parsed;
     }
 
     private async callOllama(prompt: string): Promise<string> {

@@ -492,7 +492,26 @@ Respond with a JSON object:
 }`;
 
         const response = await this.callOpenAI(prompt, true);
-        return this.parseJSON<CaptionAndTags>(response);
+        const parsed = this.parseJSON<CaptionAndTags>(response);
+
+        // Ensure hashtags is at least an empty array to prevent undefined errors
+        if (!parsed.hashtags || !Array.isArray(parsed.hashtags) || parsed.hashtags.length === 0) {
+            console.warn('[LLM] generateCaptionAndTags returned no hashtags, providing defaults');
+            parsed.hashtags = [
+                '#ChallengingView',
+                '#spirituality',
+                '#reels',
+                '#growth',
+                '#selfawareness',
+                '#mentalhealth',
+                '#selfinquiry',
+                '#shadowwork',
+                '#psychology',
+                '#mindset'
+            ];
+        }
+
+        return parsed;
     }
 
     private async callOpenAI(prompt: string, jsonMode: boolean = false): Promise<string> {

@@ -22,7 +22,40 @@ describe('CaptionService', () => {
         const result = await service.generateCaption("Full script", "Summary");
 
         expect(result.captionBody).toContain('Save it');
-        expect(result.hashtags.length).toBeGreaterThanOrEqual(3);
+        expect(result.hashtags).toContain('#spirituality');
+        expect(result.hashtags.length).toBe(3);
         expect(llmClient.generateCaptionAndTags).toHaveBeenCalledWith("Full script", "Summary");
+    });
+
+    it('should prepend series label and add series hashtag when in series mode', async () => {
+        const mockResponse = {
+            captionBody: "Original caption body.",
+            hashtags: ['#tag1', '#tag2']
+        };
+        llmClient.generateCaptionAndTags.mockResolvedValue(mockResponse);
+
+        const result = await service.generateCaption("Full script", "Summary", {
+            seriesName: "One Hard Truth",
+            seriesNumber: 3
+        });
+
+        expect(result.captionBody).toBe("Part 3 | Original caption body.");
+        expect(result.hashtags).toContain('#OneHardTruth');
+        expect(result.seriesTag).toBe('#OneHardTruth');
+    });
+
+    it('should not add duplicate series hashtag', async () => {
+        const mockResponse = {
+            captionBody: "Original caption body.",
+            hashtags: ['#OneHardTruth', '#tag1']
+        };
+        llmClient.generateCaptionAndTags.mockResolvedValue(mockResponse);
+
+        const result = await service.generateCaption("Full script", "Summary", {
+            seriesName: "One Hard Truth",
+            seriesNumber: 3
+        });
+
+        expect(result.hashtags.filter(t => t === '#OneHardTruth').length).toBe(1);
     });
 });
