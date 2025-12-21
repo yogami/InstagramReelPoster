@@ -163,7 +163,7 @@ export function loadConfig(): Config {
         kieApiKey: getEnvVar('KIE_API_KEY', ''),
         kieApiBaseUrl: getEnvVar('KIE_API_BASE_URL', 'https://api.kie.ai/suno'),
         kieVideoBaseUrl: getEnvVar('KIE_API_VIDEO_BASE_URL', 'https://api.kie.ai/api/v1'),
-        kieVideoModel: getEnvVar('KIE_VIDEO_MODEL', 'kling-v1.5/text-to-video'),
+        kieVideoModel: getEnvVar('KIE_VIDEO_MODEL', 'kling-v1'),
 
         // Video Renderer
         videoRenderer: getEnvVar('VIDEO_RENDERER', 'shortstack') as 'shortstack' | 'ffmpeg',

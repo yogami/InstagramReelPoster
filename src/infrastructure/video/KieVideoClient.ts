@@ -18,7 +18,7 @@ export class KieVideoClient implements IAnimatedVideoClient {
     constructor(
         apiKey: string,
         baseUrl: string = 'https://api.kie.ai/api/v1',
-        defaultModel: string = 'kling-v1.5/text-to-video',
+        defaultModel: string = 'kling-v1',
         pollIntervalMs: number = 10000, // Video takes longer than music
         maxPollAttempts: number = 60 // ~600 seconds (10 mins) max
     ) {
@@ -27,7 +27,7 @@ export class KieVideoClient implements IAnimatedVideoClient {
         }
         this.apiKey = apiKey;
         this.baseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
-        this.defaultModel = defaultModel;
+        this.defaultModel = defaultModel || 'kling-v1';
         this.pollIntervalMs = pollIntervalMs;
         this.maxPollAttempts = maxPollAttempts;
     }
@@ -56,6 +56,7 @@ export class KieVideoClient implements IAnimatedVideoClient {
 
         // Kie.ai unified task creation endpoint
         const endpoint = `${this.baseUrl}/jobs/createTask`;
+        console.log(`[Kie.ai] Creating task at: ${endpoint} with model: ${this.defaultModel}`);
 
         try {
             const response = await axios.post(
@@ -64,9 +65,9 @@ export class KieVideoClient implements IAnimatedVideoClient {
                     model: this.defaultModel,
                     input: {
                         prompt: prompt.substring(0, 1000), // Documented max length
-                        duration: options.durationSeconds <= 5 ? "5" : "10", // String as per docs
-                        aspect_ratio: '9:16',
-                        sound: false // Mandatory boolean
+                        duration: options.durationSeconds <= 5 ? 5 : 10, // Try as number if string failed
+                        aspect_ratio: '9:16'
+                        // removed sound: false as it might be model-dependent
                     }
                 },
                 {
