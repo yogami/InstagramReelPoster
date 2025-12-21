@@ -151,5 +151,57 @@ export function createReelRoutes(
         })
     );
 
+    /**
+     * GET /jobs/:id/salvage?videoUrl=url1,url2
+     * 
+     * Manually triggers a salvage operation for a job using provided video URLs.
+     * Useful when Kie.ai dashboard shows completed videos but polling failed.
+     */
+    router.get(
+        '/jobs/:id/salvage',
+        asyncHandler(async (req: Request, res: Response) => {
+            const { id } = req.params;
+            const videoUrlRaw = req.query.videoUrl as string;
+
+            if (!videoUrlRaw) {
+                throw new BadRequestError('videoUrl query parameter is required (comma-separated for multi-clip)');
+            }
+
+            const videoUrls = videoUrlRaw.includes(',') ? videoUrlRaw.split(',') : [videoUrlRaw];
+
+            console.log(`[Salvage] Manually salvaging job ${id} with ${videoUrls.length} urls via API`);
+
+            const job = await jobManager.getJob(id);
+            if (!job) {
+                throw new BadRequestError(`Job ${id} not found`);
+            }
+
+            // Update job status and URLs
+            const updates: any = {
+                status: 'generating_subtitles'
+            };
+
+            if (videoUrls.length > 1) {
+                updates.animatedVideoUrls = videoUrls;
+                updates.animatedVideoUrl = videoUrls[0];
+            } else {
+                updates.animatedVideoUrl = videoUrls[0];
+            }
+
+            await jobManager.updateJob(id, updates);
+
+            // Trigger orchestrator (async)
+            orchestrator.processJob(id).catch(err => {
+                console.error(`[Salvage] Salvage of job ${id} failed in background:`, err);
+            });
+
+            res.status(202).json({
+                message: 'Salvage operation started successfully',
+                jobId: id,
+                videoUrls
+            });
+        })
+    );
+
     return router;
 }
