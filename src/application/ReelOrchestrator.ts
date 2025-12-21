@@ -457,7 +457,13 @@ export class ReelOrchestrator {
             }
 
             // Step 7: Visuals (Images or Animated Video)
-            const isAnimated = currentJob.isAnimatedVideoMode;
+            // CRITICAL: Parables ALWAYS use image mode (Kie.ai 10s limit incompatible with 36-46s parables)
+            const isParableContent = contentMode === 'parable';
+            const isAnimated = currentJob.isAnimatedVideoMode && !isParableContent;
+
+            if (isParableContent && currentJob.isAnimatedVideoMode) {
+                console.log(`[${jobId}] OVERRIDE: Parable mode forces IMAGE rendering (Kie.ai only supports 5-10s videos)`);
+            }
 
             if (isAnimated && this.deps.animatedVideoClient) {
                 // Animated Video Path
