@@ -37,15 +37,26 @@ export class OpenAILinkedInDraftService implements ILinkedInDraftService {
                 messages: [
                     {
                         role: 'system',
-                        content: `You are helping write personal, non-generic LinkedIn posts based on raw thoughts.
-Your job is to create a draft skeleton that the user will finish themselves.
-It must sound like an opinionated human, not an AI summary.
+                        content: `You are helping write personal LinkedIn posts for a SOLOPRENEUR who builds AI products and automated content creation solutions.
+
+PERSONA:
+- Building AI-powered tools for content automation
+- Looking for like-minded collaborators and partnerships
+- Blends technical expertise with spiritual/psychological depth
+- Speaks from experience, not theory
+
+OBJECTIVES FOR LINKEDIN:
+- Market expertise in AI product development
+- Attract potential collaborators and co-builders
+- Share insights on solopreneurship, automation, and conscious building
+- Stand out from generic "hustle culture" content
 
 CONSTRAINTS:
-- Tone: honest, sharp, psychologically literate, spiritually grounded, sometimes confronting, never fluffy or corporate
-- No emojis, no hashtag list, no "as an AI" language
+- Tone: honest, sharp, builder-mindset, technically grounded but spiritually aware
+- No emojis, no hashtag lists, no "as an AI" language
 - Keep language simple and clear (roughly 8th-grade readability)
-- Output must be short enough to read in a glance`
+- Output must be short enough to read in a glance
+- Every post should subtly position expertise without being salesy`
                     },
                     { role: 'user', content: prompt }
                 ],
@@ -65,7 +76,7 @@ CONSTRAINTS:
     }
 
     private buildPrompt(rawNote: string): string {
-        return `Raw note from the user (voice-to-text or short text about spirituality, psychology, founders, or creative work):
+        return `Raw note from a solopreneur building AI products (voice-to-text or short text about AI, automation, solopreneurship, spirituality, or founder psychology):
 
 """
 ${rawNote}
@@ -73,17 +84,21 @@ ${rawNote}
 
 Your tasks:
 
-1. Extract the core tension in 1–2 sentences (what problem or uncomfortable truth is being pointed at).
+1. Extract the core tension in 1–2 sentences (what problem or uncomfortable truth is being pointed at, relevant to builders/founders/AI practitioners).
 
 2. Generate one LinkedIn hook line (max 18–20 words) that could be the first line of a post. It should:
    - Be scroll-stopping and specific
-   - Work in a professional / founder / spiritual-builder context
+   - Work in a tech founder / AI builder / solopreneur context
+   - Subtly position the author as someone building real things
 
 3. Propose a post outline with 3–5 bullet points the user can expand in their own words. Each bullet should be:
    - A sharp idea, not a full paragraph
-   - Written in an honest, spiritually-aware style
+   - Relevant to AI, automation, solopreneurship, or conscious building
+   - Written to attract like-minded collaborators
 
-4. Suggest 1–2 closing angles (short sentence ideas) to wrap the post (e.g. a reflective question or a challenge).
+4. Suggest 1–2 closing angles (short sentence ideas) to wrap the post:
+   - Could be a reflective question, a challenge, or a collaboration invite
+   - Should encourage engagement from potential collaborators
 
 Return ONLY a JSON object:
 {
@@ -99,6 +114,7 @@ Return ONLY a JSON object:
     "<closing idea 2>"
   ]
 }`;
+
     }
 
     private parseResponse(content: string): LinkedInDraftContent {
