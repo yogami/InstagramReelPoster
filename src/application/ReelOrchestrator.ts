@@ -13,6 +13,12 @@ import {
     calculateSpeedAdjustment,
     calculateSegmentTimings,
 } from '../domain/services/DurationCalculator';
+import {
+    ContentMode,
+    ParableIntent,
+    ParableScriptPlan,
+    ParableBeat,
+} from '../domain/entities/Parable';
 
 import { ITranscriptionClient } from '../domain/ports/ITranscriptionClient';
 import { ILLMClient, ReelPlan, SegmentContent } from '../domain/ports/ILLMClient';
@@ -132,18 +138,129 @@ export class ReelOrchestrator {
                 detectionResult = { isAnimatedMode: job.isAnimatedVideoMode };
             }
 
-            // Step 2: Plan reel
+            // Step 1.6: Detect content mode (direct-message vs parable)
+            let contentMode: ContentMode = job.contentMode || 'direct-message';
+            let parableScriptPlan: ParableScriptPlan | undefined = job.parableScriptPlan;
+            let parableIntent: ParableIntent | undefined = job.parableIntent;
+
+            // Refresh job to get latest state
+            const jobForContentMode = await this.deps.jobManager.getJob(jobId);
+            if (jobForContentMode) {
+                contentMode = jobForContentMode.contentMode || contentMode;
+                parableScriptPlan = jobForContentMode.parableScriptPlan;
+                parableIntent = jobForContentMode.parableIntent;
+            }
+
+            // Determine content mode if not already set
+            if (!contentMode || contentMode === 'direct-message') {
+                // Check for explicit forceMode in job input
+                const refreshedJob = await this.deps.jobManager.getJob(jobId);
+                const forceMode = (refreshedJob as any)?.forceMode;
+
+                if (forceMode === 'parable') {
+                    contentMode = 'parable';
+                    console.log(`[${jobId}] Content Mode: PARABLE (forced)`);
+                } else if (forceMode === 'direct') {
+                    contentMode = 'direct-message';
+                    console.log(`[${jobId}] Content Mode: DIRECT-MESSAGE (forced)`);
+                } else if (this.deps.llmClient.detectContentMode) {
+                    // Auto-detect from transcript
+                    try {
+                        const contentModeResult = await this.deps.llmClient.detectContentMode(transcript);
+                        contentMode = contentModeResult.contentMode;
+                        console.log(`[${jobId}] Content Mode: ${contentMode.toUpperCase()} (detected: ${contentModeResult.reason})`);
+                    } catch (err) {
+                        console.warn(`[${jobId}] Content mode detection failed, defaulting to direct-message:`, err);
+                        contentMode = 'direct-message';
+                    }
+                }
+
+                await this.deps.jobManager.updateJob(jobId, { contentMode });
+            }
+
+            // Step 2: Plan reel (branched by content mode)
             let targetDurationSeconds = job.targetDurationSeconds;
-            // For now, we replan if haven't passed planning, but we need the plan object for next steps
             await this.updateJobStatus(jobId, 'planning', 'Planning reel structure...');
 
             console.log(`[${jobId}] Planning reel with range: ${job.targetDurationRange.min}s - ${job.targetDurationRange.max}s`);
 
-            let plan = await this.deps.llmClient.planReel(transcript, {
-                minDurationSeconds: job.targetDurationRange.min,
-                maxDurationSeconds: job.targetDurationRange.max,
-                moodOverrides: job.moodOverrides,
-            });
+            let plan: ReelPlan;
+            let segmentContent: SegmentContent[] | undefined;
+
+            if (contentMode === 'parable' && this.deps.llmClient.extractParableIntent && this.deps.llmClient.generateParableScript) {
+                // PARABLE MODE PIPELINE
+                console.log(`[${jobId}] Using PARABLE pipeline...`);
+
+                try {
+                    // Step 2a: Extract parable intent
+                    if (!parableIntent) {
+                        parableIntent = await this.deps.llmClient.extractParableIntent(transcript);
+                        await this.deps.jobManager.updateJob(jobId, { parableIntent });
+                        console.log(`[${jobId}] Parable intent: theme="${parableIntent.coreTheme}", type="${parableIntent.sourceType}"`);
+                    }
+
+                    // Step 2b: Choose story source (if theme-only)
+                    let sourceChoice = parableScriptPlan?.sourceChoice;
+                    if (!sourceChoice && parableIntent.sourceType === 'theme-only' && this.deps.llmClient.chooseParableSource) {
+                        sourceChoice = await this.deps.llmClient.chooseParableSource(parableIntent);
+                        console.log(`[${jobId}] Parable source: culture="${sourceChoice.culture}", archetype="${sourceChoice.archetype}"`);
+                    } else if (!sourceChoice) {
+                        sourceChoice = {
+                            culture: parableIntent.culturalPreference || 'generic-eastern',
+                            archetype: 'sage',
+                            rationale: 'Default selection from intent'
+                        };
+                    }
+
+                    // Step 2c: Generate parable script
+                    const targetDuration = Math.min(job.targetDurationRange.max, 40); // Parables target 25-40s
+                    parableScriptPlan = await this.deps.llmClient.generateParableScript(
+                        parableIntent,
+                        sourceChoice,
+                        targetDuration
+                    );
+                    await this.deps.jobManager.updateJob(jobId, { parableScriptPlan });
+                    console.log(`[${jobId}] Parable script generated with ${parableScriptPlan.beats.length} beats`);
+
+                    // Convert parable beats to standard SegmentContent
+                    segmentContent = parableScriptPlan.beats.map((beat: ParableBeat) => ({
+                        commentary: beat.narration,
+                        imagePrompt: beat.imagePrompt,
+                        caption: beat.textOnScreen
+                    }));
+
+                    // Create a compatible plan object for downstream processing
+                    plan = {
+                        targetDurationSeconds: parableScriptPlan.beats.reduce((sum: number, b: ParableBeat) => sum + b.approxDurationSeconds, 0),
+                        segmentCount: parableScriptPlan.beats.length,
+                        musicTags: ['ambient', 'spiritual', 'meditative', 'eastern'],
+                        musicPrompt: `Ambient meditative music for a ${sourceChoice.culture} ${sourceChoice.archetype} story`,
+                        mood: 'contemplative',
+                        summary: `A ${sourceChoice.archetype} story about ${parableIntent.coreTheme}`,
+                        mainCaption: parableIntent.moral
+                    };
+
+                } catch (err) {
+                    // Fallback to direct-message mode on parable failure
+                    console.warn(`[${jobId}] Parable pipeline failed, falling back to direct-message:`, err);
+                    contentMode = 'direct-message';
+                    await this.deps.jobManager.updateJob(jobId, { contentMode: 'direct-message' });
+
+                    // Fall through to normal planning
+                    plan = await this.deps.llmClient.planReel(transcript, {
+                        minDurationSeconds: job.targetDurationRange.min,
+                        maxDurationSeconds: job.targetDurationRange.max,
+                        moodOverrides: job.moodOverrides,
+                    });
+                }
+            } else {
+                // DIRECT-MESSAGE MODE PIPELINE (existing behavior)
+                plan = await this.deps.llmClient.planReel(transcript, {
+                    minDurationSeconds: job.targetDurationRange.min,
+                    maxDurationSeconds: job.targetDurationRange.max,
+                    moodOverrides: job.moodOverrides,
+                });
+            }
 
             console.log(`[${jobId}] LLM Initial Plan: target=${plan.targetDurationSeconds}s, segments=${plan.segmentCount}`);
 
@@ -176,11 +293,15 @@ export class ReelOrchestrator {
             });
             this.logMemoryUsage('Step 2: Planning');
 
-            // Step 3: Generate commentary
+            // Step 3: Generate commentary (skip if already generated from parable pipeline)
             let segments = job.segments;
             if (!segments || segments.length === 0 || !segments[0].commentary) {
                 await this.updateJobStatus(jobId, 'generating_commentary', 'Writing commentary...');
-                let segmentContent = await this.deps.llmClient.generateSegmentContent(plan, transcript);
+
+                // Use pre-generated segment content from parable pipeline if available
+                if (!segmentContent) {
+                    segmentContent = await this.deps.llmClient.generateSegmentContent(plan, transcript);
+                }
 
                 // Personal Clone: Collect text samples for training if enabled
                 if (config.featureFlags.personalCloneTrainingMode && segmentContent) {
