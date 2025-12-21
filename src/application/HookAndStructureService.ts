@@ -17,7 +17,8 @@ export class HookAndStructureService implements IHookAndStructureService {
     async optimizeStructure(
         transcript: string,
         currentPlan: ReelPlan,
-        trendContext?: string
+        trendContext?: string,
+        reelMode?: 'discovery' | 'deep-dive'
     ): Promise<HookPlan> {
         // 1. Generate Hooks via LLM (with trend context if provided)
         const hooks = await this.llmClient.generateHooks(transcript, currentPlan, trendContext);
@@ -27,13 +28,23 @@ export class HookAndStructureService implements IHookAndStructureService {
         // 2. Classify hook style for analytics
         const hookStyle = this.classifyHookStyle(chosenHook);
 
-        // 3. Optimize Duration for Retention (Discovery Bias)
-        // Target: 10-20 seconds for discovery, unless story warrants more.
+        // 3. Optimize Duration for Retention
         let optimizedDuration = currentPlan.targetDurationSeconds;
 
-        if (optimizedDuration > 20) {
-            // If much longer, we try to condense it for higher completion rates
-            optimizedDuration = Math.max(15, Math.min(optimizedDuration * 0.7, 25));
+        if (reelMode === 'discovery') {
+            // Discovery Mode: Strictly 10-25 seconds for maximum reach
+            if (optimizedDuration > 25) {
+                optimizedDuration = Math.max(15, Math.min(optimizedDuration * 0.7, 25));
+            }
+        } else if (reelMode === 'deep-dive') {
+            // Deep-dive Mode: Allow 25-60 seconds for complex topics/series
+            // We still clamp slightly to avoid boring the user, but much more relaxed
+            optimizedDuration = Math.max(25, Math.min(optimizedDuration, 60));
+        } else {
+            // No mode specified: default behavior (moderate clamping if very long)
+            if (optimizedDuration > 45) {
+                optimizedDuration = Math.min(optimizedDuration, 60); // Respect high duration if plan said so
+            }
         }
 
         // 4. Segment Mapping (Hook -> Body -> Payoff)

@@ -151,7 +151,7 @@ export class ReelOrchestrator {
             if (this.deps.hookAndStructureService) {
                 try {
                     console.log(`[${jobId}] Optimizing structure & hooks...`);
-                    const hookPlan = await this.deps.hookAndStructureService.optimizeStructure(transcript, plan);
+                    const hookPlan = await this.deps.hookAndStructureService.optimizeStructure(transcript, plan, job.trendContext, job.reelMode);
 
                     await this.deps.jobManager.updateJob(jobId, {
                         hookPlan,

@@ -138,9 +138,10 @@ ${transcript}
 Constraints:
 - Duration must be between ${constraints.minDurationSeconds} and ${constraints.maxDurationSeconds} seconds
 - Target ~5 seconds per segment.
-- PRIORITY RULE: If the transcript requests a specific duration (e.g. "1 minute", "60 seconds"), you MUST stretch the content to meet that duration.
+- PRIORITY RULE: If the transcript requests a specific duration (e.g. "1 minute", "60 seconds"), you MUST stretch the content to meet that duration. This is the MOST IMPORTANT constraint.
 - Plan enough segments to fill the requested time (e.g. 60s = ~12 segments).
 - If no duration is requested, choose a duration fitting the content depth.
+- NEVER disregard a specific duration request in the voice note.
 
 Respond with a JSON object containing:
 {
@@ -244,6 +245,13 @@ STORYTELLING-VISUAL CONGRUENCE (CRITICAL):
 ★ If the story mentions a specific subject (e.g., "the prince"), the image must show it.
 ★ NEVER describe the video in the commentary (e.g., no "this scene shows...").
 ★ Use evocative, visceral narrative language. Just tell the story.
+
+PHRASING PRESERVATION (HIGH PRIORITY):
+★ STRICT VERBATIM RULE: If the transcript is already coherent and punchy, DO NOT change a single word. Distribute the transcript text verbatim across the segments.
+★ DO NOT paraphrase the user's most effective lines.
+★ Only re-arrange or omit filler words if absolutely necessary to fit the word budget.
+★ YOUR JOB IS TO PACKAGE THEIR TRUTH, NOT REWRITE IT.
+★ Avoid "explaining" the user's point. Let their original words carry the weight.
 
 STRICT IMAGE POLICY (NON-NEGOTIABLE):
 1. RELATIONSHIPS: If the topic involves love, romance, dating, or marriage, you MUST depict a Heterosexual couple (Man and Woman).

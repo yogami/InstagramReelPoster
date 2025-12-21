@@ -77,8 +77,15 @@ export interface ReelJob {
         min: number;
         max: number;
     };
-    /** Optional mood overrides */
     moodOverrides?: string[];
+    /** Optional trend context */
+    trendContext?: string;
+    /** Optional series name */
+    seriesName?: string;
+    /** Optional series number */
+    seriesNumber?: number;
+    /** Optional reel mode */
+    reelMode?: ReelMode;
 
     // Populated during processing:
     /** Transcribed text from the source audio */
@@ -164,6 +171,10 @@ export function createReelJob(
         moodOverrides: input.moodOverrides,
         callbackUrl: input.callbackUrl,
         telegramChatId: input.telegramChatId,
+        trendContext: input.trendContext,
+        seriesName: input.seriesName,
+        seriesNumber: input.seriesNumber,
+        reelMode: input.reelMode,
         createdAt: now,
         updatedAt: now,
     };
