@@ -20,7 +20,7 @@ export class KieVideoClient implements IAnimatedVideoClient {
         baseUrl: string = 'https://api.kie.ai/api/v1',
         defaultModel: string = 'kling-2.6/text-to-video',
         pollIntervalMs: number = 10000, // Video takes longer than music
-        maxPollAttempts: number = 60 // ~600 seconds (10 mins) max
+        maxPollAttempts: number = 180 // ~1800 seconds (30 mins) max for 1-minute videos
     ) {
         if (!apiKey) {
             throw new Error('Kie.ai API key is required');
@@ -177,9 +177,12 @@ export class KieVideoClient implements IAnimatedVideoClient {
                 }
 
                 if (axios.isAxiosError(error)) {
-                    // Don't warn on 404s unless we've exceeded the grace period
+                    // 404 Grace Period (Propagation)
                     if (error.response?.status === 404) {
-                        console.log(`[Kie.ai] Status check returned 404. Waiting for task to propagate...`);
+                        if (attempt > 30) {
+                            throw new Error(`Kie.ai task ${jobId} not found after 5 minutes of polling. It may have been deleted or the ID is invalid.`);
+                        }
+                        console.log(`[Kie.ai] Task ${jobId} is not yet visible (Attempt ${attempt}/${this.maxPollAttempts})...`);
                     } else {
                         console.warn(`[Kie.ai] Polling warning (Task ${jobId}): ${error.message}`);
                     }
