@@ -1,5 +1,11 @@
 import { Segment } from '../entities/Segment';
 import { HookPlan, CaptionAndTags } from '../entities/Growth';
+import {
+    ContentMode,
+    ParableIntent,
+    ParableSourceChoice,
+    ParableScriptPlan,
+} from '../entities/Parable';
 
 /**
  * ReelPlan represents the LLM's planning output for a reel.
@@ -65,7 +71,7 @@ export interface PlanningConstraints {
 }
 
 /**
- * Result from reel mode detection.
+ * Result from reel mode detection (animated vs images).
  */
 export interface ReelModeDetectionResult {
     /** Whether the user wants an animated video instead of static images */
@@ -77,9 +83,19 @@ export interface ReelModeDetectionResult {
 }
 
 /**
+ * Result from content mode detection (direct-message vs parable).
+ */
+export interface ContentModeDetectionResult {
+    /** Whether the content should be direct commentary or a parable */
+    contentMode: ContentMode;
+    /** Reason for the detection decision */
+    reason: string;
+}
+
+/**
  * ILLMClient - Port for LLM services.
  * Handles reel planning, commentary generation, and prompt synthesis.
- * Implementations: OpenAILLMClient
+ * Implementations: OpenAILLMClient, LocalLLMClient
  */
 export interface ILLMClient {
     /**
@@ -117,6 +133,7 @@ export interface ILLMClient {
         direction: 'shorter' | 'longer',
         targetDurationSeconds: number
     ): Promise<SegmentContent[]>;
+
     /**
      * Generates multiple hook options for the reel.
      * @param transcript Full transcript
@@ -133,4 +150,64 @@ export interface ILLMClient {
      * @returns Optimized caption and hashtags
      */
     generateCaptionAndTags(fullScript: string, summary: string): Promise<CaptionAndTags>;
+
+    // ============================================
+    // PARABLE MODE METHODS
+    // ============================================
+
+    /**
+     * Detects whether the transcript is story-oriented (parable) or direct commentary.
+     * @param transcript The transcribed user voice note
+     * @returns Detection result with contentMode and reason
+     */
+    detectContentMode?(transcript: string): Promise<ContentModeDetectionResult>;
+
+    /**
+     * Extracts parable intent from transcript.
+     * @param transcript The transcribed user voice note
+     * @returns Extracted intent with theme, moral, and constraints
+     */
+    extractParableIntent?(transcript: string): Promise<ParableIntent>;
+
+    /**
+     * Chooses story-world for theme-only parables.
+     * @param intent The extracted parable intent
+     * @returns Selected culture and archetype with rationale
+     */
+    chooseParableSource?(intent: ParableIntent): Promise<ParableSourceChoice>;
+
+    /**
+     * Generates complete parable script with 4-beat structure.
+     * @param intent The extracted parable intent
+     * @param sourceChoice The selected story-world
+     * @param targetDurationSeconds Target duration for the parable
+     * @returns Complete parable script plan
+     */
+    generateParableScript?(
+        intent: ParableIntent,
+        sourceChoice: ParableSourceChoice,
+        targetDurationSeconds: number
+    ): Promise<ParableScriptPlan>;
+
+    /**
+     * Generates hooks specifically for parable content.
+     * @param parableScript The generated parable script
+     * @param trendContext Optional trend context
+     * @returns Array of parable-specific hooks
+     */
+    generateParableHooks?(
+        parableScript: ParableScriptPlan,
+        trendContext?: string
+    ): Promise<string[]>;
+
+    /**
+     * Generates captions optimized for parable content.
+     * @param parableScript The generated parable script
+     * @param summary Core story summary
+     * @returns Optimized caption and hashtags for parable
+     */
+    generateParableCaptionAndTags?(
+        parableScript: ParableScriptPlan,
+        summary: string
+    ): Promise<CaptionAndTags>;
 }
