@@ -749,17 +749,29 @@ TARGET DURATION: ${effectiveDuration} seconds (CRITICAL - must reach this durati
 WORD BUDGET: ~${totalWords} words total (DO NOT go shorter)
 
 === 4-BEAT STRUCTURE ===
-1. HOOK (8-10 seconds): Promise a surprising angle on familiar behavior.
+1. HOOK (8-10 seconds): FIRST SENTENCE MUST GRAB IN 1-3 SECONDS.
    Pattern: "The [archetype] who [unexpected twist on the theme]"
    Example: "The monk whose favorite prayer was gossip."
    Example: "The warrior who feared his own silence more than battle."
+   
+   CRITICAL: The first sentence alone must make viewer stop scrolling.
+   - Promise a specific revelation
+   - Create immediate cognitive dissonance
+   - NO buildup - start with the twist
 
 2. SETUP (10-14 seconds): Show who they are and their HIDDEN tension.
    - What they do on the surface
    - What they're actually avoiding
    - Build the gap between appearance and reality
+   - Use SIMPLE 5th-8th grade language (avoid dense philosophy)
 
 3. TURN (10-12 seconds): The CONFRONTATION that exposes the truth.
+   START WITH A RE-HOOK LINE to renew curiosity:
+   - "But here's what nobody told him..."
+   - "What happened next shocked everyone in the monastery."
+   - "And then, the teacher said one thing that changed everything."
+   
+   Then show:
    - A teacher's piercing question
    - A crisis that strips the mask
    - The moment they can't hide anymore
@@ -770,14 +782,32 @@ WORD BUDGET: ~${totalWords} words total (DO NOT go shorter)
    - Sharp, caustic, psychologically aware
    - The viewer should feel seen, not preached to
 
-=== VISUAL SIMPLICITY (CRITICAL) ===
-Image prompts must follow these rules:
+=== VOICEOVER TONALITY ===
+- Sound like a CALM NARRATOR DESCRIBING A DISASTER IN SLOW MOTION
+- Emotionally loaded but NOT shouty
+- Controlled intensity, not preaching
+- Think: documentary narrator revealing something uncomfortable
+
+=== LANGUAGE RULES ===
+- Use 5th-8th grade vocabulary
+- Short sentences. Simple words.
+- NO dense philosophy. NO spiritual jargon.
+- The simpler the language, the sharper the impact.
+
+=== VISUAL MOOD RULES ===
+Image prompts must encode emotional beats through color and composition:
+- HOOK: Neutral palette, establishing shot
+- SETUP: Warm but muted tones, surface appearance
+- TURN (Confrontation/Betrayal): DARKER palette, shadows, tension in composition
+- MORAL (Realization): BRIGHTER palette, light breaking through, clarity
+
+Additional visual rules:
 - SIMPLE, SYMBOLIC scenes (monk in courtyard, warrior at campfire, gossip circle)
 - Minimal motion, clean composition
 - NO complex effects or busy visuals
 - The simplicity IS the hook - viewer focuses on message, not FX
 - Repeating visual motifs across beats (same courtyard, same characters)
-- Style: "2D cel-shaded, hand-drawn feeling, muted earth tones, Studio Ghibli simplicity"
+- Style: "2D cel-shaded, hand-drawn feeling, Studio Ghibli simplicity"
 
 === CHARACTER REQUIREMENTS ===
 - Use SPECIFIC character names from the story (Ekalavya, Dronacharya, NOT "a boy" or "the teacher")
@@ -805,30 +835,30 @@ Respond with JSON:
   "beats": [
     {
       "role": "hook",
-      "narration": "...",
+      "narration": "First sentence MUST grab in 1-3 seconds...",
       "textOnScreen": "...",
-      "imagePrompt": "2D cel-shaded, hand-drawn feeling, [simple symbolic scene], muted earth tones",
+      "imagePrompt": "2D cel-shaded, hand-drawn, [symbolic establishing shot], NEUTRAL palette",
       "approxDurationSeconds": 8-10
     },
     {
       "role": "setup",
-      "narration": "...",
+      "narration": "Simple 5th-8th grade language...",
       "textOnScreen": "...",
-      "imagePrompt": "2D cel-shaded, hand-drawn feeling, [simple symbolic scene], muted earth tones",
+      "imagePrompt": "2D cel-shaded, hand-drawn, [character in setting], WARM MUTED tones",
       "approxDurationSeconds": 10-14
     },
     {
       "role": "turn",
-      "narration": "...",
+      "narration": "START WITH RE-HOOK: 'But here's what nobody told him...'",
       "textOnScreen": "...",
-      "imagePrompt": "2D cel-shaded, hand-drawn feeling, [simple symbolic scene], muted earth tones",
+      "imagePrompt": "2D cel-shaded, hand-drawn, [confrontation scene], DARKER palette, shadows, tension",
       "approxDurationSeconds": 10-12
     },
     {
       "role": "moral",
-      "narration": "...",
+      "narration": "Mirror the viewer, implicate, not lecture...",
       "textOnScreen": "...",
-      "imagePrompt": "2D cel-shaded, hand-drawn feeling, [simple symbolic scene], muted earth tones",
+      "imagePrompt": "2D cel-shaded, hand-drawn, [realization moment], BRIGHTER palette, light breaking through",
       "approxDurationSeconds": 8-10
     }
   ]

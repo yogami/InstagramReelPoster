@@ -225,6 +225,41 @@ describe('Parable Prompt Acceptance Criteria', () => {
         it('should pass isParableScriptPlan type guard', () => {
             expect(isParableScriptPlan(validParableScript)).toBe(true);
         });
+
+        // ============================================================
+        // Daniel's Viral Tactics Validation
+        // ============================================================
+
+        it('VIRAL: hook first sentence should be short and grab-worthy (< 80 chars)', () => {
+            // First sentence must grab in 1-3 seconds
+            const hookNarration = validParableScript.beats[0].narration;
+            const firstSentence = hookNarration.split('.')[0];
+            expect(firstSentence.length).toBeLessThan(80);
+        });
+
+        it('VIRAL: turn beat should contain a re-hook phrase pattern', () => {
+            // Turn should start with or contain a curiosity-renewing phrase
+            const turnNarration = validParableScript.beats[2].narration;
+            const reHookPatterns = [
+                /but here/i,
+                /what happened next/i,
+                /and then/i,
+                /finally/i,
+                /until/i,
+                /one day/i
+            ];
+            const hasReHook = reHookPatterns.some(pattern => pattern.test(turnNarration));
+            expect(hasReHook).toBe(true);
+        });
+
+        it('VIRAL: language should be simple (sentences average < 15 words)', () => {
+            // 5th-8th grade level = simple sentences
+            const allNarration = validParableScript.beats.map(b => b.narration).join(' ');
+            const sentences = allNarration.split(/[.!?]+/).filter(s => s.trim().length > 0);
+            const totalWords = sentences.reduce((sum, s) => sum + s.trim().split(/\s+/).length, 0);
+            const avgWordsPerSentence = totalWords / sentences.length;
+            expect(avgWordsPerSentence).toBeLessThan(15);
+        });
     });
 
     // ============================================================
