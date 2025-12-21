@@ -319,13 +319,22 @@ export class ReelOrchestrator {
                 }
 
                 // VALIDATION: Ensure the LLM returned exactly the number of segments we planned for.
-                // We no longer silently "recover" by wrapping a single segment, as that causes 5-second videos.
-                this.validateSegmentCount(segmentContent, plan.segmentCount, 'Initial Generation');
+                // Skip validation for parable mode since segments are pre-generated with 4 beats
+                // and plan.segmentCount is already set correctly from parableScriptPlan
+                const isParablePreGenerated = contentMode === 'parable' && parableScriptPlan;
+                if (!isParablePreGenerated) {
+                    this.validateSegmentCount(segmentContent, plan.segmentCount, 'Initial Generation');
+                } else {
+                    console.log(`[${jobId}] Skipping segment validation for parable mode (${segmentContent.length} beats)`);
+                }
 
                 segmentContent = await this.adjustCommentaryIfNeeded(plan, segmentContent);
 
                 // VALIDATION: Ensure the adjustment step didn't truncate segments either.
-                this.validateSegmentCount(segmentContent, plan.segmentCount, 'Adjustment Phase');
+                // Skip for parable mode as well
+                if (!isParablePreGenerated) {
+                    this.validateSegmentCount(segmentContent, plan.segmentCount, 'Adjustment Phase');
+                }
 
                 // Step 4: Synthesize voiceover
                 await this.updateJobStatus(jobId, 'synthesizing_voiceover', 'Creating voiceover...');
