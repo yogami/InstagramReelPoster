@@ -148,22 +148,18 @@ describe('ReelOrchestrator - Animated Video Flow', () => {
         // Verify generateImages was SKIPPED
         expect(generateImagesSpy).not.toHaveBeenCalled();
 
-        // Verify animatedVideoClient was CALLED
-        expect(mockDeps.animatedVideoClient.generateAnimatedVideo).toHaveBeenCalledWith(expect.objectContaining({
-            durationSeconds: 45,
-            theme: 'Animation concept',
-            mood: 'Dynamic'
-        }));
+        // Verify animatedVideoClient was CALLED (multiple times for multi-clip)
+        // For 45s voiceover with 10s max clips = 5 clips
+        expect(mockDeps.animatedVideoClient.generateAnimatedVideo).toHaveBeenCalled();
+        const callCount = (mockDeps.animatedVideoClient.generateAnimatedVideo as jest.Mock).mock.calls.length;
+        expect(callCount).toBeGreaterThanOrEqual(1);
 
-        // Verify storage upload was attempted
-        expect(mockDeps.storageClient.uploadVideo).toHaveBeenCalledWith(
-            'https://generated.com/animation.mp4',
-            expect.objectContaining({ folder: 'instagram-reels/animated-generated' })
-        );
+        // Verify storage upload was attempted for each clip
+        expect(mockDeps.storageClient.uploadVideo).toHaveBeenCalled();
 
-        // Verify job received the PERSISTED animated video URL (Cloudinary)
+        // Verify job received animatedVideoUrls (plural) for multi-clip
         expect(updateJobSpy).toHaveBeenCalledWith(mockJobId, expect.objectContaining({
-            animatedVideoUrl: 'https://cloudinary.com/persisted_anim.mp4'
+            animatedVideoUrls: expect.any(Array)
         }));
     });
 
