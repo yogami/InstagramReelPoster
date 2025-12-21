@@ -72,6 +72,7 @@ export interface Config {
         usePersonalCloneTTS: boolean;  // Use local XTTS v2 instead of Fish Audio
         usePersonalCloneLLM: boolean;  // Use local fine-tuned LLM instead of OpenAI
         personalCloneTrainingMode: boolean; // Collect data for training
+        enableUserApproval: boolean;  // Human-in-the-loop approval checkpoints
     };
 
     // Personal Clone Configuration (only used when feature flags are enabled)
@@ -193,6 +194,7 @@ export function loadConfig(): Config {
             usePersonalCloneTTS: getEnvVarBoolean('USE_PERSONAL_CLONE_TTS', false),
             usePersonalCloneLLM: getEnvVarBoolean('USE_PERSONAL_CLONE_LLM', false),
             personalCloneTrainingMode: getEnvVarBoolean('PERSONAL_CLONE_TRAINING_MODE', false),
+            enableUserApproval: getEnvVarBoolean('ENABLE_USER_APPROVAL', false), // Human-in-the-loop approval checkpoints
         },
 
         // Personal Clone Configuration
