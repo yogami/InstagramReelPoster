@@ -518,36 +518,57 @@ export class ReelOrchestrator {
                         console.log(`[${jobId}] Parable multi-clip complete: ${videoUrls.length} videos generated`);
 
                     } else {
-                        // SINGLE VIDEO MODE: Non-parable or legacy flow
-                        const animatedResult = await this.deps.animatedVideoClient.generateAnimatedVideo({
-                            durationSeconds: voiceoverDuration,
-                            theme: plan.summary || plan.mainCaption,
-                            storyline: detectionResult.storyline,
-                            mood: plan.mood,
-                        });
+                        // MULTI-CLIP MODE FOR ALL ANIMATED VIDEOS (no looping)
+                        // Calculate how many clips needed based on duration
+                        const kieMaxDuration = 10;
+                        const clipsNeeded = Math.ceil(voiceoverDuration / kieMaxDuration);
+                        const clipDuration = voiceoverDuration / clipsNeeded;
 
-                        let finalVideoUrl = animatedResult.videoUrl;
+                        console.log(`[${jobId}] Multi-clip mode: ${clipsNeeded} clips x ${clipDuration.toFixed(1)}s = ${voiceoverDuration}s total`);
 
-                        // ZERO WASTE POLICY: Immediately upload to persistent storage
-                        if (this.deps.storageClient) {
-                            try {
-                                console.log(`[${jobId}] Persisting animated video to Cloudinary...`);
-                                const uploadResult = await this.deps.storageClient.uploadVideo(finalVideoUrl, {
-                                    folder: 'instagram-reels/animated-generated',
-                                    publicId: `anim_${jobId}_${Date.now()}`
-                                });
-                                finalVideoUrl = uploadResult.url;
-                                console.log(`[${jobId}] Persisted to: ${finalVideoUrl}`);
-                            } catch (err) {
-                                console.error(`[${jobId}] Failed to persist video to storage (using original URL):`, err);
+                        const videoUrls: string[] = [];
+
+                        for (let i = 0; i < clipsNeeded; i++) {
+                            const clipNum = i + 1;
+                            console.log(`[${jobId}] Generating clip ${clipNum}/${clipsNeeded}: ${clipDuration.toFixed(1)}s`);
+
+                            // Vary the prompt slightly for each clip to avoid identical videos
+                            const clipPrompt = segments && segments[i]
+                                ? segments[i].commentary.substring(0, 100)
+                                : `${plan.summary || plan.mainCaption} - Part ${clipNum}`;
+
+                            const animatedResult = await this.deps.animatedVideoClient.generateAnimatedVideo({
+                                durationSeconds: Math.min(clipDuration, kieMaxDuration),
+                                theme: clipPrompt,
+                                storyline: detectionResult.storyline,
+                                mood: plan.mood,
+                            });
+
+                            let videoUrl = animatedResult.videoUrl;
+
+                            // Persist each clip
+                            if (this.deps.storageClient) {
+                                try {
+                                    console.log(`[${jobId}] Persisting clip ${clipNum} to Cloudinary...`);
+                                    const uploadResult = await this.deps.storageClient.uploadVideo(videoUrl, {
+                                        folder: 'instagram-reels/animated-clips',
+                                        publicId: `anim_${jobId}_clip${clipNum}_${Date.now()}`
+                                    });
+                                    videoUrl = uploadResult.url;
+                                } catch (err) {
+                                    console.error(`[${jobId}] Failed to persist clip ${clipNum}:`, err);
+                                }
                             }
+
+                            videoUrls.push(videoUrl);
                         }
 
+                        // Store all video URLs
                         await this.deps.jobManager.updateJob(jobId, {
-                            animatedVideoUrl: finalVideoUrl
+                            animatedVideoUrls: videoUrls
                         });
-                        currentJob.animatedVideoUrl = finalVideoUrl;
-                        console.log(`[${jobId}] Animated video generated: ${finalVideoUrl}`);
+                        currentJob.animatedVideoUrls = videoUrls;
+                        console.log(`[${jobId}] Multi-clip complete: ${videoUrls.length} videos generated`);
                     }
                 } else {
                     console.log(`[${jobId}] Using pre-existing animated video(s). Skipping generation.`);
