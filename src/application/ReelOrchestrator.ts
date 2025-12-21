@@ -374,6 +374,10 @@ export class ReelOrchestrator {
 
             // Step 5.5: Phase 2 Caption & Hashtag Optimization (Ensured even on resume/salvage)
             const jobAfterSegments = await this.deps.jobManager.getJob(jobId);
+
+            // DEBUG: Log caption generation conditions
+            console.log(`[${jobId}] Caption Debug: jobAfterSegments=${!!jobAfterSegments}, captionBody=${!!jobAfterSegments?.captionBody}, hashtags=${jobAfterSegments?.hashtags?.length || 0}, contentMode=${contentMode}, hasParableScript=${!!parableScriptPlan}`);
+
             if (jobAfterSegments && (!jobAfterSegments.captionBody || !jobAfterSegments.hashtags || jobAfterSegments.hashtags.length === 0)) {
                 try {
                     // For parable mode, use specialized caption generation
@@ -381,6 +385,10 @@ export class ReelOrchestrator {
                         console.log(`[${jobId}] Generating parable-optimized caption & hashtags...`);
                         const summary = parableScriptPlan.parableIntent.coreTheme;
                         const captionResult = await this.deps.llmClient.generateParableCaptionAndTags(parableScriptPlan, summary);
+
+                        // DEBUG: Log generated hashtags
+                        console.log(`[${jobId}] Caption generated: body=${captionResult.captionBody.length} chars, hashtags=${JSON.stringify(captionResult.hashtags)}`);
+
                         await this.deps.jobManager.updateJob(jobId, {
                             captionBody: captionResult.captionBody,
                             hashtags: captionResult.hashtags
@@ -388,7 +396,10 @@ export class ReelOrchestrator {
                         console.log(`[${jobId}] Parable caption complete: ${captionResult.hashtags.length} hashtags`);
                     } else if (this.deps.captionService) {
                         // Fallback to generic caption service
-                        const fullCommentary = jobAfterSegments.fullCommentary || (jobAfterSegments.segments?.map(s => s.commentary).join(' '));
+                        const fullCommentary = jobAfterSegments.fullCommentary ||
+                            (jobAfterSegments.segments?.map(s => s.commentary).join(' ')) ||
+                            jobAfterSegments.transcript; // CRITICAL: Use transcript as fallback
+
                         if (fullCommentary) {
                             console.log(`[${jobId}] Generating optimized caption & hashtags...`);
                             const captionResult = await this.deps.captionService.generateCaption(fullCommentary, plan.summary);
@@ -396,12 +407,24 @@ export class ReelOrchestrator {
                                 captionBody: captionResult.captionBody,
                                 hashtags: captionResult.hashtags
                             });
-                            console.log(`[${jobId}] Caption optimization complete.`);
+                            console.log(`[${jobId}] Caption optimization complete: ${captionResult.hashtags.length} hashtags`);
+                        } else {
+                            // LAST RESORT: Generate hashtags even without content
+                            console.warn(`[${jobId}] No fullCommentary or transcript, generating default hashtags`);
+                            const defaultHashtags = ['#ChallengingView', '#spirituality', '#reels', '#growth', '#selfawareness', '#mentalhealth', '#selfinquiry', '#shadowwork', '#psychology', '#mindset'];
+                            await this.deps.jobManager.updateJob(jobId, {
+                                hashtags: defaultHashtags
+                            });
                         }
+                    } else {
+                        // DEBUG: Log why caption was not generated
+                        console.warn(`[${jobId}] Caption NOT generated: contentMode=${contentMode}, hasParableScript=${!!parableScriptPlan}, hasCaptionService=${!!this.deps.captionService}`);
                     }
                 } catch (err) {
                     console.warn(`[${jobId}] Caption optimization failed:`, err);
                 }
+            } else {
+                console.log(`[${jobId}] Skipping caption generation: already has captionBody=${!!jobAfterSegments?.captionBody}, hashtags=${jobAfterSegments?.hashtags?.length || 0}`);
             }
 
             // Refresh job object
