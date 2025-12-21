@@ -457,13 +457,10 @@ export class ReelOrchestrator {
             }
 
             // Step 7: Visuals (Images or Animated Video)
-            // CRITICAL: Parables ALWAYS use image mode (Kie.ai 10s limit incompatible with 36-46s parables)
+            // Parables with animated mode use multi-clip generation (one video per beat)
             const isParableContent = contentMode === 'parable';
-            const isAnimated = currentJob.isAnimatedVideoMode && !isParableContent;
+            const isAnimated = currentJob.isAnimatedVideoMode;
 
-            if (isParableContent && currentJob.isAnimatedVideoMode) {
-                console.log(`[${jobId}] OVERRIDE: Parable mode forces IMAGE rendering (Kie.ai only supports 5-10s videos)`);
-            }
 
             if (isAnimated && this.deps.animatedVideoClient) {
                 // Animated Video Path
@@ -472,37 +469,86 @@ export class ReelOrchestrator {
                 if (!hasExistingVideos) {
                     await this.updateJobStatus(jobId, 'generating_animated_video', 'Generating animated video...');
 
-                    const animatedResult = await this.deps.animatedVideoClient.generateAnimatedVideo({
-                        durationSeconds: voiceoverDuration,
-                        theme: plan.summary || plan.mainCaption,
-                        storyline: detectionResult.storyline, // Use local variable from Step 1.5
-                        mood: plan.mood,
-                    });
+                    // Check if this is a parable with beats - generate one video per beat
+                    if (isParableContent && parableScriptPlan && parableScriptPlan.beats && parableScriptPlan.beats.length > 0) {
+                        // MULTI-CLIP PARABLE MODE: Generate one video per beat
+                        console.log(`[${jobId}] Parable mode: Generating ${parableScriptPlan.beats.length} video clips (one per beat)...`);
 
-                    let finalVideoUrl = animatedResult.videoUrl;
+                        const videoUrls: string[] = [];
+                        const kieMaxDuration = 10; // Kie.ai max duration per clip
 
-                    // ZERO WASTE POLICY: Immediately upload to persistent storage to prevent loss of paid asset
-                    if (this.deps.storageClient) {
-                        try {
-                            console.log(`[${jobId}] Persisting animated video to Cloudinary...`);
-                            const uploadResult = await this.deps.storageClient.uploadVideo(finalVideoUrl, {
-                                folder: 'instagram-reels/animated-generated',
-                                publicId: `anim_${jobId}_${Date.now()}`
+                        for (let i = 0; i < parableScriptPlan.beats.length; i++) {
+                            const beat = parableScriptPlan.beats[i];
+                            const beatDuration = Math.min(beat.approxDurationSeconds || 10, kieMaxDuration);
+
+                            console.log(`[${jobId}] Generating beat ${i + 1}/${parableScriptPlan.beats.length} (${beat.role}): ${beatDuration}s`);
+
+                            // Use beat's visual prompt as the video theme
+                            const animatedResult = await this.deps.animatedVideoClient.generateAnimatedVideo({
+                                durationSeconds: beatDuration,
+                                theme: beat.textOnScreen || beat.narration.substring(0, 100),
+                                storyline: beat.narration,
+                                mood: beat.role === 'moral' ? 'inspiring' : beat.role === 'turn' ? 'dramatic' : 'contemplative',
                             });
-                            finalVideoUrl = uploadResult.url;
-                            console.log(`[${jobId}] Persisted to: ${finalVideoUrl}`);
-                        } catch (err) {
-                            console.error(`[${jobId}] Failed to persist video to storage (using original URL):`, err);
+
+                            let videoUrl = animatedResult.videoUrl;
+
+                            // Persist each video to storage
+                            if (this.deps.storageClient) {
+                                try {
+                                    console.log(`[${jobId}] Persisting beat ${i + 1} video to Cloudinary...`);
+                                    const uploadResult = await this.deps.storageClient.uploadVideo(videoUrl, {
+                                        folder: 'instagram-reels/parable-clips',
+                                        publicId: `parable_${jobId}_beat${i + 1}_${Date.now()}`
+                                    });
+                                    videoUrl = uploadResult.url;
+                                } catch (err) {
+                                    console.error(`[${jobId}] Failed to persist beat ${i + 1} video:`, err);
+                                }
+                            }
+
+                            videoUrls.push(videoUrl);
                         }
+
+                        // Store all video URLs
+                        await this.deps.jobManager.updateJob(jobId, {
+                            animatedVideoUrls: videoUrls
+                        });
+                        currentJob.animatedVideoUrls = videoUrls;
+                        console.log(`[${jobId}] Parable multi-clip complete: ${videoUrls.length} videos generated`);
+
+                    } else {
+                        // SINGLE VIDEO MODE: Non-parable or legacy flow
+                        const animatedResult = await this.deps.animatedVideoClient.generateAnimatedVideo({
+                            durationSeconds: voiceoverDuration,
+                            theme: plan.summary || plan.mainCaption,
+                            storyline: detectionResult.storyline,
+                            mood: plan.mood,
+                        });
+
+                        let finalVideoUrl = animatedResult.videoUrl;
+
+                        // ZERO WASTE POLICY: Immediately upload to persistent storage
+                        if (this.deps.storageClient) {
+                            try {
+                                console.log(`[${jobId}] Persisting animated video to Cloudinary...`);
+                                const uploadResult = await this.deps.storageClient.uploadVideo(finalVideoUrl, {
+                                    folder: 'instagram-reels/animated-generated',
+                                    publicId: `anim_${jobId}_${Date.now()}`
+                                });
+                                finalVideoUrl = uploadResult.url;
+                                console.log(`[${jobId}] Persisted to: ${finalVideoUrl}`);
+                            } catch (err) {
+                                console.error(`[${jobId}] Failed to persist video to storage (using original URL):`, err);
+                            }
+                        }
+
+                        await this.deps.jobManager.updateJob(jobId, {
+                            animatedVideoUrl: finalVideoUrl
+                        });
+                        currentJob.animatedVideoUrl = finalVideoUrl;
+                        console.log(`[${jobId}] Animated video generated: ${finalVideoUrl}`);
                     }
-
-                    await this.deps.jobManager.updateJob(jobId, {
-                        animatedVideoUrl: finalVideoUrl
-                    });
-                    currentJob.animatedVideoUrl = finalVideoUrl; // Update local state for Step 9
-                    console.log(`[${jobId}] Animated video generated: ${finalVideoUrl}`);
-
-                    // Clear segments from manifest requirement effectively by ignoring them later
                 } else {
                     console.log(`[${jobId}] Using pre-existing animated video(s). Skipping generation.`);
                 }
