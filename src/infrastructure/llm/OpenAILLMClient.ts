@@ -1126,20 +1126,26 @@ ${culture ? `CULTURE HINT: ${culture}` : ''}
 
 AVAILABLE MUSIC TAGS (pick 3-5 that best match the content):
 - Culture: indian, chinese, japanese, arabic, african, latin, western
-- Mood: epic, motivational, uplifting, dark, calm, meditation, suspense
-- Style: cinematic, ambient, psychedelic, classical, tribal, electronic
-- Theme: spiritual, heroic, mysterious, romantic, sci-fi, alien, zen, adventure
+- Category: tech, modern, self-improvement, new-age
+- Mood: epic, motivational, uplifting, dark, calm, meditation, suspense, creative, contemplative, healing, focus
+- Style: cinematic, ambient, psychedelic, classical, tribal, electronic, minimalist
+- Theme: spiritual, heroic, mysterious, romantic, sci-fi, alien, zen, adventure, growth, productivity
 
 SELECTION RULES:
 1. If content mentions India, Mahabharata, Krishna, Vedic → include "indian"
 2. If content mentions China, Tao, Confucius, Emperor → include "chinese"
 3. If content mentions Japan, Samurai, Zen, Bushido → include "japanese"
 4. If content mentions aliens, space, future, sci-fi → include "psychedelic", "ambient", "alien"
-5. If content is motivational, achievement → include "epic", "motivational", "uplifting"
+5. If content is motivational, achievement, discipline → include "epic", "motivational", "self-improvement"
 6. If content is dark, suspenseful → include "dark", "suspense"
-7. Always include mood-related tags
+7. If content is about technology, AI, innovation, startups → include "tech", "modern", "electronic"
+8. If content is about creativity, art, ideas → include "creative", "innovation"
+9. If content is reflective, philosophical, wisdom → include "contemplative", "thoughtful"
+10. If content is about wellness, recovery, therapy → include "healing", "new-age"
+11. If content is about focus, productivity, study → include "focus", "concentration"
 
 Return ONLY a JSON object: { "tags": ["tag1", "tag2", "tag3", ...] }`;
+
 
         try {
             const response = await this.callOpenAI(prompt, true);

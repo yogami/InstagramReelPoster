@@ -349,5 +349,201 @@
             "cinematic",
             "western"
         ]
+    },
+    {
+        "id": "te-tech-digital-dreams",
+        "title": "Digital Dreams",
+        "audioUrl": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Digital%20Dreams.mp3",
+        "durationSeconds": 195,
+        "tags": [
+            "tech",
+            "modern",
+            "electronic",
+            "futuristic",
+            "innovation",
+            "startup"
+        ]
+    },
+    {
+        "id": "te-tech-cyber-pulse",
+        "title": "Cyber Pulse",
+        "audioUrl": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Cyber%20Pulse.mp3",
+        "durationSeconds": 178,
+        "tags": [
+            "tech",
+            "cyber",
+            "electronic",
+            "modern",
+            "digital",
+            "ai"
+        ]
+    },
+    {
+        "id": "si-selfimprovement-rise",
+        "title": "Rise and Shine",
+        "audioUrl": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Rise%20and%20Shine.mp3",
+        "durationSeconds": 185,
+        "tags": [
+            "self-improvement",
+            "motivational",
+            "growth",
+            "discipline",
+            "focus",
+            "productivity"
+        ]
+    },
+    {
+        "id": "si-selfimprovement-mindset",
+        "title": "Winner Mindset",
+        "audioUrl": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Winner%20Mindset.mp3",
+        "durationSeconds": 210,
+        "tags": [
+            "self-improvement",
+            "hustle",
+            "success",
+            "grind",
+            "training",
+            "workout"
+        ]
+    },
+    {
+        "id": "na-newage-cosmic-healing",
+        "title": "Cosmic Healing",
+        "audioUrl": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Cosmic%20Healing.mp3",
+        "durationSeconds": 280,
+        "tags": [
+            "new-age",
+            "healing",
+            "spiritual",
+            "cosmic",
+            "chakra",
+            "yoga"
+        ]
+    },
+    {
+        "id": "na-newage-crystal-frequencies",
+        "title": "Crystal Frequencies",
+        "audioUrl": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Crystal%20Frequencies.mp3",
+        "durationSeconds": 320,
+        "tags": [
+            "new-age",
+            "frequencies",
+            "432hz",
+            "healing",
+            "meditation",
+            "mindfulness"
+        ]
+    },
+    {
+        "id": "mo-modern-minimalist",
+        "title": "Minimalist Motion",
+        "audioUrl": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Minimalist%20Motion.mp3",
+        "durationSeconds": 165,
+        "tags": [
+            "modern",
+            "minimalist",
+            "clean",
+            "corporate",
+            "professional",
+            "business"
+        ]
+    },
+    {
+        "id": "mo-modern-urban-flow",
+        "title": "Urban Flow",
+        "audioUrl": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Urban%20Flow.mp3",
+        "durationSeconds": 195,
+        "tags": [
+            "modern",
+            "urban",
+            "hip-hop",
+            "beats",
+            "trendy",
+            "lifestyle"
+        ]
+    },
+    {
+        "id": "cr-creative-artisan",
+        "title": "The Artisan",
+        "audioUrl": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/The%20Artisan.mp3",
+        "durationSeconds": 198,
+        "tags": [
+            "creative",
+            "artistic",
+            "craftsmanship",
+            "imagination",
+            "innovation",
+            "design"
+        ]
+    },
+    {
+        "id": "cr-creative-ideas",
+        "title": "Lightbulb Moment",
+        "audioUrl": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Lightbulb%20Moment.mp3",
+        "durationSeconds": 175,
+        "tags": [
+            "creative",
+            "ideas",
+            "brainstorm",
+            "innovation",
+            "thinking",
+            "inspiration"
+        ]
+    },
+    {
+        "id": "co-contemplative-reflection",
+        "title": "Deep Reflection",
+        "audioUrl": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Deep%20Reflection.mp3",
+        "durationSeconds": 245,
+        "tags": [
+            "contemplative",
+            "reflection",
+            "introspective",
+            "thoughtful",
+            "philosophical",
+            "wisdom"
+        ]
+    },
+    {
+        "id": "co-contemplative-solitude",
+        "title": "Quiet Solitude",
+        "audioUrl": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Quiet%20Solitude.mp3",
+        "durationSeconds": 280,
+        "tags": [
+            "contemplative",
+            "solitude",
+            "peaceful",
+            "mindful",
+            "serene",
+            "calm"
+        ]
+    },
+    {
+        "id": "he-healing-restoration",
+        "title": "Restoration",
+        "audioUrl": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Restoration.mp3",
+        "durationSeconds": 310,
+        "tags": [
+            "healing",
+            "restoration",
+            "recovery",
+            "therapeutic",
+            "soothing",
+            "wellness"
+        ]
+    },
+    {
+        "id": "fo-focus-concentration",
+        "title": "Deep Focus",
+        "audioUrl": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Deep%20Focus.mp3",
+        "durationSeconds": 240,
+        "tags": [
+            "focus",
+            "concentration",
+            "productivity",
+            "study",
+            "work",
+            "flow-state"
+        ]
     }
 ]
