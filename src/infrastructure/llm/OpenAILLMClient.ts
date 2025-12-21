@@ -5,8 +5,18 @@ import {
     SegmentContent,
     PlanningConstraints,
     ReelModeDetectionResult,
+    ContentModeDetectionResult,
 } from '../../domain/ports/ILLMClient';
 import { HookPlan, CaptionAndTags } from '../../domain/entities/Growth';
+import {
+    ContentMode,
+    ParableIntent,
+    ParableSourceChoice,
+    ParableScriptPlan,
+    ParableBeat,
+    isParableIntent,
+    isParableScriptPlan,
+} from '../../domain/entities/Parable';
 import { getConfig } from '../../config';
 
 /**
@@ -523,6 +533,360 @@ Respond with a JSON object:
 
         return {
             captionBody: parsed.captionBody || 'New reel ready!',
+            hashtags
+        };
+    }
+
+    // ============================================
+    // PARABLE MODE METHODS
+    // ============================================
+
+    /**
+     * Detects whether the transcript is story-oriented (parable) or direct commentary.
+     */
+    async detectContentMode(transcript: string): Promise<ContentModeDetectionResult> {
+        if (!transcript || transcript.trim().length === 0) {
+            return {
+                contentMode: 'direct-message',
+                reason: 'Empty transcript defaults to direct-message mode'
+            };
+        }
+
+        const prompt = `Analyze this voice note transcript and determine if it's asking for a PARABLE/STORY or DIRECT COMMENTARY.
+
+Transcript:
+"""
+${transcript}
+"""
+
+PARABLE KEYWORDS (return "parable" if any are present):
+- "story", "tale", "parable", "once upon"
+- "monk", "sage", "saint", "warrior", "king", "farmer"
+- "ancient", "old tale", "legend", "fable"
+- References to Zen, Sufi, Buddhist, Hindu, or folklore stories
+- Describing characters, scenes, or narratives
+
+DIRECT-MESSAGE (default - return this if no story indicators):
+- Commentary, rant, thoughts, opinions
+- Discussing concepts without narrative framing
+- Educational or explanatory content
+
+Respond with JSON:
+{
+  "contentMode": "parable" or "direct-message",
+  "reason": "brief explanation"
+}`;
+
+        try {
+            const response = await this.callOpenAIForDetection(prompt);
+            const parsed = this.parseJSON<{ contentMode?: string; reason?: string }>(response);
+
+            const contentMode: ContentMode = parsed.contentMode === 'parable' ? 'parable' : 'direct-message';
+            return {
+                contentMode,
+                reason: parsed.reason || 'No reason provided'
+            };
+        } catch (error) {
+            console.warn('[LLM] Content mode detection failed, defaulting to direct-message:', error);
+            return {
+                contentMode: 'direct-message',
+                reason: 'Detection failed, defaulting to direct-message'
+            };
+        }
+    }
+
+    /**
+     * Extracts parable intent from transcript.
+     */
+    async extractParableIntent(transcript: string): Promise<ParableIntent> {
+        const prompt = `Extract the parable intent from this transcript.
+
+Transcript:
+"""
+${transcript}
+"""
+
+Determine:
+1. sourceType: 
+   - "provided-story" if user describes a specific tale, character, or historical figure
+   - "theme-only" if user discusses an abstract theme/idea without specifying a story
+
+2. coreTheme: The psychological/spiritual theme (e.g., "gossip", "envy", "spiritual bypassing", "ego", "attachment")
+
+3. moral: 1-2 sentence insight the user wants to convey
+
+4. culturalPreference (optional): If user mentions or implies a culture ("indian", "chinese", "japanese", "sufi", "western-folklore", "generic-eastern")
+
+5. constraints (optional): Any specific requirements (e.g., "must be about a monk", "warrior archetype")
+
+Respond with JSON:
+{
+  "sourceType": "provided-story" or "theme-only",
+  "coreTheme": "...",
+  "moral": "...",
+  "culturalPreference": "optional...",
+  "constraints": ["optional array..."]
+}`;
+
+        const response = await this.callOpenAI(prompt, true);
+        const parsed = this.parseJSON<ParableIntent>(response);
+
+        // Validate and provide defaults
+        return {
+            sourceType: parsed.sourceType === 'provided-story' ? 'provided-story' : 'theme-only',
+            coreTheme: parsed.coreTheme || 'spiritual insight',
+            moral: parsed.moral || 'The truth is always uncomfortable.',
+            culturalPreference: parsed.culturalPreference,
+            constraints: parsed.constraints
+        };
+    }
+
+    /**
+     * Chooses story-world for theme-only parables.
+     */
+    async chooseParableSource(intent: ParableIntent): Promise<ParableSourceChoice> {
+        const prompt = `Choose the best story-world for this parable intent.
+
+Theme: ${intent.coreTheme}
+Moral: ${intent.moral}
+${intent.culturalPreference ? `User preference: ${intent.culturalPreference}` : ''}
+${intent.constraints?.length ? `Constraints: ${intent.constraints.join(', ')}` : ''}
+
+CULTURES (pick one that best expresses the theme):
+- indian: Hindu, Vedantic, yoga traditions
+- chinese: Chan/Zen Buddhism, Taoist tales
+- japanese: Zen, samurai, bushido
+- sufi: Islamic mysticism, Rumi-style
+- western-folklore: Christian monastics, medieval saints, mythic kings
+- generic-eastern: Universal "ancient master" archetype
+
+ARCHETYPES (pick one):
+- monk: Renunciant, ascetic, meditative
+- sage: Wise elder, teacher
+- saint: Devoted, miraculous
+- warrior: Fighter, samurai, general
+- king: Ruler, leader
+- farmer: Simple, grounded
+- villager: Community member
+- student: Learner, seeker
+
+Respond with JSON:
+{
+  "culture": "...",
+  "archetype": "...",
+  "rationale": "Why this combination fits the theme"
+}`;
+
+        const response = await this.callOpenAI(prompt, true);
+        const parsed = this.parseJSON<ParableSourceChoice>(response);
+
+        return {
+            culture: parsed.culture || 'generic-eastern',
+            archetype: parsed.archetype || 'sage',
+            rationale: parsed.rationale || 'Default selection'
+        };
+    }
+
+    /**
+     * Generates complete parable script with 4-beat structure.
+     */
+    async generateParableScript(
+        intent: ParableIntent,
+        sourceChoice: ParableSourceChoice,
+        targetDurationSeconds: number
+    ): Promise<ParableScriptPlan> {
+        const config = getConfig();
+        const wordsPerSecond = config.speakingRateWps;
+        const totalWords = Math.floor(targetDurationSeconds * wordsPerSecond * 0.85); // 15% safety margin
+
+        const prompt = `Generate a micro-parable for short-form video.
+
+THEME: ${intent.coreTheme}
+MORAL: ${intent.moral}
+CULTURE: ${sourceChoice.culture}
+ARCHETYPE: ${sourceChoice.archetype}
+${intent.constraints?.length ? `CONSTRAINTS: ${intent.constraints.join(', ')}` : ''}
+
+TARGET DURATION: ${targetDurationSeconds} seconds
+WORD BUDGET: ~${totalWords} words total
+
+STRUCTURE (4 beats):
+1. HOOK (6-8 seconds): Pattern-breaking opening. Immediate tension.
+   Example: "There was a monk whose favorite prayer was gossip."
+
+2. SETUP (8-12 seconds): Who the character is, what they do, tension building.
+
+3. TURN (6-10 seconds): Event/confrontation that exposes truth. Teacher's remark, crisis, consequence.
+
+4. MORAL (5-8 seconds): Contemporary insight in caustic, psychologically-aware voice.
+   Must feel like a mirror to the viewer, not a detached lecture.
+
+STYLE REQUIREMENTS:
+- Language: Simple, visual, cinematic, easy to illustrate
+- Tone: Confronting, honest, slightly uncomfortable
+- NO fluffy "love and light" resolutions
+- Endings should be sharp, not comforting
+- Image prompts: 2D stylized cartoon, cel-shaded, muted earth tones
+
+Respond with JSON:
+{
+  "mode": "parable",
+  "parableIntent": {
+    "sourceType": "${intent.sourceType}",
+    "coreTheme": "${intent.coreTheme}",
+    "moral": "${intent.moral}"
+  },
+  "sourceChoice": {
+    "culture": "${sourceChoice.culture}",
+    "archetype": "${sourceChoice.archetype}",
+    "rationale": "${sourceChoice.rationale}"
+  },
+  "beats": [
+    {
+      "role": "hook",
+      "narration": "...",
+      "textOnScreen": "...",
+      "imagePrompt": "2D stylized cartoon...",
+      "approxDurationSeconds": 6-8
+    },
+    {
+      "role": "setup",
+      "narration": "...",
+      "textOnScreen": "...",
+      "imagePrompt": "2D stylized cartoon...",
+      "approxDurationSeconds": 8-12
+    },
+    {
+      "role": "turn",
+      "narration": "...",
+      "textOnScreen": "...",
+      "imagePrompt": "2D stylized cartoon...",
+      "approxDurationSeconds": 6-10
+    },
+    {
+      "role": "moral",
+      "narration": "...",
+      "textOnScreen": "...",
+      "imagePrompt": "2D stylized cartoon...",
+      "approxDurationSeconds": 5-8
+    }
+  ]
+}`;
+
+        const response = await this.callOpenAI(prompt, true);
+        const parsed = this.parseJSON<ParableScriptPlan>(response);
+
+        // Validate structure
+        if (!isParableScriptPlan(parsed)) {
+            throw new Error('Invalid parable script structure from LLM');
+        }
+
+        return parsed;
+    }
+
+    /**
+     * Generates hooks specifically for parable content.
+     */
+    async generateParableHooks(
+        parableScript: ParableScriptPlan,
+        trendContext?: string
+    ): Promise<string[]> {
+        const hookBeat = parableScript.beats.find(b => b.role === 'hook');
+
+        const prompt = `Generate 5 viral hooks for this parable.
+
+PARABLE CONTEXT:
+- Theme: ${parableScript.parableIntent.coreTheme}
+- Moral: ${parableScript.parableIntent.moral}
+- Culture: ${parableScript.sourceChoice.culture}
+- Archetype: ${parableScript.sourceChoice.archetype}
+- Current hook: ${hookBeat?.narration || 'Not available'}
+${trendContext ? `- Trend context: ${trendContext}` : ''}
+
+HOOK REQUIREMENTS:
+- Reference character + tension
+- Pattern-breaking, attention-grabbing
+- No questions (statements work better for parables)
+- Examples:
+  - "The monk who loved gossip more than silence."
+  - "The warrior who could defeat everyone but himself."
+  - "His prayers were whispers about others."
+
+Respond with JSON:
+{
+  "hooks": [
+    "Hook 1...",
+    "Hook 2...",
+    "Hook 3...",
+    "Hook 4...",
+    "Hook 5..."
+  ]
+}`;
+
+        const response = await this.callOpenAI(prompt, true);
+        const parsed = this.parseJSON<{ hooks: string[] }>(response);
+
+        return parsed.hooks || [hookBeat?.narration || 'A story of spiritual awakening.'];
+    }
+
+    /**
+     * Generates captions optimized for parable content.
+     */
+    async generateParableCaptionAndTags(
+        parableScript: ParableScriptPlan,
+        summary: string
+    ): Promise<CaptionAndTags> {
+        const prompt = `Generate a caption and hashtags for this parable reel.
+
+PARABLE SUMMARY: ${summary}
+THEME: ${parableScript.parableIntent.coreTheme}
+MORAL: ${parableScript.parableIntent.moral}
+CULTURE: ${parableScript.sourceChoice.culture}
+
+CAPTION STRUCTURE (2-4 short lines):
+1. 1-2 lines summarizing the parable in modern language
+2. 1 line connecting it to the viewer's life
+3. Final line: Clear CTA optimized for saves/shares
+   Example: "Save this for the next time you're tempted to gossip."
+
+HASHTAG STRATEGY (8-12 total):
+- Niche spiritual psychology tags (e.g., #shadowwork, #selfinquiry)
+- Broader reach tags (e.g., #spirituality, #mindfulness)
+- Branded tags (#ChallengingView)
+- Parable-specific (#parables, #spiritualstorytelling)
+
+Respond with JSON:
+{
+  "captionBody": "Line 1\\n\\nLine 2\\n\\nCTA line",
+  "hashtags": ["#tag1", "#tag2", ...]
+}`;
+
+        const response = await this.callOpenAI(prompt, true);
+        const parsed = this.parseJSON<any>(response);
+
+        let hashtags: string[] = [];
+        if (Array.isArray(parsed.hashtags)) {
+            hashtags = parsed.hashtags;
+        } else if (typeof parsed.hashtags === 'string') {
+            hashtags = (parsed.hashtags as string).split(/[\s,]+/).filter((t: string) => t.length > 0);
+        }
+
+        // Ensure every tag has a # and is cleaned
+        hashtags = hashtags.map((t: string) => t.startsWith('#') ? t : `#${t}`).filter((t: string) => t !== '#');
+
+        // Ensure minimum hashtags
+        if (hashtags.length < 8) {
+            const defaults = ['#ChallengingView', '#parables', '#spirituality', '#reels', '#shadowwork', '#selfinquiry', '#spiritualstorytelling', '#mindfulness'];
+            for (const tag of defaults) {
+                if (!hashtags.includes(tag)) {
+                    hashtags.push(tag);
+                }
+                if (hashtags.length >= 10) break;
+            }
+        }
+
+        return {
+            captionBody: parsed.captionBody || `A ${parableScript.sourceChoice.archetype}'s lesson in ${parableScript.parableIntent.coreTheme}.\n\nSave this.`,
             hashtags
         };
     }
