@@ -878,6 +878,10 @@ export class ReelOrchestrator {
                 completedAt: job.updatedAt,
                 mainCaption: job.mainCaption,
                 hook: job.hookPlan?.chosenHook,
+                // Parable mode metadata
+                contentMode: job.contentMode,
+                parableTheme: job.parableIntent?.coreTheme,
+                parableCulture: job.parableScriptPlan?.sourceChoice?.culture,
             };
 
             console.log(`[${job.id}] Sending callback payload:`, JSON.stringify(payload, null, 2));

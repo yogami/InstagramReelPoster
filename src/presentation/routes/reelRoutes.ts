@@ -26,7 +26,7 @@ export function createReelRoutes(
     router.post(
         '/process-reel',
         asyncHandler(async (req: Request, res: Response) => {
-            const { sourceAudioUrl, targetDurationRange, moodOverrides } = req.body;
+            const { sourceAudioUrl, targetDurationRange, moodOverrides, forceMode } = req.body;
 
             // Validate input
             if (!sourceAudioUrl || typeof sourceAudioUrl !== 'string') {
@@ -50,14 +50,25 @@ export function createReelRoutes(
                 }
             }
 
+            // Validate forceMode if provided
+            if (forceMode && !['direct', 'parable'].includes(forceMode)) {
+                throw new BadRequestError('forceMode must be "direct" or "parable"');
+            }
+
             // Create job
             const input: ReelJobInput = {
                 sourceAudioUrl,
                 targetDurationRange,
                 moodOverrides,
                 callbackUrl: req.body.callbackUrl || config.makeWebhookUrl,
+                forceMode,
             };
             const job = await jobManager.createJob(input);
+
+            // Log content mode configuration
+            if (forceMode) {
+                console.log(`[${job.id}] Content mode forced to: ${forceMode}`);
+            }
 
             // Start processing in background (don't await)
             orchestrator.processJob(job.id).catch((error) => {
@@ -69,6 +80,7 @@ export function createReelRoutes(
                 jobId: job.id,
                 status: job.status,
                 message: 'Reel processing started',
+                contentMode: forceMode || 'auto-detect',
             });
         })
     );
