@@ -39,6 +39,12 @@ export interface ReelJobInput {
     callbackUrl?: string;
     /** Optional Telegram chat ID for user notifications */
     telegramChatId?: number;
+    /** Optional trend context to bend hooks toward current macro topics */
+    trendContext?: string;
+    /** Optional series name for increased session watch time */
+    seriesName?: string;
+    /** Optional series number (e.g., "Part 3 of 10") */
+    seriesNumber?: number;
 }
 
 /**

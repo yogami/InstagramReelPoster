@@ -1,5 +1,5 @@
 import { IHookAndStructureService } from '../domain/ports/IHookAndStructureService';
-import { HookPlan } from '../domain/entities/Growth';
+import { HookPlan, HookStyle } from '../domain/entities/Growth';
 import { ILLMClient, ReelPlan } from '../domain/ports/ILLMClient';
 
 /**
@@ -10,16 +10,25 @@ export class HookAndStructureService implements IHookAndStructureService {
 
     /**
      * Optimizes the reel structure and generates hooks.
+     * @param transcript - The reel transcript
+     * @param currentPlan - The current reel plan
+     * @param trendContext - Optional trend context to bend hooks toward current topics
      */
-    async optimizeStructure(transcript: string, currentPlan: ReelPlan): Promise<HookPlan> {
-        // 1. Generate Hooks via LLM
-        const hooks = await this.llmClient.generateHooks(transcript, currentPlan);
+    async optimizeStructure(
+        transcript: string,
+        currentPlan: ReelPlan,
+        trendContext?: string
+    ): Promise<HookPlan> {
+        // 1. Generate Hooks via LLM (with trend context if provided)
+        const hooks = await this.llmClient.generateHooks(transcript, currentPlan, trendContext);
         const chosenHook = hooks[0] || "Discover the truth.";
         const alternativeHooks = hooks.slice(1);
 
-        // 2. Optimize Duration for Retention (Discovery Bias)
+        // 2. Classify hook style for analytics
+        const hookStyle = this.classifyHookStyle(chosenHook);
+
+        // 3. Optimize Duration for Retention (Discovery Bias)
         // Target: 10-20 seconds for discovery, unless story warrants more.
-        // We'll clamp the target duration to be more viral-friendly.
         let optimizedDuration = currentPlan.targetDurationSeconds;
 
         if (optimizedDuration > 20) {
@@ -27,7 +36,7 @@ export class HookAndStructureService implements IHookAndStructureService {
             optimizedDuration = Math.max(15, Math.min(optimizedDuration * 0.7, 25));
         }
 
-        // 3. Segment Mapping (Hook -> Body -> Payoff)
+        // 4. Segment Mapping (Hook -> Body -> Payoff)
         // We need at least 3 segments for this structure
         let segmentCount = Math.max(3, Math.round(optimizedDuration / 5));
 
@@ -52,7 +61,42 @@ export class HookAndStructureService implements IHookAndStructureService {
             alternativeHooks,
             targetDurationSeconds: optimizedDuration,
             segmentCount,
+            hookStyle,
             segmentsHint
         };
+    }
+
+    /**
+     * Classifies the hook style based on linguistic patterns.
+     */
+    private classifyHookStyle(hook: string): HookStyle {
+        const lowerHook = hook.toLowerCase();
+
+        // Question pattern
+        if (hook.includes('?') || lowerHook.startsWith('why') || lowerHook.startsWith('what') ||
+            lowerHook.startsWith('how') || lowerHook.startsWith('when') || lowerHook.startsWith('do you')) {
+            return 'question';
+        }
+
+        // Call-out pattern (addressing "you" directly)
+        if (lowerHook.startsWith('you') || lowerHook.includes('your ') || lowerHook.startsWith('stop ') ||
+            lowerHook.startsWith('listen')) {
+            return 'call-out';
+        }
+
+        // Paradox pattern (contradictions, "but" in first line)
+        if (lowerHook.includes(' but ') || lowerHook.includes('actually') ||
+            lowerHook.includes('the opposite') || lowerHook.includes('wrong')) {
+            return 'paradox';
+        }
+
+        // Shocking fact pattern (numbers, percentages, absolutes)
+        if (/\d+%/.test(hook) || /^\d/.test(hook) || lowerHook.includes('never') ||
+            lowerHook.includes('always') || lowerHook.includes('every')) {
+            return 'shocking-fact';
+        }
+
+        // Default to statement
+        return 'statement';
     }
 }

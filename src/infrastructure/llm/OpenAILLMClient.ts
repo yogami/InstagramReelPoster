@@ -424,17 +424,22 @@ Respond with exactly ${segments.length} adjusted segments in the JSON structure 
     /**
      * Generates multiple hook options for the reel.
      */
-    async generateHooks(transcript: string, plan: ReelPlan): Promise<string[]> {
+    async generateHooks(transcript: string, plan: ReelPlan, trendContext?: string): Promise<string[]> {
+        const trendNote = trendContext
+            ? `\nCURRENT TREND CONTEXT: "${trendContext}" - Subtly intersect this trend where natural.`
+            : '';
+
         const prompt = `Generate 5 alternative pattern-breaking hooks for the first 2 seconds of an Instagram Reel.
         
 Transcript: "${transcript}"
-Concept: "${plan.summary}"
+Concept: "${plan.summary}"${trendNote}
 
 RULES:
 1. Max 10 words per hook.
 2. Voice: Challenging View (Caustic, Spiritually Perspicacious, Unapologetic).
 3. Call out a common self-deception or create immediate tension.
 4. Suitable for both spoken audio and on-screen text.
+5. Include a mix of styles: questions, call-outs, paradoxes, and shocking facts.
 
 Respond with a JSON object: { "hooks": ["hook 1", "hook 2", ...] }`;
 

@@ -121,9 +121,10 @@ export interface ILLMClient {
      * Generates multiple hook options for the reel.
      * @param transcript Full transcript
      * @param plan Current reel plan
+     * @param trendContext Optional trend context to bend hooks toward current topics
      * @returns Array of optimized hooks
      */
-    generateHooks(transcript: string, plan: ReelPlan): Promise<string[]>;
+    generateHooks(transcript: string, plan: ReelPlan, trendContext?: string): Promise<string[]>;
 
     /**
      * Generates an expanded caption and hashtags optimized for virality.

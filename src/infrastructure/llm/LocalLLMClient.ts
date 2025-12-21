@@ -131,8 +131,9 @@ Respond with a JSON object with "segments" array:
         return this.normalizeSegments(parsed);
     }
 
-    async generateHooks(transcript: string, plan: ReelPlan): Promise<string[]> {
-        const prompt = `Generate 5 viral hooks for this transcript: "${transcript}".
+    async generateHooks(transcript: string, plan: ReelPlan, trendContext?: string): Promise<string[]> {
+        const trendNote = trendContext ? ` Current trend: "${trendContext}"` : '';
+        const prompt = `Generate 5 viral hooks for this transcript: "${transcript}".${trendNote}
 Respond ONLY with JSON: { "hooks": ["hook1", "hook2", ...] }`;
 
         const response = await this.callOllama(prompt);
