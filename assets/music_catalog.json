@@ -10,7 +10,8 @@
             "sarod",
             "dilruba",
             "drone",
-            "meditation"
+            "meditation",
+            "parable"
         ]
     },
     {
@@ -23,7 +24,8 @@
             "spiritual",
             "sitar",
             "meditation",
-            "calm"
+            "calm",
+            "parable"
         ]
     },
     {
@@ -37,7 +39,8 @@
             "sitar",
             "bansuri",
             "flute",
-            "meditation"
+            "meditation",
+            "parable"
         ]
     },
     {
@@ -52,7 +55,9 @@
             "spiritual",
             "guzheng",
             "koto",
-            "meditation"
+            "meditation",
+            "zen",
+            "parable"
         ]
     },
     {
@@ -65,7 +70,8 @@
             "asian",
             "spiritual",
             "guzheng",
-            "percussion"
+            "percussion",
+            "parable"
         ]
     },
     {
@@ -79,7 +85,8 @@
             "spiritual",
             "zen",
             "serene",
-            "meditation"
+            "meditation",
+            "parable"
         ]
     },
     {
@@ -119,6 +126,228 @@
             "calm",
             "relaxing",
             "strings"
+        ]
+    },
+    {
+        "id": "ep-epic-undefeated",
+        "title": "Undefeated",
+        "audioUrl": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Undefeated.mp3",
+        "durationSeconds": 187,
+        "tags": [
+            "epic",
+            "motivational",
+            "powerful",
+            "cinematic",
+            "orchestra",
+            "inspiring"
+        ]
+    },
+    {
+        "id": "ep-epic-heroic-story",
+        "title": "Heroic Story",
+        "audioUrl": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Heroic%20Story.mp3",
+        "durationSeconds": 225,
+        "tags": [
+            "epic",
+            "heroic",
+            "cinematic",
+            "orchestra",
+            "inspiring",
+            "motivational"
+        ]
+    },
+    {
+        "id": "ep-epic-march-valor",
+        "title": "March of Valor",
+        "audioUrl": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/March%20of%20Valor.mp3",
+        "durationSeconds": 142,
+        "tags": [
+            "epic",
+            "march",
+            "military",
+            "powerful",
+            "dramatic",
+            "bold"
+        ]
+    },
+    {
+        "id": "am-ambient-space-music",
+        "title": "Machu Picchu",
+        "audioUrl": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Machu%20Picchu.mp3",
+        "durationSeconds": 262,
+        "tags": [
+            "ambient",
+            "space",
+            "atmospheric",
+            "otherworldly",
+            "psychedelic",
+            "alien",
+            "sci-fi"
+        ]
+    },
+    {
+        "id": "am-ambient-infinite-journey",
+        "title": "Infinite Journey",
+        "audioUrl": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Infinite%20Journey.mp3",
+        "durationSeconds": 308,
+        "tags": [
+            "ambient",
+            "space",
+            "electronic",
+            "psychedelic",
+            "deep",
+            "alien"
+        ]
+    },
+    {
+        "id": "am-ambient-interplanetary",
+        "title": "Interplanetary Journey",
+        "audioUrl": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Interplanetary%20Journey.mp3",
+        "durationSeconds": 195,
+        "tags": [
+            "ambient",
+            "space",
+            "sci-fi",
+            "electronic",
+            "alien",
+            "futuristic"
+        ]
+    },
+    {
+        "id": "me-arabic-desert-caravan",
+        "title": "Desert Caravan",
+        "audioUrl": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Desert%20Caravan.mp3",
+        "durationSeconds": 178,
+        "tags": [
+            "arabic",
+            "middle-eastern",
+            "desert",
+            "oud",
+            "exotic",
+            "adventure"
+        ]
+    },
+    {
+        "id": "me-arabic-mystery-bazaar",
+        "title": "Mystery Bazaar",
+        "audioUrl": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Mystery%20Bazaar.mp3",
+        "durationSeconds": 212,
+        "tags": [
+            "arabic",
+            "middle-eastern",
+            "mysterious",
+            "exotic",
+            "percussion"
+        ]
+    },
+    {
+        "id": "dk-dark-phantom",
+        "title": "Phantom from Space",
+        "audioUrl": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Phantom%20from%20Space.mp3",
+        "durationSeconds": 195,
+        "tags": [
+            "dark",
+            "suspense",
+            "mysterious",
+            "thriller",
+            "dramatic",
+            "horror"
+        ]
+    },
+    {
+        "id": "dk-dark-conspiracy",
+        "title": "Conspiracy Theory",
+        "audioUrl": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Conspiracy%20Theory.mp3",
+        "durationSeconds": 168,
+        "tags": [
+            "dark",
+            "suspense",
+            "tension",
+            "thriller",
+            "investigative"
+        ]
+    },
+    {
+        "id": "up-uplifting-inspired",
+        "title": "Inspired",
+        "audioUrl": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Inspired.mp3",
+        "durationSeconds": 188,
+        "tags": [
+            "uplifting",
+            "motivational",
+            "positive",
+            "hopeful",
+            "inspiring",
+            "corporate"
+        ]
+    },
+    {
+        "id": "up-uplifting-bright-future",
+        "title": "Bright Future",
+        "audioUrl": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Bright%20Future.mp3",
+        "durationSeconds": 162,
+        "tags": [
+            "uplifting",
+            "positive",
+            "hopeful",
+            "optimistic",
+            "corporate"
+        ]
+    },
+    {
+        "id": "af-african-jungle",
+        "title": "African Jungle",
+        "audioUrl": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/African%20Jungle.mp3",
+        "durationSeconds": 185,
+        "tags": [
+            "african",
+            "tribal",
+            "drums",
+            "percussion",
+            "world",
+            "ethnic"
+        ]
+    },
+    {
+        "id": "la-latin-fiesta",
+        "title": "Latin Fiesta",
+        "audioUrl": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Latin%20Fiesta.mp3",
+        "durationSeconds": 148,
+        "tags": [
+            "latin",
+            "salsa",
+            "fiesta",
+            "energetic",
+            "dance",
+            "party"
+        ]
+    },
+    {
+        "id": "cl-classical-moonlight",
+        "title": "Moonlight Sonata (Modern)",
+        "audioUrl": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Moonlight%20Sonata%20(Modern).mp3",
+        "durationSeconds": 285,
+        "tags": [
+            "classical",
+            "piano",
+            "elegant",
+            "romantic",
+            "emotional",
+            "western"
+        ]
+    },
+    {
+        "id": "cl-classical-symphony",
+        "title": "String Symphony",
+        "audioUrl": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/String%20Symphony.mp3",
+        "durationSeconds": 325,
+        "tags": [
+            "classical",
+            "orchestra",
+            "strings",
+            "elegant",
+            "cinematic",
+            "western"
         ]
     }
 ]

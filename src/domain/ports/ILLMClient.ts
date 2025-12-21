@@ -210,4 +210,22 @@ export interface ILLMClient {
         parableScript: ParableScriptPlan,
         summary: string
     ): Promise<CaptionAndTags>;
+
+    // ============================================
+    // INTELLIGENT MUSIC SELECTION
+    // ============================================
+
+    /**
+     * Selects music tags based on content analysis.
+     * Analyzes transcript, mood, and cultural context to pick optimal music tags.
+     * @param transcript The content transcript or summary
+     * @param mood Mood/tone from the reel plan
+     * @param culture Optional detected culture (indian, chinese, japanese, etc.)
+     * @returns Array of 3-5 music tags that best match the content
+     */
+    selectMusicTags?(
+        transcript: string,
+        mood: string,
+        culture?: string
+    ): Promise<string[]>;
 }

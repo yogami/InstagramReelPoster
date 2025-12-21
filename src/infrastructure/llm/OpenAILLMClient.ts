@@ -1104,4 +1104,80 @@ Respond with JSON:
             throw new Error(`Failed to parse LLM response as JSON: ${response.substring(0, 200)}...`);
         }
     }
+
+    /**
+     * Selects music tags based on content analysis.
+     * Analyzes transcript, mood, and cultural context to pick optimal music tags.
+     */
+    async selectMusicTags(
+        transcript: string,
+        mood: string,
+        culture?: string
+    ): Promise<string[]> {
+        const prompt = `You are a music curator for short-form video content.
+
+CONTENT:
+"""
+${transcript.substring(0, 500)}
+"""
+
+MOOD: ${mood}
+${culture ? `CULTURE HINT: ${culture}` : ''}
+
+AVAILABLE MUSIC TAGS (pick 3-5 that best match the content):
+- Culture: indian, chinese, japanese, arabic, african, latin, western
+- Mood: epic, motivational, uplifting, dark, calm, meditation, suspense
+- Style: cinematic, ambient, psychedelic, classical, tribal, electronic
+- Theme: spiritual, heroic, mysterious, romantic, sci-fi, alien, zen, adventure
+
+SELECTION RULES:
+1. If content mentions India, Mahabharata, Krishna, Vedic → include "indian"
+2. If content mentions China, Tao, Confucius, Emperor → include "chinese"
+3. If content mentions Japan, Samurai, Zen, Bushido → include "japanese"
+4. If content mentions aliens, space, future, sci-fi → include "psychedelic", "ambient", "alien"
+5. If content is motivational, achievement → include "epic", "motivational", "uplifting"
+6. If content is dark, suspenseful → include "dark", "suspense"
+7. Always include mood-related tags
+
+Return ONLY a JSON object: { "tags": ["tag1", "tag2", "tag3", ...] }`;
+
+        try {
+            const response = await this.callOpenAI(prompt, true);
+            const result = this.parseJSON<{ tags: string[] }>(response);
+
+            console.log(`[MusicTags] Selected: ${result.tags.join(', ')}`);
+            return result.tags || ['meditation', 'calm', 'ambient'];
+        } catch (error) {
+            console.error('Failed to select music tags via LLM:', error);
+            // Fallback to basic mood-based selection
+            return this.fallbackMusicTags(mood, culture);
+        }
+    }
+
+    /**
+     * Fallback music tag selection without LLM.
+     */
+    private fallbackMusicTags(mood: string, culture?: string): string[] {
+        const tags: string[] = [];
+
+        // Culture-based tags
+        if (culture) {
+            const lowerCulture = culture.toLowerCase();
+            if (lowerCulture.includes('india')) tags.push('indian', 'spiritual');
+            else if (lowerCulture.includes('chines') || lowerCulture.includes('china')) tags.push('chinese', 'asian');
+            else if (lowerCulture.includes('japan')) tags.push('japanese', 'zen');
+            else if (lowerCulture.includes('arab')) tags.push('arabic', 'middle-eastern');
+            else if (lowerCulture.includes('africa')) tags.push('african', 'tribal');
+        }
+
+        // Mood-based tags
+        const lowerMood = mood.toLowerCase();
+        if (lowerMood.includes('epic') || lowerMood.includes('heroic')) tags.push('epic', 'cinematic');
+        else if (lowerMood.includes('dark') || lowerMood.includes('suspense')) tags.push('dark', 'suspense');
+        else if (lowerMood.includes('calm') || lowerMood.includes('peaceful')) tags.push('meditation', 'calm');
+        else if (lowerMood.includes('motivat') || lowerMood.includes('inspir')) tags.push('uplifting', 'motivational');
+        else tags.push('ambient', 'meditation'); // Default
+
+        return tags.slice(0, 5);
+    }
 }
