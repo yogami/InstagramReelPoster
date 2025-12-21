@@ -46,6 +46,7 @@ PERSONA:
 - Speaks from experience, not theory
 
 OBJECTIVES FOR LINKEDIN:
+- MAXIMIZE OUTREACH and discoverability
 - Market expertise in AI product development
 - Attract potential collaborators and co-builders
 - Share insights on solopreneurship, automation, and conscious building
@@ -53,7 +54,8 @@ OBJECTIVES FOR LINKEDIN:
 
 CONSTRAINTS:
 - Tone: honest, sharp, builder-mindset, technically grounded but spiritually aware
-- No emojis, no hashtag lists, no "as an AI" language
+- Include 3-5 strategic hashtags for discoverability (AI, solopreneurship, automation, tech)
+- No "as an AI" language
 - Keep language simple and clear (roughly 8th-grade readability)
 - Output must be short enough to read in a glance
 - Every post should subtly position expertise without being salesy`
@@ -100,6 +102,11 @@ Your tasks:
    - Could be a reflective question, a challenge, or a collaboration invite
    - Should encourage engagement from potential collaborators
 
+5. Generate 3-5 strategic HASHTAGS for LinkedIn discoverability:
+   - Focus on: AI, automation, solopreneurship, tech, entrepreneurship
+   - Use popular LinkedIn hashtags that reach your target audience
+   - Format: #AIautomation, #solopreneur, etc.
+
 Return ONLY a JSON object:
 {
   "core_tension": "<1–2 sentences>",
@@ -112,6 +119,11 @@ Return ONLY a JSON object:
   "closer_options": [
     "<closing idea 1>",
     "<closing idea 2>"
+  ],
+  "hashtags": [
+    "#hashtag1",
+    "#hashtag2",
+    "#hashtag3"
   ]
 }`;
 
@@ -141,6 +153,7 @@ Return ONLY a JSON object:
                 hook: parsed.hook,
                 outline_bullets: parsed.outline_bullets,
                 closer_options: parsed.closer_options,
+                hashtags: parsed.hashtags || [],
             };
         } catch (error) {
             throw new Error(`Failed to parse LinkedIn draft response: ${error}`);

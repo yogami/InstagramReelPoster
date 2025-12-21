@@ -295,6 +295,9 @@ ${bullets}
 *CLOSER OPTIONS:*
 ${closers}
 
+*HASHTAGS:*
+${draft.hashtags.join(' ')}
+
 ---
 Draft ID: \`${draft.id}\`
 Reply "schedule" to queue for posting.`;

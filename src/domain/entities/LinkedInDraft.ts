@@ -20,6 +20,8 @@ export interface LinkedInDraft {
     outlineBullets: string[];
     /** Closer options: 1-2 closing angles (question or challenge) */
     closerOptions: string[];
+    /** Strategic hashtags for LinkedIn discoverability */
+    hashtags: string[];
     /** Creation timestamp */
     createdAt: Date;
     /** Status: draft, scheduled, posted */
@@ -42,6 +44,7 @@ export interface LinkedInDraftContent {
     hook: string;
     outline_bullets: string[];
     closer_options: string[];
+    hashtags?: string[];
 }
 
 /**
@@ -73,6 +76,7 @@ export function createLinkedInDraft(
         hook: content.hook.trim(),
         outlineBullets: content.outline_bullets.map(b => b.trim()),
         closerOptions: content.closer_options.map(c => c.trim()),
+        hashtags: (content.hashtags || []).map(h => h.trim()),
         createdAt: new Date(),
         status: 'draft',
     };

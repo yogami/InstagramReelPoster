@@ -51,6 +51,11 @@ describe('OpenAILinkedInDraftService (AC4)', () => {
                             closer_options: [
                                 'When did you last stop to ask why?',
                                 'Stillness is strategy, not laziness.'
+                            ],
+                            hashtags: [
+                                '#AIautomation',
+                                '#solopreneur',
+                                '#buildinpublic'
                             ]
                         })
                     }
@@ -102,7 +107,7 @@ describe('OpenAILinkedInDraftService (AC4)', () => {
             );
         });
 
-        it('should include tone constraints in system prompt', async () => {
+        it('should include outreach optimization in system prompt', async () => {
             mockedAxios.post.mockResolvedValue(validResponse);
 
             await service.generateDraftContent('Test note');
@@ -113,7 +118,7 @@ describe('OpenAILinkedInDraftService (AC4)', () => {
                     messages: expect.arrayContaining([
                         expect.objectContaining({
                             role: 'system',
-                            content: expect.stringContaining('No emojis')
+                            content: expect.stringContaining('MAXIMIZE OUTREACH')
                         })
                     ])
                 }),
