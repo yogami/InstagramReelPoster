@@ -139,6 +139,7 @@ Constraints:
 - Duration must be between ${constraints.minDurationSeconds} and ${constraints.maxDurationSeconds} seconds
 - Target ~5 seconds per segment.
 - PRIORITY RULE: If the transcript requests a specific duration (e.g. "1 minute", "60 seconds"), you MUST stretch the content to meet that duration. This is the MOST IMPORTANT constraint.
+- TECHNICAL INSTRUCTION STRIPPING: Remove all instructions like "animated video reel", "one minute", "caption for", "Part 1" etc. from the script and summary. Use ONLY the core message.
 - Plan enough segments to fill the requested time (e.g. 60s = ~12 segments).
 - If no duration is requested, choose a duration fitting the content depth.
 - NEVER disregard a specific duration request in the voice note.
@@ -246,12 +247,13 @@ STORYTELLING-VISUAL CONGRUENCE (CRITICAL):
 ★ NEVER describe the video in the commentary (e.g., no "this scene shows...").
 ★ Use evocative, visceral narrative language. Just tell the story.
 
-PHRASING PRESERVATION (HIGH PRIORITY):
-★ STRICT VERBATIM RULE: If the transcript is already coherent and punchy, DO NOT change a single word. Distribute the transcript text verbatim across the segments.
-★ DO NOT paraphrase the user's most effective lines.
-★ Only re-arrange or omit filler words if absolutely necessary to fit the word budget.
-★ YOUR JOB IS TO PACKAGE THEIR TRUTH, NOT REWRITE IT.
-★ Avoid "explaining" the user's point. Let their original words carry the weight.
+PHRASING PRESERVATION & EXPANSION (HIGH PRIORITY):
+★ TECHNICAL INSTRUCTION REMOVAL: You MUST strip all technical metadata from the final commentary. If the user said "A one-minute video about X", your commentary should ONLY contain the content about X. Never mention "video", "reel", or timing in the final script.
+★ STRICT VERBATIM RULE: Use the user's punchiest insights word-for-word. Do NOT paraphrase their core truth.
+★ AUTOMATIC EXPANSION: If the user's punchy lines are too short to fill the requested ${plan.targetDurationSeconds}s duration, you MUST add supporting narrative lines that amplify the theme.
+★ NARRATIVE INTEGRITY: If you add lines, they must match the sharp, visceral tone of the original insight. Do not add fluff; add depth.
+★ YOUR JOB IS TO PACKAGE AND AMPLIFY THEIR TRUTH, NOT REWRITE IT.
+★ Avoid "explaining" the user's point. Let the original words and your additional depth carry the weight.
 
 STRICT IMAGE POLICY (NON-NEGOTIABLE):
 1. RELATIONSHIPS: If the topic involves love, romance, dating, or marriage, you MUST depict a Heterosexual couple (Man and Woman).
