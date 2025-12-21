@@ -915,13 +915,19 @@ export class ReelOrchestrator {
             }
 
             // Build payload - only include video_url if we have a valid URL
+            // CRITICAL: Combine caption body WITH hashtags for Instagram
+            const hashtagString = job.hashtags ? job.hashtags.join(' ') : '';
+            const fullCaption = job.captionBody
+                ? `${job.captionBody}\n\n${hashtagString}`.trim()
+                : `${caption}\n\n${hashtagString}`.trim();
+
             const payload: any = {
                 jobId: job.id,
                 status: job.status,
-                caption: job.captionBody || caption, // Prefer viral captionBody
-                hashtags: job.hashtags ? job.hashtags.join(' ') : '',
-                captionBody: job.captionBody,
-                originalHashtags: job.hashtags,
+                caption: fullCaption, // COMBINED: caption body + hashtags for Instagram
+                hashtags: hashtagString, // Separate field for reference
+                captionBody: job.captionBody, // Just the body for reference
+                originalHashtags: job.hashtags, // Array for reference
             };
 
             // Add video URL only if present (Make.com validates this field)
