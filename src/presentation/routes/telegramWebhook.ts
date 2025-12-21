@@ -68,6 +68,7 @@ export function createTelegramWebhookRoutes(
 
 /**
  * Processes a Telegram update.
+ * Supports BOTH voice messages AND text prompts.
  */
 async function processUpdate(
     update: TelegramUpdate,
@@ -76,52 +77,105 @@ async function processUpdate(
     telegramService: TelegramService,
     makeWebhookUrl: string
 ): Promise<void> {
-    // Check for voice or audio message
     const message = update.message;
     if (!message) {
         return;
     }
 
+    const chatId = message.chat.id;
     const voice = message.voice || message.audio;
-    if (!voice) {
-        // console.log('Received non-voice message, ignoring');
+    const text = message.text;
+
+    // VOICE MESSAGE PATH
+    if (voice) {
+        const fileId = voice.file_id;
+        console.log(`[Telegram] Voice message from chat ${chatId}, file_id: ${fileId}`);
+
+        try {
+            // 1. Get file URL from Telegram
+            const sourceAudioUrl = await telegramService.getFileUrl(fileId);
+            console.log(`[Telegram] Resolved file URL: ${sourceAudioUrl}`);
+
+            // 2. Create and start job with audio
+            const moodOverrides = message.caption ? [message.caption] : undefined;
+
+            const job = await jobManager.createJob({
+                sourceAudioUrl,
+                targetDurationRange: { min: 10, max: 90 },
+                moodOverrides,
+                callbackUrl: makeWebhookUrl,
+                telegramChatId: chatId,
+            });
+
+            console.log(`[Telegram] Started job ${job.id} for voice message`);
+
+            // Acknowledge to user
+            await telegramService.sendMessage(chatId, `🎬 *Voice received!* Processing reel...\n\nJob ID: \`${job.id}\``);
+
+            // Start processing (fire and forget)
+            orchestrator.processJob(job.id).catch((err) => {
+                console.error(`Job ${job.id} failed:`, err);
+                telegramService.sendMessage(chatId, `❌ Job failed: ${err.message || 'Unknown error'}`);
+            });
+
+        } catch (error) {
+            console.error('[Telegram] Failed to process voice message:', error);
+            await telegramService.sendMessage(chatId, `❌ Failed to process voice: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
         return;
     }
 
-    const fileId = voice.file_id;
-    const chatId = message.chat.id;
+    // TEXT MESSAGE PATH
+    if (text && text.trim().length > 0) {
+        // Ignore commands like /start, /help
+        if (text.startsWith('/')) {
+            if (text === '/start' || text === '/help') {
+                await telegramService.sendMessage(chatId,
+                    `🎙️ *VoiceGen Bot*\n\n` +
+                    `Send me:\n` +
+                    `• 🎤 *Voice note* - I'll transcribe and create a reel\n` +
+                    `• 📝 *Text prompt* - Describe your reel idea\n\n` +
+                    `Example text prompts:\n` +
+                    `_"Create a motivational reel about discipline"_\n` +
+                    `_"Tell the story of Ekalavya from Mahabharata"_`
+                );
+            }
+            return;
+        }
 
-    console.log(`Received voice message from chat ${chatId}, file_id: ${fileId}`);
+        console.log(`[Telegram] Text message from chat ${chatId}: "${text.substring(0, 50)}..."`);
 
-    try {
-        // 1. Get file URL from Telegram
-        const sourceAudioUrl = await telegramService.getFileUrl(fileId);
-        console.log(`Resolved Telegram file URL: ${sourceAudioUrl}`);
+        try {
+            // Create job with text as the transcript (bypasses transcription step)
+            const job = await jobManager.createJob({
+                transcript: text.trim(),
+                targetDurationRange: { min: 10, max: 90 },
+                callbackUrl: makeWebhookUrl,
+                telegramChatId: chatId,
+            });
 
-        // 2. Create and start job
-        // Sanitize mood from caption if present (optional feature for later)
-        const moodOverrides = message.caption ? [message.caption] : undefined;
+            console.log(`[Telegram] Started job ${job.id} for text prompt`);
 
-        const job = await jobManager.createJob({
-            sourceAudioUrl,
-            targetDurationRange: { min: 10, max: 90 }, // Defaults from app config usually, but hardcoded here for simplicity or passed via config
-            moodOverrides,
-            callbackUrl: makeWebhookUrl,
-            telegramChatId: chatId,
-        });
+            // Acknowledge to user
+            await telegramService.sendMessage(chatId, `🎬 *Text received!* Processing reel...\n\nPrompt: _"${text.substring(0, 100)}${text.length > 100 ? '...' : ''}"_\n\nJob ID: \`${job.id}\``);
 
-        const jobId = job.id;
-        console.log(`Started ReelJob ${jobId} for Telegram message`);
+            // Start processing (fire and forget)
+            orchestrator.processJob(job.id).catch((err) => {
+                console.error(`Job ${job.id} failed:`, err);
+                telegramService.sendMessage(chatId, `❌ Job failed: ${err.message || 'Unknown error'}`);
+            });
 
-        // Start processing (fire and forget)
-        orchestrator.processJob(jobId).catch((err) => {
-            console.error(`Job ${jobId} failed in background:`, err);
-        });
-
-    } catch (error) {
-        console.error('Failed to process Telegram voice message:', error);
+        } catch (error) {
+            console.error('[Telegram] Failed to process text message:', error);
+            await telegramService.sendMessage(chatId, `❌ Failed to process text: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+        return;
     }
+
+    // Unsupported message type
+    console.log(`[Telegram] Ignoring unsupported message type from chat ${chatId}`);
 }
+
 
 /**
  * Telegram update types (minimal definitions).
@@ -137,6 +191,7 @@ interface TelegramMessage {
         id: number;
         type: string;
     };
+    text?: string;  // Text message content
     caption?: string;
     voice?: {
         file_id: string;

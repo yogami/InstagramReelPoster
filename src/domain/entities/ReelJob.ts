@@ -34,8 +34,10 @@ export type ReelMode = 'discovery' | 'deep-dive';
  * Input parameters for creating a new reel job.
  */
 export interface ReelJobInput {
-    /** URL to the source audio file (user's voice note) */
-    sourceAudioUrl: string;
+    /** URL to the source audio file (user's voice note) - optional if transcript provided */
+    sourceAudioUrl?: string;
+    /** Direct text transcript (bypasses transcription step) - alternative to sourceAudioUrl */
+    transcript?: string;
     /** Optional target duration range in seconds */
     targetDurationRange?: {
         min: number;
@@ -160,8 +162,13 @@ export function createReelJob(
     if (!id.trim()) {
         throw new Error('ReelJob id cannot be empty');
     }
-    if (!input.sourceAudioUrl.trim()) {
-        throw new Error('ReelJob sourceAudioUrl cannot be empty');
+
+    // Validate: either sourceAudioUrl or transcript must be provided
+    const hasAudio = input.sourceAudioUrl && input.sourceAudioUrl.trim().length > 0;
+    const hasTranscript = input.transcript && input.transcript.trim().length > 0;
+
+    if (!hasAudio && !hasTranscript) {
+        throw new Error('ReelJob requires either sourceAudioUrl or transcript');
     }
 
     const now = new Date();
@@ -177,7 +184,8 @@ export function createReelJob(
     return {
         id: id.trim(),
         status: 'pending',
-        sourceAudioUrl: input.sourceAudioUrl.trim(),
+        sourceAudioUrl: hasAudio ? input.sourceAudioUrl!.trim() : '',
+        transcript: hasTranscript ? input.transcript!.trim() : undefined,
         targetDurationRange: durationRange,
         moodOverrides: input.moodOverrides,
         callbackUrl: input.callbackUrl,
