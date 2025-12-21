@@ -360,17 +360,30 @@ export class ReelOrchestrator {
 
             // Step 5.5: Phase 2 Caption & Hashtag Optimization (Ensured even on resume/salvage)
             const jobAfterSegments = await this.deps.jobManager.getJob(jobId);
-            if (this.deps.captionService && jobAfterSegments && (!jobAfterSegments.captionBody || !jobAfterSegments.hashtags || jobAfterSegments.hashtags.length === 0)) {
+            if (jobAfterSegments && (!jobAfterSegments.captionBody || !jobAfterSegments.hashtags || jobAfterSegments.hashtags.length === 0)) {
                 try {
-                    const fullCommentary = jobAfterSegments.fullCommentary || (jobAfterSegments.segments?.map(s => s.commentary).join(' '));
-                    if (fullCommentary) {
-                        console.log(`[${jobId}] Generating optimized caption & hashtags...`);
-                        const captionResult = await this.deps.captionService.generateCaption(fullCommentary, plan.summary);
+                    // For parable mode, use specialized caption generation
+                    if (contentMode === 'parable' && parableScriptPlan && this.deps.llmClient.generateParableCaptionAndTags) {
+                        console.log(`[${jobId}] Generating parable-optimized caption & hashtags...`);
+                        const summary = parableScriptPlan.parableIntent.coreTheme;
+                        const captionResult = await this.deps.llmClient.generateParableCaptionAndTags(parableScriptPlan, summary);
                         await this.deps.jobManager.updateJob(jobId, {
                             captionBody: captionResult.captionBody,
                             hashtags: captionResult.hashtags
                         });
-                        console.log(`[${jobId}] Caption optimization complete.`);
+                        console.log(`[${jobId}] Parable caption complete: ${captionResult.hashtags.length} hashtags`);
+                    } else if (this.deps.captionService) {
+                        // Fallback to generic caption service
+                        const fullCommentary = jobAfterSegments.fullCommentary || (jobAfterSegments.segments?.map(s => s.commentary).join(' '));
+                        if (fullCommentary) {
+                            console.log(`[${jobId}] Generating optimized caption & hashtags...`);
+                            const captionResult = await this.deps.captionService.generateCaption(fullCommentary, plan.summary);
+                            await this.deps.jobManager.updateJob(jobId, {
+                                captionBody: captionResult.captionBody,
+                                hashtags: captionResult.hashtags
+                            });
+                            console.log(`[${jobId}] Caption optimization complete.`);
+                        }
                     }
                 } catch (err) {
                     console.warn(`[${jobId}] Caption optimization failed:`, err);
