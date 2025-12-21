@@ -225,9 +225,15 @@ export class ReelOrchestrator {
                 segments = this.buildSegments(segmentContent, voiceoverDuration);
                 await this.deps.jobManager.updateJob(jobId, { segments });
 
-                // Step 5.5: Phase 2 Caption & Hashtag Optimization
-                if (this.deps.captionService) {
-                    try {
+                this.logMemoryUsage('Steps 3-5: Content & Voiceover');
+            }
+
+            // Step 5.5: Phase 2 Caption & Hashtag Optimization (Ensured even on resume/salvage)
+            const jobAfterSegments = await this.deps.jobManager.getJob(jobId);
+            if (this.deps.captionService && jobAfterSegments && (!jobAfterSegments.captionBody || !jobAfterSegments.hashtags || jobAfterSegments.hashtags.length === 0)) {
+                try {
+                    const fullCommentary = jobAfterSegments.fullCommentary || (jobAfterSegments.segments?.map(s => s.commentary).join(' '));
+                    if (fullCommentary) {
                         console.log(`[${jobId}] Generating optimized caption & hashtags...`);
                         const captionResult = await this.deps.captionService.generateCaption(fullCommentary, plan.summary);
                         await this.deps.jobManager.updateJob(jobId, {
@@ -235,12 +241,10 @@ export class ReelOrchestrator {
                             hashtags: captionResult.hashtags
                         });
                         console.log(`[${jobId}] Caption optimization complete.`);
-                    } catch (err) {
-                        console.warn(`[${jobId}] Caption optimization failed:`, err);
                     }
+                } catch (err) {
+                    console.warn(`[${jobId}] Caption optimization failed:`, err);
                 }
-
-                this.logMemoryUsage('Steps 3-5: Content & Voiceover');
             }
 
             // Refresh job object

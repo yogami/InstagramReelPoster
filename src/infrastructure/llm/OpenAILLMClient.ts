@@ -492,12 +492,22 @@ Respond with a JSON object:
 }`;
 
         const response = await this.callOpenAI(prompt, true);
-        const parsed = this.parseJSON<CaptionAndTags>(response);
+        const parsed = this.parseJSON<any>(response);
+
+        let hashtags: string[] = [];
+        if (Array.isArray(parsed.hashtags)) {
+            hashtags = parsed.hashtags;
+        } else if (typeof parsed.hashtags === 'string') {
+            hashtags = parsed.hashtags.split(/[\s,]+/).filter((t: string) => t.length > 0);
+        }
+
+        // Ensure every tag has a # and is cleaned
+        hashtags = hashtags.map((t: string) => t.startsWith('#') ? t : `#${t}`).filter((t: string) => t !== '#');
 
         // Ensure hashtags is at least an empty array to prevent undefined errors
-        if (!parsed.hashtags || !Array.isArray(parsed.hashtags) || parsed.hashtags.length === 0) {
+        if (hashtags.length === 0) {
             console.warn('[LLM] generateCaptionAndTags returned no hashtags, providing defaults');
-            parsed.hashtags = [
+            hashtags = [
                 '#ChallengingView',
                 '#spirituality',
                 '#reels',
@@ -511,7 +521,10 @@ Respond with a JSON object:
             ];
         }
 
-        return parsed;
+        return {
+            captionBody: parsed.captionBody || 'New reel ready!',
+            hashtags
+        };
     }
 
     private async callOpenAI(prompt: string, jsonMode: boolean = false): Promise<string> {

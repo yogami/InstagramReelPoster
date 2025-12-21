@@ -146,12 +146,23 @@ Respond ONLY with JSON: { "hooks": ["hook1", "hook2", ...] }`;
 Respond ONLY with JSON: { "captionBody": "...", "hashtags": ["#tag1", ...] }`;
 
         const response = await this.callOllama(prompt);
-        const parsed = this.parseJSON<CaptionAndTags>(response);
+        const parsed = this.parseJSON<any>(response);
+
+        let hashtags: string[] = [];
+        if (Array.isArray(parsed.hashtags)) {
+            hashtags = parsed.hashtags;
+        } else if (typeof parsed.hashtags === 'string') {
+            // Handle space-separated or comma-separated string
+            hashtags = (parsed.hashtags as string).split(/[\s,]+/).filter(t => t.length > 0);
+        }
+
+        // Ensure every tag has a # and is cleaned
+        hashtags = hashtags.map((t: string) => t.startsWith('#') ? t : `#${t}`).filter((t: string) => t !== '#');
 
         // Ensure hashtags is at least an empty array to prevent undefined errors
-        if (!parsed.hashtags || !Array.isArray(parsed.hashtags) || parsed.hashtags.length === 0) {
+        if (hashtags.length === 0) {
             console.warn('[LocalLLM] generateCaptionAndTags returned no hashtags, providing defaults');
-            parsed.hashtags = [
+            hashtags = [
                 '#ChallengingView',
                 '#spirituality',
                 '#reels',
@@ -165,7 +176,10 @@ Respond ONLY with JSON: { "captionBody": "...", "hashtags": ["#tag1", ...] }`;
             ];
         }
 
-        return parsed;
+        return {
+            captionBody: parsed.captionBody || 'New reel ready!',
+            hashtags
+        };
     }
 
     private async callOllama(prompt: string): Promise<string> {

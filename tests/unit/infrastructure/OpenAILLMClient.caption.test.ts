@@ -62,4 +62,46 @@ describe('OpenAILLMClient Caption Generation', () => {
         expect(result.hashtags.length).toBeGreaterThan(0);
         expect(result.hashtags).toContain('#ChallengingView');
     });
+
+    it('should handle hashtags returned as a single string instead of an array', async () => {
+        const mockResponse = {
+            choices: [{
+                message: {
+                    content: JSON.stringify({
+                        captionBody: "Viral caption.",
+                        hashtags: "#tag1 #tag2 #tag3"
+                    })
+                }
+            }]
+        };
+
+        nock('https://api.openai.com')
+            .post('/v1/chat/completions')
+            .reply(200, mockResponse);
+
+        const result = await client.generateCaptionAndTags("full script", "summary");
+
+        expect(result.hashtags).toEqual(["#tag1", "#tag2", "#tag3"]);
+    });
+
+    it('should add # prefix to hashtags if they are missing it', async () => {
+        const mockResponse = {
+            choices: [{
+                message: {
+                    content: JSON.stringify({
+                        captionBody: "Viral caption.",
+                        hashtags: ["tag1", "tag2"]
+                    })
+                }
+            }]
+        };
+
+        nock('https://api.openai.com')
+            .post('/v1/chat/completions')
+            .reply(200, mockResponse);
+
+        const result = await client.generateCaptionAndTags("full script", "summary");
+
+        expect(result.hashtags).toEqual(["#tag1", "#tag2"]);
+    });
 });
