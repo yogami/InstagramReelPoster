@@ -75,4 +75,29 @@ describe('Bug Regression Verification', () => {
         const content = fs.readFileSync(filePath, 'utf-8');
         expect(content).toContain('Aspect Ratio: 9:16 Vertical Portrait');
     });
+
+    /**
+     * Fix 10: Parable mode segment count should NOT be overwritten by HookAndStructureService
+     * 
+     * ROOT CAUSE: When parable mode pre-generates 4 beats, the HookAndStructureService 
+     * was overwriting plan.segmentCount with its own value (e.g., 6). Later, validation 
+     * compared 4 actual segments against 6 expected → mismatch error.
+     * 
+     * FIX: For parable mode with pre-generated content, skip updating plan.segmentCount.
+     */
+    test('Fix 10: Parable mode should NOT overwrite segment count after hook optimization', () => {
+        const filePath = path.join(projectRoot, 'application/ReelOrchestrator.ts');
+        const content = fs.readFileSync(filePath, 'utf-8');
+
+        // The fix should prevent segment count overwrite for parable mode
+        // This is done by either:
+        // 1. Conditionally skipping the overwrite, OR
+        // 2. Skipping validation for pre-generated parable content
+
+        // Check that parable mode is handled specially in the segment flow
+        expect(content).toContain('isParablePreGenerated');
+
+        // Check that validation is skipped for parable mode
+        expect(content).toContain('Skipping segment validation for parable mode');
+    });
 });
