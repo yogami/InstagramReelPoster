@@ -6,6 +6,8 @@ import { ApprovalService } from '../../application/ApprovalService';
 import { asyncHandler, UnauthorizedError } from '../middleware/errorHandler';
 import { TelegramService } from '../services/TelegramService';
 import { getConfig } from '../../config';
+import { isLinkedInRequest, extractRawNote, createLinkedInDraft } from '../../domain/entities/LinkedInDraft';
+import { OpenAILinkedInDraftService } from '../../infrastructure/linkedin/OpenAILinkedInDraftService';
 
 /**
  * Middleware to validate Telegram webhook secret token.
@@ -175,6 +177,43 @@ async function processUpdate(
             return;
         }
 
+        // LINKEDIN PATH - Check if this is a LinkedIn draft request
+        if (isLinkedInRequest(text)) {
+            console.log(`[Telegram] LinkedIn draft request from chat ${chatId}`);
+
+            try {
+                const rawNote = extractRawNote(text);
+                if (!rawNote.trim()) {
+                    await telegramService.sendMessage(chatId,
+                        '📝 *LinkedIn Draft*\n\nPlease include your raw thoughts after "linkedin".\n\nExample: _linkedin Most founders confuse hustle with actual progress_'
+                    );
+                    return;
+                }
+
+                await telegramService.sendMessage(chatId, '📝 *Generating LinkedIn draft...*\n\nAnalyzing your thoughts...');
+
+                const config = getConfig();
+                const linkedInService = new OpenAILinkedInDraftService(config.openaiApiKey, config.openaiModel);
+                const draftContent = await linkedInService.generateDraftContent(rawNote);
+
+                // Create full draft entity
+                const draft = createLinkedInDraft(uuidv4(), { chatId, rawNote }, draftContent);
+
+                // Format response for user
+                const response = formatLinkedInDraft(draft);
+                await telegramService.sendMessage(chatId, response);
+
+                console.log(`[Telegram] LinkedIn draft ${draft.id} sent to chat ${chatId}`);
+
+            } catch (error) {
+                console.error('[Telegram] LinkedIn draft generation failed:', error);
+                await telegramService.sendMessage(chatId,
+                    `❌ Failed to generate LinkedIn draft: ${error instanceof Error ? error.message : 'Unknown error'}`
+                );
+            }
+            return;
+        }
+
         console.log(`[Telegram] Text message from chat ${chatId}: "${text.substring(0, 50)}..."`);
 
         try {
@@ -233,4 +272,30 @@ interface TelegramMessage {
         file_id: string;
         duration: number;
     };
+}
+
+/**
+ * Formats a LinkedIn draft for Telegram display.
+ */
+function formatLinkedInDraft(draft: import('../../domain/entities/LinkedInDraft').LinkedInDraft): string {
+    const bullets = draft.outlineBullets.map((b, i) => `  ${i + 1}. ${b}`).join('\n');
+    const closers = draft.closerOptions.map((c, i) => `  ${i + 1}. ${c}`).join('\n');
+
+    return `📝 *LinkedIn Draft*
+
+*HOOK:*
+_${draft.hook}_
+
+*CORE TENSION:*
+${draft.coreTension}
+
+*OUTLINE:*
+${bullets}
+
+*CLOSER OPTIONS:*
+${closers}
+
+---
+Draft ID: \`${draft.id}\`
+Reply "schedule" to queue for posting.`;
 }
