@@ -2,6 +2,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { JobManager } from '../../application/JobManager';
 import { ReelOrchestrator } from '../../application/ReelOrchestrator';
+import { ApprovalService } from '../../application/ApprovalService';
 import { asyncHandler, UnauthorizedError } from '../middleware/errorHandler';
 import { TelegramService } from '../services/TelegramService';
 import { getConfig } from '../../config';
@@ -127,6 +128,8 @@ async function processUpdate(
 
     // TEXT MESSAGE PATH
     if (text && text.trim().length > 0) {
+        const lowerText = text.toLowerCase().trim();
+
         // Ignore commands like /start, /help
         if (text.startsWith('/')) {
             if (text === '/start' || text === '/help') {
@@ -135,10 +138,39 @@ async function processUpdate(
                     `Send me:\n` +
                     `• 🎤 *Voice note* - I'll transcribe and create a reel\n` +
                     `• 📝 *Text prompt* - Describe your reel idea\n\n` +
+                    `*During approval:*\n` +
+                    `• *approve* - Continue processing\n` +
+                    `• *reject [feedback]* - Regenerate with your feedback\n\n` +
                     `Example text prompts:\n` +
                     `_"Create a motivational reel about discipline"_\n` +
                     `_"Tell the story of Ekalavya from Mahabharata"_`
                 );
+            }
+            return;
+        }
+
+        // Check for approval responses (handled by ApprovalService via orchestrator)
+        if (lowerText === 'approve' || lowerText === 'yes' || lowerText === 'ok') {
+            // Get latest job for this chat and approve it
+            const lastJob = await jobManager.getLastJobForUser(chatId);
+            if (lastJob && orchestrator.approvalService) {
+                await orchestrator.approvalService.handleCallback(lastJob.id, 'script', true);
+                await orchestrator.approvalService.handleCallback(lastJob.id, 'visuals', true);
+            } else {
+                await telegramService.sendMessage(chatId, '⚠️ No pending approval found.');
+            }
+            return;
+        }
+
+        // Check for rejection responses
+        if (lowerText.startsWith('reject') || lowerText.startsWith('no') || lowerText.startsWith('change')) {
+            const feedback = text.replace(/^(reject|no|change)/i, '').trim() || 'Please make it better';
+            const lastJob = await jobManager.getLastJobForUser(chatId);
+            if (lastJob && orchestrator.approvalService) {
+                await orchestrator.approvalService.handleCallback(lastJob.id, 'script', false, feedback);
+                await orchestrator.approvalService.handleCallback(lastJob.id, 'visuals', false, feedback);
+            } else {
+                await telegramService.sendMessage(chatId, '⚠️ No pending approval found.');
             }
             return;
         }

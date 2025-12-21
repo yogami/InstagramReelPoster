@@ -33,8 +33,10 @@ import { ICaptionService } from '../domain/ports/ICaptionService';
 import { IGrowthInsightsService } from '../domain/ports/IGrowthInsightsService';
 import { MusicSelector, MusicSource } from './MusicSelector';
 import { JobManager } from './JobManager';
+import { ApprovalService } from './ApprovalService';
 import { CloudinaryStorageClient } from '../infrastructure/storage/CloudinaryStorageClient';
 import { TrainingDataCollector } from '../infrastructure/training/TrainingDataCollector';
+import { TelegramService } from '../presentation/services/TelegramService';
 import { getConfig } from '../config';
 
 export interface OrchestratorDependencies {
@@ -63,9 +65,17 @@ export interface OrchestratorDependencies {
  */
 export class ReelOrchestrator {
     private readonly deps: OrchestratorDependencies;
+    public readonly approvalService: ApprovalService;
 
     constructor(deps: OrchestratorDependencies) {
         this.deps = deps;
+
+        // Initialize ApprovalService with TelegramService if notification client supports it
+        const config = getConfig();
+        const telegramService = config.telegramBotToken
+            ? new TelegramService(config.telegramBotToken)
+            : null;
+        this.approvalService = new ApprovalService(telegramService);
     }
 
     private logMemoryUsage(step: string) {
