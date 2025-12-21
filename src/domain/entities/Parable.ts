@@ -68,6 +68,8 @@ export interface ParableIntent {
     culturalPreference?: ParableCulture;
     /** Specific constraints (e.g., "must be about a monk") */
     constraints?: string[];
+    /** For provided-story: specific character names and story details from transcript */
+    providedStoryContext?: string;
 }
 
 /**

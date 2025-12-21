@@ -608,10 +608,10 @@ ${transcript}
 
 Determine:
 1. sourceType: 
-   - "provided-story" if user describes a specific tale, character, or historical figure
+   - "provided-story" if user describes a specific tale, character, or historical figure (e.g., Ekalavya, Buddha, Chanakya)
    - "theme-only" if user discusses an abstract theme/idea without specifying a story
 
-2. coreTheme: The psychological/spiritual theme (e.g., "gossip", "envy", "spiritual bypassing", "ego", "attachment")
+2. coreTheme: The psychological/spiritual theme (e.g., "gossip", "envy", "spiritual bypassing", "ego", "attachment", "atomic habits", "discipline")
 
 3. moral: 1-2 sentence insight the user wants to convey
 
@@ -619,13 +619,21 @@ Determine:
 
 5. constraints (optional): Any specific requirements (e.g., "must be about a monk", "warrior archetype")
 
+6. providedStoryContext (CRITICAL for provided-story): If sourceType is "provided-story", extract ALL specific details:
+   - Character names mentioned (e.g., "Ekalavya", "Dronacharya", "Arjuna")
+   - Historical/mythological context
+   - Specific story elements the user described
+   - Key plot points or actions mentioned
+   This preserves the user's exact story request.
+
 Respond with JSON:
 {
   "sourceType": "provided-story" or "theme-only",
   "coreTheme": "...",
   "moral": "...",
   "culturalPreference": "optional...",
-  "constraints": ["optional array..."]
+  "constraints": ["optional array..."],
+  "providedStoryContext": "For provided-story only: Full context with character names and story details"
 }`;
 
         const response = await this.callOpenAI(prompt, true);
@@ -637,7 +645,8 @@ Respond with JSON:
             coreTheme: parsed.coreTheme || 'spiritual insight',
             moral: parsed.moral || 'The truth is always uncomfortable.',
             culturalPreference: parsed.culturalPreference,
-            constraints: parsed.constraints
+            constraints: parsed.constraints,
+            providedStoryContext: parsed.providedStoryContext
         };
     }
 
@@ -697,7 +706,21 @@ Respond with JSON:
     ): Promise<ParableScriptPlan> {
         const config = getConfig();
         const wordsPerSecond = config.speakingRateWps;
-        const totalWords = Math.floor(targetDurationSeconds * wordsPerSecond * 0.85); // 15% safety margin
+
+        // Enforce minimum 30s for parables to avoid short videos
+        const effectiveDuration = Math.max(targetDurationSeconds, 30);
+        const totalWords = Math.floor(effectiveDuration * wordsPerSecond * 0.85); // 15% safety margin
+
+        // Build story context section for provided-story mode
+        const storyContextSection = intent.providedStoryContext
+            ? `
+USER'S SPECIFIC STORY (CRITICAL - USE THESE EXACT CHARACTERS AND DETAILS):
+"""
+${intent.providedStoryContext}
+"""
+YOU MUST use the specific character names and story elements from above. Do NOT invent generic characters.
+`
+            : '';
 
         const prompt = `Generate a micro-parable for short-form video.
 
@@ -706,20 +729,25 @@ MORAL: ${intent.moral}
 CULTURE: ${sourceChoice.culture}
 ARCHETYPE: ${sourceChoice.archetype}
 ${intent.constraints?.length ? `CONSTRAINTS: ${intent.constraints.join(', ')}` : ''}
+${storyContextSection}
+TARGET DURATION: ${effectiveDuration} seconds (CRITICAL - must reach this duration!)
+WORD BUDGET: ~${totalWords} words total (DO NOT go shorter)
 
-TARGET DURATION: ${targetDurationSeconds} seconds
-WORD BUDGET: ~${totalWords} words total
+STRUCTURE (4 beats - MINIMUM durations, aim for upper range):
+1. HOOK (8-10 seconds): Pattern-breaking opening. Immediate tension. Mention the main character by name.
+   Example: "There was a tribal boy named Ekalavya whose only teacher was a clay statue."
 
-STRUCTURE (4 beats):
-1. HOOK (6-8 seconds): Pattern-breaking opening. Immediate tension.
-   Example: "There was a monk whose favorite prayer was gossip."
+2. SETUP (10-14 seconds): Who the character is, what they do, tension building. Use specific names.
 
-2. SETUP (8-12 seconds): Who the character is, what they do, tension building.
+3. TURN (10-12 seconds): Event/confrontation that exposes truth. Teacher's remark, crisis, consequence.
 
-3. TURN (6-10 seconds): Event/confrontation that exposes truth. Teacher's remark, crisis, consequence.
-
-4. MORAL (5-8 seconds): Contemporary insight in caustic, psychologically-aware voice.
+4. MORAL (8-10 seconds): Contemporary insight in caustic, psychologically-aware voice.
    Must feel like a mirror to the viewer, not a detached lecture.
+
+CRITICAL DURATION CHECK: 
+- MINIMUM total must be ${effectiveDuration}s
+- Each beat MUST meet minimum: 8+10+10+8 = 36s minimum
+- Aim for upper ranges: 10+14+12+10 = 46s is ideal
 
 STYLE REQUIREMENTS:
 - Language: Simple, visual, cinematic, easy to illustrate
@@ -727,6 +755,7 @@ STYLE REQUIREMENTS:
 - NO fluffy "love and light" resolutions
 - Endings should be sharp, not comforting
 - Image prompts: 2D stylized cartoon, cel-shaded, muted earth tones
+- CHARACTER NAMES: Use the specific character names from the story (e.g., Ekalavya, Dronacharya, NOT "a boy" or "the teacher")
 
 Respond with JSON:
 {
@@ -747,28 +776,28 @@ Respond with JSON:
       "narration": "...",
       "textOnScreen": "...",
       "imagePrompt": "2D stylized cartoon...",
-      "approxDurationSeconds": 6-8
+      "approxDurationSeconds": 8-10
     },
     {
       "role": "setup",
       "narration": "...",
       "textOnScreen": "...",
       "imagePrompt": "2D stylized cartoon...",
-      "approxDurationSeconds": 8-12
+      "approxDurationSeconds": 10-14
     },
     {
       "role": "turn",
       "narration": "...",
       "textOnScreen": "...",
       "imagePrompt": "2D stylized cartoon...",
-      "approxDurationSeconds": 6-10
+      "approxDurationSeconds": 10-12
     },
     {
       "role": "moral",
       "narration": "...",
       "textOnScreen": "...",
       "imagePrompt": "2D stylized cartoon...",
-      "approxDurationSeconds": 5-8
+      "approxDurationSeconds": 8-10
     }
   ]
 }`;
