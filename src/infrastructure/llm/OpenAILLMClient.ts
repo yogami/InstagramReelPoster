@@ -724,38 +724,70 @@ YOU MUST use the specific character names and story elements from above. Do NOT 
 
         const prompt = `Generate a micro-parable for short-form video.
 
+=== NICHE POSITIONING ===
+You are creating content for "Faceless parable-based spiritual psychology":
+- Short animated stories about monks, warriors, saints, etc.
+- Each story EXPOSES ONE uncomfortable truth about ego, gossip, avoidance, projection, bypassing
+- NOT generic spirituality. Specific PSYCHOLOGICAL mechanics.
+- Think: "micro-documentary of one inner behavior" not "sermon"
+
+=== ONE THEME, ONE MORAL ===
 THEME: ${intent.coreTheme}
 MORAL: ${intent.moral}
 CULTURE: ${sourceChoice.culture}
 ARCHETYPE: ${sourceChoice.archetype}
 ${intent.constraints?.length ? `CONSTRAINTS: ${intent.constraints.join(', ')}` : ''}
 ${storyContextSection}
+
+=== DOCUMENTARY STRUCTURE ===
+Treat this parable like a micro-documentary of ONE inner behavior:
+- Show the CHARACTER'S DECISION POINT: "Do I gossip or face myself?"
+- Show the EMOTIONAL STAKES: What they're avoiding, what they fear
+- Show the CONSEQUENCES: The cost of the choice
+
 TARGET DURATION: ${effectiveDuration} seconds (CRITICAL - must reach this duration!)
 WORD BUDGET: ~${totalWords} words total (DO NOT go shorter)
 
-STRUCTURE (4 beats - MINIMUM durations, aim for upper range):
-1. HOOK (8-10 seconds): Pattern-breaking opening. Immediate tension. Mention the main character by name.
-   Example: "There was a tribal boy named Ekalavya whose only teacher was a clay statue."
+=== 4-BEAT STRUCTURE ===
+1. HOOK (8-10 seconds): Promise a surprising angle on familiar behavior.
+   Pattern: "The [archetype] who [unexpected twist on the theme]"
+   Example: "The monk whose favorite prayer was gossip."
+   Example: "The warrior who feared his own silence more than battle."
 
-2. SETUP (10-14 seconds): Who the character is, what they do, tension building. Use specific names.
+2. SETUP (10-14 seconds): Show who they are and their HIDDEN tension.
+   - What they do on the surface
+   - What they're actually avoiding
+   - Build the gap between appearance and reality
 
-3. TURN (10-12 seconds): Event/confrontation that exposes truth. Teacher's remark, crisis, consequence.
+3. TURN (10-12 seconds): The CONFRONTATION that exposes the truth.
+   - A teacher's piercing question
+   - A crisis that strips the mask
+   - The moment they can't hide anymore
 
-4. MORAL (8-10 seconds): Contemporary insight in caustic, psychologically-aware voice.
-   Must feel like a mirror to the viewer, not a detached lecture.
+4. MORAL (8-10 seconds): Contemporary insight that MIRRORS THE VIEWER.
+   - Don't lecture. Implicate.
+   - Make it uncomfortable: "Sound familiar?"
+   - Sharp, caustic, psychologically aware
+   - The viewer should feel seen, not preached to
+
+=== VISUAL SIMPLICITY (CRITICAL) ===
+Image prompts must follow these rules:
+- SIMPLE, SYMBOLIC scenes (monk in courtyard, warrior at campfire, gossip circle)
+- Minimal motion, clean composition
+- NO complex effects or busy visuals
+- The simplicity IS the hook - viewer focuses on message, not FX
+- Repeating visual motifs across beats (same courtyard, same characters)
+- Style: "2D cel-shaded, hand-drawn feeling, muted earth tones, Studio Ghibli simplicity"
+
+=== CHARACTER REQUIREMENTS ===
+- Use SPECIFIC character names from the story (Ekalavya, Dronacharya, NOT "a boy" or "the teacher")
+- Each character should represent a recognizable inner dynamic
+- The protagonist IS the viewer's shadow
 
 CRITICAL DURATION CHECK: 
 - MINIMUM total must be ${effectiveDuration}s
 - Each beat MUST meet minimum: 8+10+10+8 = 36s minimum
 - Aim for upper ranges: 10+14+12+10 = 46s is ideal
-
-STYLE REQUIREMENTS:
-- Language: Simple, visual, cinematic, easy to illustrate
-- Tone: Confronting, honest, slightly uncomfortable
-- NO fluffy "love and light" resolutions
-- Endings should be sharp, not comforting
-- Image prompts: 2D stylized cartoon, cel-shaded, muted earth tones
-- CHARACTER NAMES: Use the specific character names from the story (e.g., Ekalavya, Dronacharya, NOT "a boy" or "the teacher")
 
 Respond with JSON:
 {
@@ -775,28 +807,28 @@ Respond with JSON:
       "role": "hook",
       "narration": "...",
       "textOnScreen": "...",
-      "imagePrompt": "2D stylized cartoon...",
+      "imagePrompt": "2D cel-shaded, hand-drawn feeling, [simple symbolic scene], muted earth tones",
       "approxDurationSeconds": 8-10
     },
     {
       "role": "setup",
       "narration": "...",
       "textOnScreen": "...",
-      "imagePrompt": "2D stylized cartoon...",
+      "imagePrompt": "2D cel-shaded, hand-drawn feeling, [simple symbolic scene], muted earth tones",
       "approxDurationSeconds": 10-14
     },
     {
       "role": "turn",
       "narration": "...",
       "textOnScreen": "...",
-      "imagePrompt": "2D stylized cartoon...",
+      "imagePrompt": "2D cel-shaded, hand-drawn feeling, [simple symbolic scene], muted earth tones",
       "approxDurationSeconds": 10-12
     },
     {
       "role": "moral",
       "narration": "...",
       "textOnScreen": "...",
-      "imagePrompt": "2D stylized cartoon...",
+      "imagePrompt": "2D cel-shaded, hand-drawn feeling, [simple symbolic scene], muted earth tones",
       "approxDurationSeconds": 8-10
     }
   ]
@@ -822,7 +854,12 @@ Respond with JSON:
     ): Promise<string[]> {
         const hookBeat = parableScript.beats.find(b => b.role === 'hook');
 
-        const prompt = `Generate 5 viral hooks for this parable.
+        const prompt = `Generate 5 viral hooks for this spiritual psychology parable.
+
+=== NICHE POSITIONING ===
+You are creating hooks for "Faceless parable-based spiritual psychology" content.
+These hooks must PROMISE a surprising angle on a familiar, uncomfortable topic.
+Think: documentary reveal, not sermon announcement.
 
 PARABLE CONTEXT:
 - Theme: ${parableScript.parableIntent.coreTheme}
@@ -832,14 +869,25 @@ PARABLE CONTEXT:
 - Current hook: ${hookBeat?.narration || 'Not available'}
 ${trendContext ? `- Trend context: ${trendContext}` : ''}
 
-HOOK REQUIREMENTS:
+=== HOOK FORMULA (Documentary/Explainer Style) ===
+Pattern 1: "The [archetype] who [unexpected twist on theme]"
+  - "The monk whose favorite prayer was gossip."
+  - "The warrior who feared his own silence more than battle."
+
+Pattern 2: "What actually happens when [familiar behavior]"
+  - "What actually happens when spiritual people gossip."
+  - "The psychology behind 'I'm just concerned.'"
+
+Pattern 3: Implicating statement that mirrors viewer
+  - "His prayers were whispers about others."
+  - "He could sit in stillness for hours. But his words never rested."
+
+=== REQUIREMENTS ===
 - Reference character + tension
 - Pattern-breaking, attention-grabbing
-- No questions (statements work better for parables)
-- Examples:
-  - "The monk who loved gossip more than silence."
-  - "The warrior who could defeat everyone but himself."
-  - "His prayers were whispers about others."
+- NO questions (statements work better for parables)
+- Promise a REVEAL, not a lesson
+- Each hook should feel like the title of a mini-documentary
 
 Respond with JSON:
 {
@@ -865,28 +913,48 @@ Respond with JSON:
         parableScript: ParableScriptPlan,
         summary: string
     ): Promise<CaptionAndTags> {
-        const prompt = `Generate a caption and hashtags for this parable reel.
+        const prompt = `Generate a caption and hashtags for this spiritual psychology parable reel.
+
+=== NICHE POSITIONING ===
+You are creating a caption for "Faceless parable-based spiritual psychology" content.
+Frame this as a DOCUMENTARY/EXPLAINER, not a sermon.
 
 PARABLE SUMMARY: ${summary}
 THEME: ${parableScript.parableIntent.coreTheme}
 MORAL: ${parableScript.parableIntent.moral}
 CULTURE: ${parableScript.sourceChoice.culture}
+ARCHETYPE: ${parableScript.sourceChoice.archetype}
 
-CAPTION STRUCTURE (2-4 short lines):
-1. 1-2 lines summarizing the parable in modern language
-2. 1 line connecting it to the viewer's life
-3. Final line: Clear CTA optimized for saves/shares
-   Example: "Save this for the next time you're tempted to gossip."
+=== CAPTION STRUCTURE (Documentary/Explainer Style) ===
+1. OPENING LINE (Documentary framing):
+   Pattern: "This is the story of what really happens when [behavior]."
+   Or: "A [archetype] who [unexpected twist]."
+   This positions the reel as education via story.
 
-HASHTAG STRATEGY (8-12 total):
-- Niche spiritual psychology tags (e.g., #shadowwork, #selfinquiry)
-- Broader reach tags (e.g., #spirituality, #mindfulness)
-- Branded tags (#ChallengingView)
-- Parable-specific (#parables, #spiritualstorytelling)
+2. MIDDLE (2-3 short lines):
+   - Summarize the parable's core tension in modern language
+   - Connect it to a behavior the viewer recognizes in themselves or others
+   - NO preaching. Just observation.
+
+3. FINAL LINE (Viewer mirror + CTA):
+   Make the viewer feel implicated, then give clear action:
+   - "Sound familiar?"
+   - "Save this for the next time you catch yourself doing this."
+   - "Your excuses are showing."
+
+=== HASHTAG STRATEGY (10-12 total) ===
+NICHE PSYCHOLOGY TAGS (4-5):
+  #shadowwork #selfinquiry #egodeath #spiritualpsychology #projection
+
+BROADER REACH TAGS (3-4):
+  #spirituality #mindfulness #reels #wisdom #growth
+
+BRAND + PARABLE SPECIFIC (3):
+  #ChallengingView #parables #spiritualstorytelling
 
 Respond with JSON:
 {
-  "captionBody": "Line 1\\n\\nLine 2\\n\\nCTA line",
+  "captionBody": "Opening documentary line\\n\\nMiddle observation lines\\n\\nFinal mirror + CTA",
   "hashtags": ["#tag1", "#tag2", ...]
 }`;
 
