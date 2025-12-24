@@ -96,3 +96,39 @@ export function isLinkedInRequest(text: string): boolean {
 export function extractRawNote(text: string): string {
     return text.replace(/\blinkedin\b/i, '').trim();
 }
+
+/**
+ * Assembles a full LinkedIn post from draft components.
+ * Format: Hook + bulletpoints + first closer + hashtags
+ */
+export function assemblePostContent(draft: LinkedInDraft): string {
+    const parts: string[] = [];
+
+    // Hook (first line)
+    parts.push(draft.hook);
+    parts.push(''); // Empty line after hook
+
+    // Core tension
+    parts.push(draft.coreTension);
+    parts.push('');
+
+    // Outline bullets as numbered list
+    draft.outlineBullets.forEach((bullet, index) => {
+        parts.push(`${index + 1}. ${bullet}`);
+    });
+    parts.push('');
+
+    // First closer option as the call-to-action
+    if (draft.closerOptions.length > 0) {
+        parts.push(draft.closerOptions[0]);
+        parts.push('');
+    }
+
+    // Hashtags on final line
+    if (draft.hashtags.length > 0) {
+        parts.push(draft.hashtags.join(' '));
+    }
+
+    return parts.join('\n').trim();
+}
+

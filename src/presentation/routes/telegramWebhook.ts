@@ -6,8 +6,15 @@ import { ApprovalService } from '../../application/ApprovalService';
 import { asyncHandler, UnauthorizedError } from '../middleware/errorHandler';
 import { TelegramService } from '../services/TelegramService';
 import { getConfig } from '../../config';
-import { isLinkedInRequest, extractRawNote, createLinkedInDraft } from '../../domain/entities/LinkedInDraft';
+import { isLinkedInRequest, extractRawNote, createLinkedInDraft, LinkedInDraft, assemblePostContent } from '../../domain/entities/LinkedInDraft';
 import { OpenAILinkedInDraftService } from '../../infrastructure/linkedin/OpenAILinkedInDraftService';
+import { MakeLinkedInPosterService } from '../../infrastructure/linkedin/MakeLinkedInPosterService';
+
+/**
+ * In-memory storage for pending LinkedIn drafts awaiting "post" command.
+ * Key: chatId, Value: most recent draft
+ */
+const pendingLinkedInDrafts: Map<number, LinkedInDraft> = new Map();
 
 /**
  * Middleware to validate Telegram webhook secret token.
@@ -177,6 +184,54 @@ async function processUpdate(
             return;
         }
 
+        // LINKEDIN POST COMMAND - Publish pending draft to LinkedIn
+        if (lowerText === 'post' || lowerText === 'publish') {
+            const pendingDraft = pendingLinkedInDrafts.get(chatId);
+            if (!pendingDraft) {
+                await telegramService.sendMessage(chatId, '⚠️ No pending LinkedIn draft found. Generate one first with: _linkedin [your raw thoughts]_');
+                return;
+            }
+
+            try {
+                const config = getConfig();
+                if (!config.linkedinWebhookUrl || !config.linkedinWebhookApiKey) {
+                    await telegramService.sendMessage(chatId, '❌ LinkedIn posting not configured. Missing webhook URL or API key.');
+                    return;
+                }
+
+                await telegramService.sendMessage(chatId, '📤 *Publishing to LinkedIn...*');
+
+                const posterService = new MakeLinkedInPosterService(config.linkedinWebhookUrl, config.linkedinWebhookApiKey);
+                const content = assemblePostContent(pendingDraft);
+
+                const result = await posterService.postToLinkedIn({
+                    type: 'ARTICLE',
+                    content,
+                    visibility: 'PUBLIC',
+                    media: {
+                        originalUrl: 'https://www.linkedin.com/in/yamigopal/',
+                        title: pendingDraft.hook,
+                        description: pendingDraft.coreTension,
+                        thumbnail: {
+                            fileName: '',
+                            data: null
+                        }
+                    }
+                });
+
+                if (result.success) {
+                    pendingLinkedInDrafts.delete(chatId);
+                    await telegramService.sendMessage(chatId, `✅ *Posted to LinkedIn!*\n\n${result.postId ? `Post ID: \`${result.postId}\`` : 'Check your LinkedIn profile.'}`); console.log(`[Telegram] LinkedIn post published for chat ${chatId}`);
+                } else {
+                    await telegramService.sendMessage(chatId, `❌ Failed to post: ${result.error}`);
+                }
+            } catch (error) {
+                console.error('[Telegram] LinkedIn posting failed:', error);
+                await telegramService.sendMessage(chatId, `❌ Failed to post: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            }
+            return;
+        }
+
         // LINKEDIN PATH - Check if this is a LinkedIn draft request
         if (isLinkedInRequest(text)) {
             console.log(`[Telegram] LinkedIn draft request from chat ${chatId}`);
@@ -199,11 +254,14 @@ async function processUpdate(
                 // Create full draft entity
                 const draft = createLinkedInDraft(uuidv4(), { chatId, rawNote }, draftContent);
 
+                // Store draft for "post" command
+                pendingLinkedInDrafts.set(chatId, draft);
+
                 // Format response for user
                 const response = formatLinkedInDraft(draft);
                 await telegramService.sendMessage(chatId, response);
 
-                console.log(`[Telegram] LinkedIn draft ${draft.id} sent to chat ${chatId}`);
+                console.log(`[Telegram] LinkedIn draft ${draft.id} stored and sent to chat ${chatId}`);
 
             } catch (error) {
                 console.error('[Telegram] LinkedIn draft generation failed:', error);

@@ -28,6 +28,10 @@ export interface Config {
     callbackToken?: string;
     callbackHeader?: string;
 
+    // LinkedIn Posting via Make.com
+    linkedinWebhookUrl: string;
+    linkedinWebhookApiKey: string;
+
     // OpenRouter (Primary Image Generation)
     openrouterApiKey: string;
     openrouterBaseUrl: string;
@@ -154,6 +158,10 @@ export function loadConfig(): Config {
         makeWebhookUrl: getEnvVar('MAKE_WEBHOOK_URL', ''),
         callbackToken: process.env.CALLBACK_TOKEN ? getEnvVar('CALLBACK_TOKEN') : undefined,
         callbackHeader: process.env.CALLBACK_HEADER ? getEnvVar('CALLBACK_HEADER') : 'Authorization',
+
+        // LinkedIn Posting via Make.com
+        linkedinWebhookUrl: getEnvVar('LINKEDIN_WEBHOOK_URL', ''),
+        linkedinWebhookApiKey: getEnvVar('LINKEDIN_WEBHOOK_API_KEY', ''),
 
         // OpenRouter
         openrouterApiKey: getEnvVar('OPENROUTER_API_KEY', ''),
