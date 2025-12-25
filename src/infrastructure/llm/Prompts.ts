@@ -104,6 +104,71 @@ Respond as JSON array:
   ...
 ]`;
 
+export const GENERATE_COMMENTARY_PROMPT = `Generate the spoken commentary script for an Instagram Reel with {{segmentCount}} segments.
+
+CONCEPT SUMMARY: "{{summary}}"
+TRANSCRIPT CONTEXT: "{{transcript}}"
+
+=== TARGET AUDIENCE ===
+- Gen Z, non-native English speakers (e.g., German youth).
+- Language Level: A1/A2 (Simple, 5th-8th grade reading level).
+- Tone: Direct, "Challenging View" (Brutal truth), but using SIMPLE words.
+- NO complex academic words. NO spiritual jargon.
+- Short, punchy sentences.
+
+=== TIMING & ADJUSTMENTS ===
+- TOTAL SEGMENTS: {{segmentCount}}
+- WORD BUDGET PER SEGMENT: {{wordsPerSegment}} words (Targets 95-98% video length)
+- HARD CAP: {{hardCapPerSegment}} words (DO NOT EXCEED)
+
+=== STRUCTURE ===
+1. Segment 1 (Hook): Stop the scroll. Immediate tension.
+2. Middle Segments: Unpack the behavior/truth using simple analogies.
+3. Final Segment: The mirror/implication. "Sound familiar?"
+
+Respond as JSON array:
+[
+  { "commentary": "Short, simple sentence." },
+  { "commentary": "Another simple truth." },
+  ...
+]`;
+
+export const GENERATE_VISUALS_FROM_COMMENTARY_PROMPT = `Generate visual prompts for an Instagram Reel based on the provided commentary.
+
+CONCEPT SUMMARY: "{{summary}}"
+OVERALL MOOD: "{{mood}}"
+SEGMENT COUNT: {{segmentCount}}
+
+INPUT COMMENTARIES:
+{{commentaries}}
+
+TASK:
+For each commentary segment, generate:
+1. imagePrompt: Detailed Midjourney-style prompt illustrating the commentary.
+2. caption: Short 3-5 word text overlay.
+3. continuityTags: Object with visual consistency trackers.
+
+SCENE CONTINUITY RULES:
+- Index 0: Establish anchor (location, lighting, style).
+- Index 1+: "Continuation of previous scene:" + reference previous tags.
+- IMAGE POLICY: If people/couples are depicted, they MUST be a Heterosexual couple (to maintain brand consistency).
+
+Respond as JSON array (SAME ORDER as input):
+[
+  {
+    "imagePrompt": "...",
+    "caption": "...",
+    "continuityTags": {
+      "location": "...",
+      "timeOfDay": "...",
+      "dominantColor": "...",
+      "heroProp": "...",
+      "wardrobeDetail": "..."
+    }
+  },
+  ...
+]`;
+
 export const PARABLE_SCRIPT_PROMPT = `Generate a micro-parable for short-form video.
 
 === NICHE POSITIONING ===

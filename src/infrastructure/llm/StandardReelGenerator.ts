@@ -9,7 +9,8 @@ import { OpenAIService } from './OpenAIService';
 import {
     CHALLENGING_VIEW_SYSTEM_PROMPT,
     PLAN_REEL_PROMPT,
-    GENERATE_SEGMENT_CONTENT_PROMPT,
+    GENERATE_COMMENTARY_PROMPT,
+    GENERATE_VISUALS_FROM_COMMENTARY_PROMPT,
 } from './Prompts';
 
 /**
@@ -54,37 +55,128 @@ export class StandardReelGenerator {
     }
 
     /**
-     * Generates commentary and image prompts for each segment.
+     * Generates commentary and image prompts for each segment using a 2-step workflow.
+     * Step 1: Generate Commentary (Simple English, Gen Z focus)
+     * Step 2: Generate Visuals (Based on commentary)
      */
     async generateSegmentContent(plan: ReelPlan, transcript: string): Promise<SegmentContent[]> {
         const config = getConfig();
         const secondsPerSegment = plan.targetDurationSeconds / plan.segmentCount;
-
-        // Target 98% of duration to stay safely within [95%, 100%]
         const safetyMargin = 0.98;
 
-        // n8n formula sync: Subtract 0.5s per sentence for pauses/breathing room
+        // Calculate strict word limits
         const wordsPerSegment = Math.round((secondsPerSegment - 0.5) * config.speakingRateWps * safetyMargin);
-
-        // Hard cap is the absolute maximum (100% duration)
         const hardCapPerSegment = Math.floor((secondsPerSegment - 0.2) * config.speakingRateWps);
 
-        const prompt = GENERATE_SEGMENT_CONTENT_PROMPT
-            .replace(/{{segmentCount}}/g, plan.segmentCount.toString())
-            .replace('{{transcript}}', transcript)
-            .replace('{{summary}}', plan.summary)
-            .replace('{{mood}}', plan.mood)
-            .replace(/{{wordsPerSegment}}/g, wordsPerSegment.toString())
-            .replace(/{{hardCapPerSegment}}/g, hardCapPerSegment.toString())
-            .replace('{{targetDurationSeconds}}', plan.targetDurationSeconds.toString())
-            .replace('{{secondsPerSegment}}', secondsPerSegment.toFixed(1));
+        console.log(`[StandardReel] Step 1: Generating commentary for ${plan.segmentCount} segments (Target: ${wordsPerSegment} words)`);
 
-        const response = await this.openAI.chatCompletion(prompt, CHALLENGING_VIEW_SYSTEM_PROMPT, { jsonMode: true });
-        const parsed = this.openAI.parseJSON<{ segments?: SegmentContent[] } | SegmentContent[]>(response);
-        const segments = this.normalizeSegments(parsed);
+        // Step 1: Generate Commentary
+        const commentaries = await this.generateCommentary(plan, transcript, wordsPerSegment, hardCapPerSegment);
+
+        console.log(`[StandardReel] Step 2: Generating visuals for ${commentaries.length} segments`);
+
+        // Step 2: Generate Visuals
+        const visuals = await this.generateVisuals(plan, commentaries);
+
+        // Merge results
+        const segments: SegmentContent[] = commentaries.map((comm, index) => {
+            const visual = visuals[index] || {
+                imagePrompt: 'Minimalist spiritual background, moody lighting',
+                caption: 'Watch now',
+                continuityTags: {
+                    location: 'minimalist void',
+                    timeOfDay: 'neutral',
+                    dominantColor: 'grey',
+                    heroProp: 'none',
+                    wardrobeDetail: 'none'
+                }
+            };
+            return {
+                commentary: comm.commentary,
+                imagePrompt: visual.imagePrompt,
+                caption: visual.caption,
+                continuityTags: visual.continuityTags
+            };
+        });
 
         // CRITICAL: Post-generation enforcement - truncate overlong commentaries
         return this.enforceWordLimits(segments, hardCapPerSegment);
+    }
+
+    private async generateCommentary(
+        plan: ReelPlan,
+        transcript: string,
+        wordsPerSegment: number,
+        hardCapPerSegment: number
+    ): Promise<{ commentary: string }[]> {
+        const prompt = GENERATE_COMMENTARY_PROMPT
+            .replace(/{{segmentCount}}/g, plan.segmentCount.toString())
+            .replace('{{transcript}}', transcript)
+            .replace('{{summary}}', plan.summary)
+            .replace(/{{wordsPerSegment}}/g, wordsPerSegment.toString())
+            .replace(/{{hardCapPerSegment}}/g, hardCapPerSegment.toString());
+
+        const response = await this.openAI.chatCompletion(prompt, CHALLENGING_VIEW_SYSTEM_PROMPT, { jsonMode: true });
+        const parsed = this.openAI.parseJSON<{ commentary: string }[]>(response);
+
+        if (!Array.isArray(parsed) || parsed.length === 0) {
+            throw new Error('Failed to generate valid commentary array');
+        }
+
+        return parsed;
+    }
+
+    private async generateVisuals(
+        plan: ReelPlan,
+        commentaries: { commentary: string }[]
+    ): Promise<{
+        imagePrompt: string;
+        caption: string;
+        continuityTags: {
+            location: string;
+            timeOfDay: string;
+            dominantColor: string;
+            heroProp: string;
+            wardrobeDetail: string;
+        };
+    }[]> {
+        const commentaryText = commentaries.map((c, i) => `Segment ${i + 1}: "${c.commentary}"`).join('\n');
+
+        const prompt = GENERATE_VISUALS_FROM_COMMENTARY_PROMPT
+            .replace('{{summary}}', plan.summary)
+            .replace('{{mood}}', plan.mood)
+            .replace('{{segmentCount}}', plan.segmentCount.toString())
+            .replace('{{commentaries}}', commentaryText);
+
+        const response = await this.openAI.chatCompletion(prompt, CHALLENGING_VIEW_SYSTEM_PROMPT, { jsonMode: true });
+        const parsed = this.openAI.parseJSON<{
+            imagePrompt: string;
+            caption: string;
+            continuityTags: {
+                location: string;
+                timeOfDay: string;
+                dominantColor: string;
+                heroProp: string;
+                wardrobeDetail: string;
+            }
+        }[]>(response);
+
+        if (!Array.isArray(parsed)) {
+            // Fallback if structure is weird
+            return commentaries.map(() => ({
+                imagePrompt: 'Abstract spiritual background, cinematic lighting',
+                caption: 'Focus',
+                continuityTags: {
+                    location: 'abstract void',
+                    timeOfDay: 'timeless',
+                    dominantColor: 'neutral',
+                    heroProp: 'none',
+                    wardrobeDetail: 'none'
+                }
+            }));
+        }
+
+        return parsed;
     }
 
     /**
