@@ -37,29 +37,41 @@ describe('Integration: LLM Segment Count Invariants', () => {
     it('should return EXACTLY N segments when N is requested', async () => {
         const segmentCount = 3;
 
-        // Step 1: Mock Commentary Response
-        const mockCommentaries = Array(segmentCount).fill(null).map((_, i) => ({
-            commentary: `Commentary ${i + 1}`
-        }));
-
-        // Step 2: Mock Visuals Response
-        const mockVisuals = Array(segmentCount).fill(null).map((_, i) => ({
-            imagePrompt: `Image prompt ${i + 1}`,
-            caption: `Caption ${i + 1}`,
-            continuityTags: { location: 'scene', timeOfDay: 'day', dominantColor: 'blue', heroProp: 'none', wardrobeDetail: 'none' }
-        }));
-
-        nock('https://api.openai.com')
+        // Iterative generation: N segment calls + 1 visuals call
+        // Mock each segment response individually
+        const scope = nock('https://api.openai.com')
+            // Segment 1
             .post('/v1/chat/completions')
             .reply(200, {
                 choices: [{
-                    message: { content: JSON.stringify(mockCommentaries) }
+                    message: { content: JSON.stringify({ commentary: 'Commentary 1' }) }
                 }]
             })
+            // Segment 2
             .post('/v1/chat/completions')
             .reply(200, {
                 choices: [{
-                    message: { content: JSON.stringify(mockVisuals) }
+                    message: { content: JSON.stringify({ commentary: 'Commentary 2' }) }
+                }]
+            })
+            // Segment 3
+            .post('/v1/chat/completions')
+            .reply(200, {
+                choices: [{
+                    message: { content: JSON.stringify({ commentary: 'Commentary 3' }) }
+                }]
+            })
+            // Visuals (1 call for all segments)
+            .post('/v1/chat/completions')
+            .reply(200, {
+                choices: [{
+                    message: {
+                        content: JSON.stringify([
+                            { imagePrompt: 'Image 1', caption: 'Cap 1', continuityTags: {} },
+                            { imagePrompt: 'Image 2', caption: 'Cap 2', continuityTags: {} },
+                            { imagePrompt: 'Image 3', caption: 'Cap 3', continuityTags: {} }
+                        ])
+                    }
                 }]
             });
 
@@ -71,23 +83,21 @@ describe('Integration: LLM Segment Count Invariants', () => {
 
         expect(Array.isArray(result)).toBe(true);
         expect(result.length).toBe(segmentCount);
+        expect(result[0].commentary).toBe('Commentary 1');
+        expect(result[2].commentary).toBe('Commentary 3');
     });
 
     it('should NOT return wrapped object like {segments: [...]}', async () => {
-        // Step 1: Mock Commentary
+        // Iterative: 2 segment calls + 1 visuals call
         nock('https://api.openai.com')
             .post('/v1/chat/completions')
             .reply(200, {
-                choices: [{
-                    message: {
-                        content: JSON.stringify([
-                            { commentary: 'Test 1' },
-                            { commentary: 'Test 2' }
-                        ])
-                    }
-                }]
+                choices: [{ message: { content: JSON.stringify({ commentary: 'Test 1' }) } }]
             })
-            // Step 2: Mock Visuals
+            .post('/v1/chat/completions')
+            .reply(200, {
+                choices: [{ message: { content: JSON.stringify({ commentary: 'Test 2' }) } }]
+            })
             .post('/v1/chat/completions')
             .reply(200, {
                 choices: [{
@@ -111,19 +121,14 @@ describe('Integration: LLM Segment Count Invariants', () => {
     });
 
     it('should generate segments with commentary referencing visual elements', async () => {
-        // Step 1: Commentary
+        // Iterative: 1 segment call + 1 visuals call
         nock('https://api.openai.com')
             .post('/v1/chat/completions')
             .reply(200, {
                 choices: [{
-                    message: {
-                        content: JSON.stringify([{
-                            commentary: 'Notice the warm amber glow on this peaceful deck.'
-                        }])
-                    }
+                    message: { content: JSON.stringify({ commentary: 'Notice the warm amber glow on this peaceful deck.' }) }
                 }]
             })
-            // Step 2: Visuals
             .post('/v1/chat/completions')
             .reply(200, {
                 choices: [{

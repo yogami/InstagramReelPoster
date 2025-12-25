@@ -10,6 +10,7 @@ import {
     CHALLENGING_VIEW_SYSTEM_PROMPT,
     PLAN_REEL_PROMPT,
     GENERATE_COMMENTARY_PROMPT,
+    GENERATE_SINGLE_SEGMENT_PROMPT,
     GENERATE_VISUALS_FROM_COMMENTARY_PROMPT,
 } from './Prompts';
 
@@ -109,49 +110,52 @@ export class StandardReelGenerator {
         wordsPerSegment: number,
         hardCapPerSegment: number
     ): Promise<{ commentary: string }[]> {
-        const prompt = GENERATE_COMMENTARY_PROMPT
-            .replace(/{{segmentCount}}/g, plan.segmentCount.toString())
-            .replace('{{transcript}}', transcript)
-            .replace('{{summary}}', plan.summary)
-            .replace(/{{wordsPerSegment}}/g, wordsPerSegment.toString())
-            .replace(/{{hardCapPerSegment}}/g, hardCapPerSegment.toString());
+        const results: { commentary: string }[] = [];
 
-        let attempts = 0;
-        const maxAttempts = 2;
+        console.log(`[StandardReel] Starting iterative generation for ${plan.segmentCount} segments...`);
 
-        while (attempts < maxAttempts) {
-            attempts++;
+        for (let i = 1; i <= plan.segmentCount; i++) {
+            const role = this.getSegmentRole(i, plan.segmentCount);
+            const previousContext = results.length > 0
+                ? results.map((r, idx) => `Segment ${idx + 1}: "${r.commentary}"`).join('\n')
+                : 'None yet (this is the first segment).';
+
+            const prompt = GENERATE_SINGLE_SEGMENT_PROMPT
+                .replace(/{{currentIndex}}/g, i.toString())
+                .replace(/{{totalSegments}}/g, plan.segmentCount.toString())
+                .replace('{{summary}}', plan.summary)
+                .replace('{{transcript}}', transcript)
+                .replace('{{previousCommentaries}}', previousContext)
+                .replace('{{segmentRole}}', role)
+                .replace(/{{wordsPerSegment}}/g, wordsPerSegment.toString())
+                .replace(/{{hardCapPerSegment}}/g, hardCapPerSegment.toString());
+
             try {
                 const response = await this.openAI.chatCompletion(prompt, CHALLENGING_VIEW_SYSTEM_PROMPT, { jsonMode: true });
-                const parsed = this.openAI.parseJSON<any>(response);
+                const parsed = this.openAI.parseJSON<{ commentary: string }>(response);
 
-                const commentaries = this.normalizeCommentaryResponse(parsed);
-
-                if (commentaries.length === 0) {
-                    console.warn(`[StandardReel] Attempt ${attempts}: LLM returned empty/invalid commentary. Retrying... Response:`, JSON.stringify(parsed));
-                    continue;
+                if (!parsed || !parsed.commentary) {
+                    console.warn(`[StandardReel] Segment ${i}: Invalid response, using fallback.`);
+                    results.push({ commentary: `Segment ${i} content.` });
+                } else {
+                    results.push({ commentary: parsed.commentary });
+                    console.log(`[StandardReel] Generated segment ${i}/${plan.segmentCount}: "${parsed.commentary.substring(0, 50)}..."`);
                 }
-
-                // Retry if segment count is drastically different (e.g., < 50% of expectation)
-                if (plan.segmentCount > 1 && commentaries.length < plan.segmentCount * 0.5) {
-                    console.warn(`[StandardReel] Attempt ${attempts}: Segment count mismatch (Expected ${plan.segmentCount}, Got ${commentaries.length}). Retrying...`);
-                    continue;
-                }
-
-                if (commentaries.length !== plan.segmentCount) {
-                    console.warn(`[StandardReel] Segment count mismatch: Expected ${plan.segmentCount}, got ${commentaries.length}. Adjusting plan...`);
-                }
-
-                return commentaries;
             } catch (error) {
-                console.error(`[StandardReel] Attempt ${attempts} failed.`, error);
-                if (attempts === maxAttempts) {
-                    throw new Error(`Failed to generate commentary after ${maxAttempts} attempts: ${error instanceof Error ? error.message : String(error)}`);
-                }
+                console.error(`[StandardReel] Failed to generate segment ${i}:`, error);
+                // Push a fallback to maintain segment count
+                results.push({ commentary: `Segment ${i} content.` });
             }
         }
 
-        throw new Error('Failed to generate valid commentary array after retries.');
+        console.log(`[StandardReel] Iterative generation complete: ${results.length} segments`);
+        return results;
+    }
+
+    private getSegmentRole(index: number, total: number): string {
+        if (index === 1) return 'hook';
+        if (index === total) return 'payoff';
+        return 'body';
     }
 
     private normalizeCommentaryResponse(data: any): { commentary: string }[] {

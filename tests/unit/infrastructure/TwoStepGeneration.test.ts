@@ -21,7 +21,7 @@ describe('Two-Step Generation Workflow', () => {
         (client as any).standardReelGenerator.openAI = mockOpenAI;
     });
 
-    it('should execute Step 1 (Commentary) then Step 2 (Visuals) and merge results', async () => {
+    it('should execute iterative segment generation then visuals and merge results', async () => {
         const plan: ReelPlan = {
             targetDurationSeconds: 15,
             segmentCount: 3,
@@ -34,14 +34,11 @@ describe('Two-Step Generation Workflow', () => {
 
         const transcript = 'Test transcript content';
 
-        // Mock Step 1 Response (Commentary)
-        const mockCommentaryResponse = JSON.stringify([
-            { commentary: 'Segment 1 text.' },
-            { commentary: 'Segment 2 text.' },
-            { commentary: 'Segment 3 text.' }
-        ]);
+        // Mock responses for iterative generation (3 segments + 1 visuals call)
+        const mockSegment1 = JSON.stringify({ commentary: 'Segment 1 text.' });
+        const mockSegment2 = JSON.stringify({ commentary: 'Segment 2 text.' });
+        const mockSegment3 = JSON.stringify({ commentary: 'Segment 3 text.' });
 
-        // Mock Step 2 Response (Visuals)
         const mockVisualsResponse = JSON.stringify([
             {
                 imagePrompt: 'Visual 1',
@@ -60,26 +57,35 @@ describe('Two-Step Generation Workflow', () => {
             }
         ]);
 
-        // Mock calls
+        // Mock calls: 3 segment calls + 1 visuals call
         mockOpenAI.chatCompletion
-            .mockResolvedValueOnce(mockCommentaryResponse) // Step 1
-            .mockResolvedValueOnce(mockVisualsResponse);   // Step 2
+            .mockResolvedValueOnce(mockSegment1)
+            .mockResolvedValueOnce(mockSegment2)
+            .mockResolvedValueOnce(mockSegment3)
+            .mockResolvedValueOnce(mockVisualsResponse);
 
         mockOpenAI.parseJSON
-            .mockReturnValueOnce(JSON.parse(mockCommentaryResponse))
+            .mockReturnValueOnce(JSON.parse(mockSegment1))
+            .mockReturnValueOnce(JSON.parse(mockSegment2))
+            .mockReturnValueOnce(JSON.parse(mockSegment3))
             .mockReturnValueOnce(JSON.parse(mockVisualsResponse));
 
         const result = await client.generateSegmentContent(plan, transcript);
 
-        // Verify Step 1 Call
-        const step1Call = mockOpenAI.chatCompletion.mock.calls[0];
-        expect(step1Call[0]).toContain('Generate the spoken commentary script');
-        expect(step1Call[0]).toContain('Simple, 5th-8th grade reading level'); // Check for language requirement
+        // Verify iterative segment calls (first 3 calls)
+        expect(mockOpenAI.chatCompletion).toHaveBeenCalledTimes(4); // 3 segments + 1 visuals
+        const segment1Call = mockOpenAI.chatCompletion.mock.calls[0];
+        expect(segment1Call[0]).toContain('SEGMENT 1 of 3');
+        expect(segment1Call[0]).toContain('Role: hook');
 
-        // Verify Step 2 Call
-        const step2Call = mockOpenAI.chatCompletion.mock.calls[1];
-        expect(step2Call[0]).toContain('Generate visual prompts');
-        expect(step2Call[0]).toContain('Segment 1 text.'); // Check that commentary is passed to Step 2
+        const segment2Call = mockOpenAI.chatCompletion.mock.calls[1];
+        expect(segment2Call[0]).toContain('SEGMENT 2 of 3');
+        expect(segment2Call[0]).toContain('Role: body');
+
+        // Verify visuals call (4th call)
+        const visualsCall = mockOpenAI.chatCompletion.mock.calls[3];
+        expect(visualsCall[0]).toContain('Generate visual prompts');
+        expect(visualsCall[0]).toContain('Segment 1 text.'); // Commentary passed to visuals
 
         // Verify Merged Result
         expect(result.length).toBe(3);
@@ -102,7 +108,8 @@ describe('Two-Step Generation Workflow', () => {
         // Very long commentary that exceeds limit
         const longCommentary = 'This is a very long sentence that will definitely exceed the word limit calculated for a very short segment duration like ten seconds.';
 
-        const mockCommentaryResponse = JSON.stringify([{ commentary: longCommentary }]);
+        // For iterative generation: 1 segment call + 1 visuals call
+        const mockSegmentResponse = JSON.stringify({ commentary: longCommentary });
         const mockVisualsResponse = JSON.stringify([{
             imagePrompt: 'Visual',
             caption: 'Cap',
@@ -110,11 +117,11 @@ describe('Two-Step Generation Workflow', () => {
         }]);
 
         mockOpenAI.chatCompletion
-            .mockResolvedValueOnce(mockCommentaryResponse)
+            .mockResolvedValueOnce(mockSegmentResponse)
             .mockResolvedValueOnce(mockVisualsResponse);
 
         mockOpenAI.parseJSON
-            .mockReturnValueOnce(JSON.parse(mockCommentaryResponse))
+            .mockReturnValueOnce(JSON.parse(mockSegmentResponse))
             .mockReturnValueOnce(JSON.parse(mockVisualsResponse));
 
         const result = await client.generateSegmentContent(plan, 'transcript');

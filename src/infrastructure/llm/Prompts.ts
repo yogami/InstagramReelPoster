@@ -141,6 +141,30 @@ Respond ONLY with a valid JSON array containing EXACTLY {{segmentCount}} objects
   { "commentary": "Final segment here." }
 ]`;
 
+export const GENERATE_SINGLE_SEGMENT_PROMPT = `Generate spoken commentary for SEGMENT {{currentIndex}} of {{totalSegments}} in an Instagram Reel.
+
+CONCEPT: "{{summary}}"
+TRANSCRIPT: "{{transcript}}"
+
+PREVIOUS SEGMENTS (for context and flow):
+{{previousCommentaries}}
+
+=== YOUR TASK ===
+Generate ONLY the commentary for Segment {{currentIndex}}.
+- Role: {{segmentRole}} (hook = attention-grabber, body = explanation, payoff = conclusion)
+- Target length: {{wordsPerSegment}} words (MAXIMUM: {{hardCapPerSegment}} words)
+- Language: Simple English (A1/A2 level, 5th-8th grade)
+- Tone: Direct, challenging, no spiritual jargon
+
+=== RULES ===
+- Build on the previous segments, don't repeat them.
+- Keep sentences short and punchy.
+- If this is the hook: Stop the scroll with tension.
+- If this is the payoff: End with a mirror question like "Sound familiar?"
+
+Respond with a SINGLE JSON object (NOT an array):
+{ "commentary": "Your segment text here." }`;
+
 export const GENERATE_VISUALS_FROM_COMMENTARY_PROMPT = `Generate visual prompts for an Instagram Reel based on the provided commentary.
 
 CONCEPT SUMMARY: "{{summary}}"
