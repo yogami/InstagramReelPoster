@@ -37,20 +37,29 @@ describe('Integration: LLM Segment Count Invariants', () => {
     it('should return EXACTLY N segments when N is requested', async () => {
         const segmentCount = 3;
 
-        // Mock LLM response with exactly 3 segments
-        const mockSegments = Array(segmentCount).fill(null).map((_, i) => ({
-            commentary: `Commentary ${i + 1}`,
+        // Step 1: Mock Commentary Response
+        const mockCommentaries = Array(segmentCount).fill(null).map((_, i) => ({
+            commentary: `Commentary ${i + 1}`
+        }));
+
+        // Step 2: Mock Visuals Response
+        const mockVisuals = Array(segmentCount).fill(null).map((_, i) => ({
             imagePrompt: `Image prompt ${i + 1}`,
             caption: `Caption ${i + 1}`,
-            visualSpecs: { shot: 'medium' },
-            continuityTags: { location: 'scene' }
+            continuityTags: { location: 'scene', timeOfDay: 'day', dominantColor: 'blue', heroProp: 'none', wardrobeDetail: 'none' }
         }));
 
         nock('https://api.openai.com')
             .post('/v1/chat/completions')
             .reply(200, {
                 choices: [{
-                    message: { content: JSON.stringify(mockSegments) }
+                    message: { content: JSON.stringify(mockCommentaries) }
+                }]
+            })
+            .post('/v1/chat/completions')
+            .reply(200, {
+                choices: [{
+                    message: { content: JSON.stringify(mockVisuals) }
                 }]
             });
 
@@ -65,15 +74,27 @@ describe('Integration: LLM Segment Count Invariants', () => {
     });
 
     it('should NOT return wrapped object like {segments: [...]}', async () => {
-        // Mock LLM returning proper array (not wrapped)
+        // Step 1: Mock Commentary
         nock('https://api.openai.com')
             .post('/v1/chat/completions')
             .reply(200, {
                 choices: [{
                     message: {
                         content: JSON.stringify([
-                            { commentary: 'Test 1', imagePrompt: 'prompt 1' },
-                            { commentary: 'Test 2', imagePrompt: 'prompt 2' }
+                            { commentary: 'Test 1' },
+                            { commentary: 'Test 2' }
+                        ])
+                    }
+                }]
+            })
+            // Step 2: Mock Visuals
+            .post('/v1/chat/completions')
+            .reply(200, {
+                choices: [{
+                    message: {
+                        content: JSON.stringify([
+                            { imagePrompt: 'prompt 1', caption: 'cap 1', continuityTags: {} },
+                            { imagePrompt: 'prompt 2', caption: 'cap 2', continuityTags: {} }
                         ])
                     }
                 }]
@@ -90,15 +111,26 @@ describe('Integration: LLM Segment Count Invariants', () => {
     });
 
     it('should generate segments with commentary referencing visual elements', async () => {
+        // Step 1: Commentary
         nock('https://api.openai.com')
             .post('/v1/chat/completions')
             .reply(200, {
                 choices: [{
                     message: {
                         content: JSON.stringify([{
-                            commentary: 'Notice the warm amber glow on this peaceful deck.',
+                            commentary: 'Notice the warm amber glow on this peaceful deck.'
+                        }])
+                    }
+                }]
+            })
+            // Step 2: Visuals
+            .post('/v1/chat/completions')
+            .reply(200, {
+                choices: [{
+                    message: {
+                        content: JSON.stringify([{
                             imagePrompt: 'wooden deck at golden hour, warm amber tones, meditation scene',
-                            visualSpecs: { lighting: 'soft-warm' },
+                            caption: 'Meditate',
                             continuityTags: { location: 'wooden deck', dominantColor: 'amber' }
                         }])
                     }

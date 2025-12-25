@@ -116,14 +116,45 @@ export class StandardReelGenerator {
             .replace(/{{wordsPerSegment}}/g, wordsPerSegment.toString())
             .replace(/{{hardCapPerSegment}}/g, hardCapPerSegment.toString());
 
-        const response = await this.openAI.chatCompletion(prompt, CHALLENGING_VIEW_SYSTEM_PROMPT, { jsonMode: true });
-        const parsed = this.openAI.parseJSON<{ commentary: string }[]>(response);
+        try {
+            const response = await this.openAI.chatCompletion(prompt, CHALLENGING_VIEW_SYSTEM_PROMPT, { jsonMode: true });
+            const parsed = this.openAI.parseJSON<any>(response);
 
-        if (!Array.isArray(parsed) || parsed.length === 0) {
-            throw new Error('Failed to generate valid commentary array');
+            const commentaries = this.normalizeCommentaryResponse(parsed);
+
+            if (commentaries.length === 0) {
+                console.error('[StandardReel] LLM returned empty commentary array. Response:', JSON.stringify(parsed));
+                throw new Error('LLM returned empty commentary array');
+            }
+
+            if (commentaries.length !== plan.segmentCount) {
+                console.warn(`[StandardReel] Segment count mismatch: Expected ${plan.segmentCount}, got ${commentaries.length}. Adjusting plan...`);
+            }
+
+            return commentaries;
+        } catch (error) {
+            console.error('[StandardReel] Commentary generation failed.', error);
+            throw new Error(`Failed to generate commentary: ${error instanceof Error ? error.message : String(error)}`);
+        }
+    }
+
+    private normalizeCommentaryResponse(data: any): { commentary: string }[] {
+        if (Array.isArray(data)) {
+            return data;
         }
 
-        return parsed;
+        // Try to unwrap common keys
+        if (data && typeof data === 'object') {
+            if (Array.isArray(data.commentaries)) return data.commentaries;
+            if (Array.isArray(data.segments)) return data.segments;
+            if (Array.isArray(data.script)) return data.script;
+
+            // Try to find ANY array property
+            const arrayValue = Object.values(data).find(val => Array.isArray(val) && val.length > 0);
+            if (arrayValue) return arrayValue as { commentary: string }[];
+        }
+
+        return [];
     }
 
     private async generateVisuals(
