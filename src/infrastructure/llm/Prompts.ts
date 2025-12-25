@@ -104,10 +104,15 @@ Respond as JSON array:
   ...
 ]`;
 
-export const GENERATE_COMMENTARY_PROMPT = `Generate the spoken commentary script for an Instagram Reel with {{segmentCount}} segments.
+export const GENERATE_COMMENTARY_PROMPT = `Generate the spoken commentary script for an Instagram Reel.
 
 CONCEPT SUMMARY: "{{summary}}"
 TRANSCRIPT CONTEXT: "{{transcript}}"
+
+=== CRITICAL REQUIREMENT ===
+YOU MUST RETURN EXACTLY {{segmentCount}} OBJECTS IN THE JSON ARRAY.
+Not more, not less. Each object = one video segment with spoken audio.
+If you return fewer than {{segmentCount}} items, the video will BREAK.
 
 === TARGET AUDIENCE ===
 - Gen Z, non-native English speakers (e.g., German youth).
@@ -117,20 +122,23 @@ TRANSCRIPT CONTEXT: "{{transcript}}"
 - Short, punchy sentences.
 
 === TIMING & ADJUSTMENTS ===
-- TOTAL SEGMENTS: {{segmentCount}}
+- TOTAL SEGMENTS REQUIRED: {{segmentCount}}
 - WORD BUDGET PER SEGMENT: {{wordsPerSegment}} words (Targets 95-98% video length)
 - HARD CAP: {{hardCapPerSegment}} words (DO NOT EXCEED)
 
 === STRUCTURE ===
 1. Segment 1 (Hook): Stop the scroll. Immediate tension.
-2. Middle Segments: Unpack the behavior/truth using simple analogies.
-3. Final Segment: The mirror/implication. "Sound familiar?"
+2. Middle Segments (2 to {{segmentCount}}-1): Unpack the behavior/truth using simple analogies.
+3. Final Segment ({{segmentCount}}): The mirror/implication. "Sound familiar?"
 
-Respond as JSON array:
+=== RESPONSE FORMAT ===
+Respond ONLY with a valid JSON array containing EXACTLY {{segmentCount}} objects:
 [
-  { "commentary": "Short, simple sentence." },
-  { "commentary": "Another simple truth." },
-  ...
+  { "commentary": "Hook sentence here." },
+  { "commentary": "Second segment here." },
+  { "commentary": "Third segment here." },
+  ... (continue for all {{segmentCount}} segments)
+  { "commentary": "Final segment here." }
 ]`;
 
 export const GENERATE_VISUALS_FROM_COMMENTARY_PROMPT = `Generate visual prompts for an Instagram Reel based on the provided commentary.
