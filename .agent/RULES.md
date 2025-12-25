@@ -29,14 +29,19 @@ When in Planning Mode, always use the peer-planner approach:
 2. **Write Executable Tests** for:
    - **Structure validation** (field presence, types, counts)
    - **Semantic quality** (sentence length, hook engagement, simplicity)
-   - **Edge cases** (missing fields, malformed JSON, array-as-string)
-   - **Mock responses** (no real API calls during tests)
+   - **Edge cases** (missing fields, malformed JSON, array-as-string, single-object-instead-of-array)
+   - **Mock responses** (include valid but structurally varied JSON to test normalization logic)
 
-3. **Test Loop**:
+3. **Defensive LLM Integration**:
+   - **Strict Schema Enforcement**: Prefer OpenAI Structured Outputs or Zod schema validation over naked `json_mode`.
+   - **Robust Normalization**: All LLM parsing logic MUST handle "hallucinated" structures (e.g., auto-wrapping single objects into arrays, unwrapping nested result keys).
+   - **Strategic Retries**: Implement retry loops for non-deterministic structural failures (e.g., requested 10 items, got 1).
+
+4. **Test Loop**:
    - Write acceptance tests → Craft prompt → Validate with real API → Add to codebase
    - Future prompt changes **MUST pass all existing tests**
 
-4. **Version prompts** like code. Never edit without tests protecting behavior.
+5. **Version prompts** like code. Never edit without tests protecting behavior.
 
 ## Bug Fixing Protocol (TDD + Full Cycle)
 When user reports a bug or says "fix bug", "there's a bug", or describes broken functionality, follow this exact sequence **without asking for confirmation**:

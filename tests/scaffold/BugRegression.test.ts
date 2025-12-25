@@ -118,4 +118,15 @@ describe('Bug Regression Verification', () => {
         const promptsContent = fs.readFileSync(promptsPath, 'utf-8');
         expect(promptsContent).toContain('Targets 95-98% video length');
     });
+
+    test('Fix 12: HookPlan should NOT override enforced segment count', () => {
+        const orchestratorPath = path.join(projectRoot, 'application/ReelOrchestrator.ts');
+        const content = fs.readFileSync(orchestratorPath, 'utf-8');
+
+        // There should be a comment preventing segment count override
+        expect(content).toContain('DO NOT override plan.segmentCount');
+
+        // The line `plan.segmentCount = hookPlan.segmentCount` should NOT exist
+        expect(content).not.toMatch(/plan\.segmentCount\s*=\s*hookPlan\.segmentCount/);
+    });
 });

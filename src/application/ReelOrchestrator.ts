@@ -302,10 +302,11 @@ export class ReelOrchestrator {
                     });
 
                     // Update local plan with optimized values for logic below
+                    // CRITICAL: DO NOT override plan.segmentCount - it was strictly enforced in planReel.
+                    // The hook plan can suggest a different count, but that leads to drift and LLM failures.
                     plan.targetDurationSeconds = hookPlan.targetDurationSeconds;
-                    plan.segmentCount = hookPlan.segmentCount;
 
-                    console.log(`[${jobId}] Optimization complete: target=${plan.targetDurationSeconds}s, segments=${plan.segmentCount}`);
+                    console.log(`[${jobId}] Optimization complete: target=${plan.targetDurationSeconds}s, segments=${plan.segmentCount} (enforced, hookPlan suggested ${hookPlan.segmentCount})`);
                 } catch (err) {
                     console.warn(`[${jobId}] Hook optimization failed, using default plan:`, err);
                 }
