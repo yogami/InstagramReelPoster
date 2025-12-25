@@ -116,40 +116,65 @@ export class StandardReelGenerator {
             .replace(/{{wordsPerSegment}}/g, wordsPerSegment.toString())
             .replace(/{{hardCapPerSegment}}/g, hardCapPerSegment.toString());
 
-        try {
-            const response = await this.openAI.chatCompletion(prompt, CHALLENGING_VIEW_SYSTEM_PROMPT, { jsonMode: true });
-            const parsed = this.openAI.parseJSON<any>(response);
+        let attempts = 0;
+        const maxAttempts = 2;
 
-            const commentaries = this.normalizeCommentaryResponse(parsed);
+        while (attempts < maxAttempts) {
+            attempts++;
+            try {
+                const response = await this.openAI.chatCompletion(prompt, CHALLENGING_VIEW_SYSTEM_PROMPT, { jsonMode: true });
+                const parsed = this.openAI.parseJSON<any>(response);
 
-            if (commentaries.length === 0) {
-                console.error('[StandardReel] LLM returned empty commentary array. Response:', JSON.stringify(parsed));
-                throw new Error('LLM returned empty commentary array');
+                const commentaries = this.normalizeCommentaryResponse(parsed);
+
+                if (commentaries.length === 0) {
+                    console.warn(`[StandardReel] Attempt ${attempts}: LLM returned empty/invalid commentary. Retrying... Response:`, JSON.stringify(parsed));
+                    continue;
+                }
+
+                // Retry if segment count is drastically different (e.g., < 50% of expectation)
+                if (plan.segmentCount > 1 && commentaries.length < plan.segmentCount * 0.5) {
+                    console.warn(`[StandardReel] Attempt ${attempts}: Segment count mismatch (Expected ${plan.segmentCount}, Got ${commentaries.length}). Retrying...`);
+                    continue;
+                }
+
+                if (commentaries.length !== plan.segmentCount) {
+                    console.warn(`[StandardReel] Segment count mismatch: Expected ${plan.segmentCount}, got ${commentaries.length}. Adjusting plan...`);
+                }
+
+                return commentaries;
+            } catch (error) {
+                console.error(`[StandardReel] Attempt ${attempts} failed.`, error);
+                if (attempts === maxAttempts) {
+                    throw new Error(`Failed to generate commentary after ${maxAttempts} attempts: ${error instanceof Error ? error.message : String(error)}`);
+                }
             }
-
-            if (commentaries.length !== plan.segmentCount) {
-                console.warn(`[StandardReel] Segment count mismatch: Expected ${plan.segmentCount}, got ${commentaries.length}. Adjusting plan...`);
-            }
-
-            return commentaries;
-        } catch (error) {
-            console.error('[StandardReel] Commentary generation failed.', error);
-            throw new Error(`Failed to generate commentary: ${error instanceof Error ? error.message : String(error)}`);
         }
+
+        throw new Error('Failed to generate valid commentary array after retries.');
     }
 
     private normalizeCommentaryResponse(data: any): { commentary: string }[] {
+        if (!data) return [];
+
         if (Array.isArray(data)) {
             return data;
         }
 
         // Try to unwrap common keys
-        if (data && typeof data === 'object') {
+        if (typeof data === 'object') {
+            // Case 1: Wrapped arrays
             if (Array.isArray(data.commentaries)) return data.commentaries;
             if (Array.isArray(data.segments)) return data.segments;
             if (Array.isArray(data.script)) return data.script;
 
-            // Try to find ANY array property
+            // Case 2: Single object response (The Prod Bug)
+            // e.g. { "commentary": "..." }
+            if (typeof data.commentary === 'string') {
+                return [{ commentary: data.commentary }];
+            }
+
+            // Case 3: Find ANY array property
             const arrayValue = Object.values(data).find(val => Array.isArray(val) && val.length > 0);
             if (arrayValue) return arrayValue as { commentary: string }[];
         }
