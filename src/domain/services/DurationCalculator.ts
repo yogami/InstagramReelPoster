@@ -44,7 +44,8 @@ export function calculateTargetWordCount(
 ): number {
     const config = getConfig();
     const rate = speakingRateWps ?? config.speakingRateWps;
-    return Math.round(targetSeconds * rate);
+    // Target 98% of the duration to allow for rounding while staying in the 95-100% range
+    return Math.floor(targetSeconds * 0.98 * rate);
 }
 
 /**
@@ -72,8 +73,8 @@ export function isDurationWithinTolerance(
 export function calculateSpeedAdjustment(
     actualDuration: number,
     targetDuration: number,
-    minSpeed: number = 0.9,
-    maxSpeed: number = 1.1
+    minSpeed: number = 0.85,
+    maxSpeed: number = 1.25
 ): number {
     if (targetDuration <= 0 || actualDuration <= 0) {
         return 1.0;
@@ -93,11 +94,13 @@ export function calculateSpeedAdjustment(
 export function needsTextAdjustment(
     estimatedSeconds: number,
     targetSeconds: number,
-    tolerancePercent: number = 0.10  // Reduced from 0.15 to catch overshoots earlier
+    tolerancePercent: number = 0.05
 ): 'shorter' | 'longer' | 'ok' {
     const deviation = (estimatedSeconds - targetSeconds) / targetSeconds;
 
-    if (deviation > tolerancePercent) {
+    // Strict requirement: 95% to 100% of video length.
+    // Deviation must be between -0.05 and 0.0
+    if (deviation > 0) {
         return 'shorter';
     }
     if (deviation < -tolerancePercent) {

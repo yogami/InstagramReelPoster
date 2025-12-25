@@ -6,14 +6,11 @@ describe('Bug Regression Verification', () => {
     const projectRoot = path.resolve(__dirname, '../../src');
 
     test('Fix 1: LLM Prompt should NOT force visual referencing (preventing Museum Guide style)', () => {
-        const filePath = path.join(projectRoot, 'infrastructure/llm/OpenAILLMClient.ts');
+        const filePath = path.join(projectRoot, 'infrastructure/llm/Prompts.ts');
         const content = fs.readFileSync(filePath, 'utf-8');
 
         // It should NOT contain the old harmful instruction
         expect(content).not.toContain('MUST reference 2-3 visual elements from imagePrompt');
-
-        // Verify the file exists and has content (prompt text may have evolved)
-        expect(content.length).toBeGreaterThan(1000);
     });
 
 
@@ -52,7 +49,7 @@ describe('Bug Regression Verification', () => {
     });
 
     test('Fix 6: Image Policy should be strict (Heterosexual)', () => {
-        const filePath = path.join(projectRoot, 'infrastructure/llm/OpenAILLMClient.ts');
+        const filePath = path.join(projectRoot, 'infrastructure/llm/Prompts.ts');
         const content = fs.readFileSync(filePath, 'utf-8');
         // Check for heterosexual couple requirement
         expect(content).toContain('Heterosexual couple');
@@ -100,5 +97,25 @@ describe('Bug Regression Verification', () => {
 
         // Check that validation is skipped for parable mode
         expect(content).toContain('Skipping segment validation for parable mode');
+    });
+
+    test('Fix 11: Commentary should be 95-100% of video length', () => {
+        const calculatorPath = path.join(projectRoot, 'domain/services/DurationCalculator.ts');
+        const calcContent = fs.readFileSync(calculatorPath, 'utf-8');
+
+        // Should target 98% for safety
+        expect(calcContent).toContain('targetSeconds * 0.98 * rate');
+        // Should catch any overshoot (> 0 deviation)
+        expect(calcContent).toContain('if (deviation > 0)');
+
+        const llmPath = path.join(projectRoot, 'infrastructure/llm/StandardReelGenerator.ts');
+        const llmContent = fs.readFileSync(llmPath, 'utf-8');
+
+        // Should target high safety margin
+        expect(llmContent).toContain('safetyMargin = 0.98');
+
+        const promptsPath = path.join(projectRoot, 'infrastructure/llm/Prompts.ts');
+        const promptsContent = fs.readFileSync(promptsPath, 'utf-8');
+        expect(promptsContent).toContain('Targets 95-98% video length');
     });
 });

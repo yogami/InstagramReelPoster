@@ -43,13 +43,16 @@ describe('DurationCalculator', () => {
     });
 
     describe('calculateTargetWordCount', () => {
-        it('should calculate word count for target duration', () => {
-            expect(calculateTargetWordCount(10, 2.5)).toBe(25);
-            expect(calculateTargetWordCount(30, 2.0)).toBe(60);
+        it('should calculate word count for target duration (targeting 98% safety)', () => {
+            // 10 * 0.98 * 2.5 = 24.5 -> floor = 24
+            expect(calculateTargetWordCount(10, 2.5)).toBe(24);
+            // 30 * 0.98 * 2.0 = 58.8 -> floor = 58
+            expect(calculateTargetWordCount(30, 2.0)).toBe(58);
         });
 
-        it('should round to nearest integer', () => {
-            expect(calculateTargetWordCount(10, 2.3)).toBe(23);
+        it('should use floor to ensure no overshoot', () => {
+            // 10 * 0.98 * 2.3 = 22.54 -> floor = 22
+            expect(calculateTargetWordCount(10, 2.3)).toBe(22);
         });
     });
 
@@ -87,8 +90,8 @@ describe('DurationCalculator', () => {
         });
 
         it('should clamp to min/max speed bounds', () => {
-            expect(calculateSpeedAdjustment(40, 30)).toBe(1.1); // Would be 1.33
-            expect(calculateSpeedAdjustment(20, 30)).toBe(0.9); // Would be 0.67
+            expect(calculateSpeedAdjustment(50, 30)).toBe(1.25); // Would be 1.66
+            expect(calculateSpeedAdjustment(10, 30)).toBe(0.85); // Would be 0.33
         });
 
         it('should use custom speed bounds', () => {
@@ -103,10 +106,17 @@ describe('DurationCalculator', () => {
     });
 
     describe('needsTextAdjustment', () => {
-        it('should return "ok" when within 10% tolerance (new default)', () => {
+        it('should return "ok" when within [95%, 100%] range (default 5% tolerance)', () => {
             expect(needsTextAdjustment(30, 30)).toBe('ok');
-            expect(needsTextAdjustment(33, 30)).toBe('ok'); // +10% is boundary
-            expect(needsTextAdjustment(27, 30)).toBe('ok'); // -10% is boundary
+            expect(needsTextAdjustment(28.5, 30)).toBe('ok'); // -5% is boundary
+        });
+
+        it('should return "shorter" even for small overshoots', () => {
+            expect(needsTextAdjustment(30.1, 30)).toBe('shorter');
+        });
+
+        it('should return "longer" when text is below 95%', () => {
+            expect(needsTextAdjustment(28.4, 30)).toBe('longer');
         });
 
         it('should return "shorter" when text is too long', () => {
