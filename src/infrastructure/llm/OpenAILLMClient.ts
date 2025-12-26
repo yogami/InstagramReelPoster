@@ -13,6 +13,13 @@ import {
     ParableScriptPlan,
 } from '../../domain/entities/Parable';
 import {
+    BusinessCategory,
+    WebsiteAnalysis,
+    CategoryPromptTemplate,
+    PromoScriptPlan,
+    PromoSceneContent,
+} from '../../domain/entities/WebsitePromo';
+import {
     REEL_MODE_DETECTION_PROMPT,
 } from './Prompts';
 import { OpenAIService } from './OpenAIService';
@@ -215,5 +222,155 @@ Return ONLY a JSON object: { "tags": ["tag1", "tag2", "tag3", ...] }`;
         if (lowerMood.includes('dark') || lowerMood.includes('suspense')) tags.push('dark', 'suspense');
         if (lowerMood.includes('calm') || lowerMood.includes('peaceful')) tags.push('meditation', 'calm');
         if (lowerMood.includes('motivat') || lowerMood.includes('inspir')) tags.push('uplifting', 'motivational');
+    }
+
+    // ============================================
+    // WEBSITE PROMO MODE METHODS
+    // ============================================
+
+    /**
+     * Detects business category from scraped website content using LLM.
+     */
+    async detectBusinessCategory(analysis: WebsiteAnalysis): Promise<BusinessCategory> {
+        const prompt = `Analyze this business website and determine its primary category.
+
+Website Content:
+- Hero/Title: ${analysis.heroText}
+- Description: ${analysis.metaDescription}
+- Keywords found: ${analysis.keywords.join(', ')}
+- Location: ${analysis.detectedLocation || 'Unknown'}
+
+Categories to choose from:
+- cafe: Coffee shops, bakeries, tea houses
+- gym: Fitness centers, yoga studios, CrossFit boxes
+- shop: Retail stores, boutiques, gift shops
+- service: Professional services (plumbers, consultants, therapists)
+- restaurant: Restaurants, bistros, bars, dining establishments  
+- studio: Creative studios (photography, art, music, tattoo, dance)
+
+Return JSON with format: { "category": "cafe|gym|shop|service|restaurant|studio", "confidence": 0.0-1.0, "reason": "brief explanation" }`;
+
+        try {
+            const systemPrompt = 'You are a business analyst expert at categorizing local businesses.';
+            const response = await this.openAIService.chatCompletion(prompt, systemPrompt, { jsonMode: true });
+            const result = this.openAIService.parseJSON<{ category: BusinessCategory; confidence: number; reason: string }>(response);
+
+            console.log(`[WebsitePromo] Detected category: ${result.category} (confidence: ${result.confidence})`);
+            return result.category;
+        } catch (error) {
+            console.error('[WebsitePromo] LLM category detection failed, using keyword fallback:', error);
+            return this.fallbackCategoryDetection(analysis.keywords);
+        }
+    }
+
+    /**
+     * Generates a promotional reel script from website content.
+     */
+    async generatePromoScript(
+        analysis: WebsiteAnalysis,
+        category: BusinessCategory,
+        template: CategoryPromptTemplate,
+        businessName: string
+    ): Promise<PromoScriptPlan> {
+        const prompt = `Create a 17-second Instagram Reel promo script for this business:
+
+Business: ${businessName}
+Category: ${category}
+Location: ${analysis.detectedLocation || 'Berlin'}
+Website Description: ${analysis.metaDescription}
+Hero Message: ${analysis.heroText}
+
+Use this category-optimized template as a starting point:
+- Hook (4s): "${template.hook}"
+- Showcase (8s): "${template.showcase}"
+- CTA (5s): "${template.cta}"
+- Visual style: ${template.visuals}
+
+Generate 3 scenes following hook→showcase→CTA structure.
+Each scene needs:
+- duration: seconds for this scene
+- imagePrompt: Detailed image generation prompt (include style, lighting, mood)
+- narration: What the voiceover says (conversational, not robotic)
+- subtitle: Short text overlay
+- role: "hook", "showcase", or "cta"
+
+Also generate:
+- coreMessage: One-line tagline with emoji
+- musicStyle: Music mood that fits (e.g., "warm-acoustic-local")
+- caption: Instagram caption with hashtags
+
+Return JSON:
+{
+  "coreMessage": "Business Name: tagline with emoji",
+  "scenes": [
+    { "duration": 4, "imagePrompt": "...", "narration": "...", "subtitle": "...", "role": "hook" },
+    { "duration": 8, "imagePrompt": "...", "narration": "...", "subtitle": "...", "role": "showcase" },
+    { "duration": 5, "imagePrompt": "...", "narration": "...", "subtitle": "...", "role": "cta" }
+  ],
+  "musicStyle": "...",
+  "caption": "..."
+}`;
+
+        const systemPrompt = 'You are a viral Instagram Reels producer specializing in local business promos. Your content is engaging, punchy, and drives action.';
+        const response = await this.openAIService.chatCompletion(prompt, systemPrompt, { jsonMode: true });
+        const result = this.openAIService.parseJSON<{
+            coreMessage: string;
+            scenes: PromoSceneContent[];
+            musicStyle: string;
+            caption: string;
+        }>(response);
+
+        return {
+            coreMessage: result.coreMessage,
+            category,
+            businessName,
+            scenes: result.scenes,
+            musicStyle: result.musicStyle,
+            caption: result.caption,
+            compliance: {
+                source: 'public-website',
+                consent: true,
+                scrapedAt: new Date(),
+            },
+        };
+    }
+
+    /**
+     * Fallback category detection using keywords.
+     */
+    private fallbackCategoryDetection(keywords: string[]): BusinessCategory {
+        const normalizedKeywords = keywords.map(kw => kw.toLowerCase());
+
+        const categoryScores: Record<BusinessCategory, number> = {
+            cafe: 0, gym: 0, shop: 0, service: 0, restaurant: 0, studio: 0,
+        };
+
+        const categoryKeywords: Record<BusinessCategory, string[]> = {
+            cafe: ['coffee', 'cafe', 'espresso', 'latte', 'barista'],
+            gym: ['gym', 'fitness', 'training', 'workout', 'yoga'],
+            shop: ['shop', 'store', 'buy', 'products', 'boutique'],
+            restaurant: ['restaurant', 'dining', 'menu', 'chef', 'food'],
+            studio: ['studio', 'creative', 'photography', 'art', 'design'],
+            service: ['service', 'professional', 'expert', 'booking'],
+        };
+
+        for (const [cat, catKeywords] of Object.entries(categoryKeywords)) {
+            for (const kw of catKeywords) {
+                if (normalizedKeywords.includes(kw)) {
+                    categoryScores[cat as BusinessCategory]++;
+                }
+            }
+        }
+
+        let bestCategory: BusinessCategory = 'service';
+        let bestScore = 0;
+        for (const [cat, score] of Object.entries(categoryScores)) {
+            if (score > bestScore) {
+                bestScore = score;
+                bestCategory = cat as BusinessCategory;
+            }
+        }
+
+        return bestCategory;
     }
 }

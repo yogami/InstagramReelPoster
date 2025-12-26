@@ -51,8 +51,8 @@ export function createReelRoutes(
             }
 
             // Validate forceMode if provided
-            if (forceMode && !['direct', 'parable'].includes(forceMode)) {
-                throw new BadRequestError('forceMode must be "direct" or "parable"');
+            if (forceMode && !['direct', 'parable', 'website-promo'].includes(forceMode)) {
+                throw new BadRequestError('forceMode must be "direct", "parable", or "website-promo"');
             }
 
             // Create job
@@ -81,6 +81,71 @@ export function createReelRoutes(
                 status: job.status,
                 message: 'Reel processing started',
                 contentMode: forceMode || 'auto-detect',
+            });
+        })
+    );
+
+    /**
+     * POST /website
+     * 
+     * Starts a new website promo reel generation job.
+     * Scrapes the business website and generates a category-aware promotional reel.
+     */
+    router.post(
+        '/website',
+        asyncHandler(async (req: Request, res: Response) => {
+            const { website, businessName, category, consent, callbackUrl } = req.body;
+
+            // Validate website URL
+            if (!website || typeof website !== 'string') {
+                throw new BadRequestError('website URL is required');
+            }
+
+            // Validate URL format
+            try {
+                new URL(website);
+            } catch {
+                throw new BadRequestError('website must be a valid URL');
+            }
+
+            // CRITICAL: Validate consent for legal compliance
+            if (consent !== true) {
+                throw new BadRequestError('consent must be true to scrape website (legal requirement for GDPR compliance)');
+            }
+
+            // Validate category if provided
+            const validCategories = ['cafe', 'gym', 'shop', 'service', 'restaurant', 'studio'];
+            if (category && !validCategories.includes(category)) {
+                throw new BadRequestError(`category must be one of: ${validCategories.join(', ')}`);
+            }
+
+            // Create job with website promo input
+            const input: ReelJobInput = {
+                websitePromoInput: {
+                    websiteUrl: website,
+                    businessName,
+                    category,
+                    consent: true,
+                },
+                callbackUrl: callbackUrl || config.makeWebhookUrl,
+                forceMode: 'website-promo',
+            };
+            const job = await jobManager.createJob(input);
+
+            console.log(`[${job.id}] Website promo reel started for: ${website}`);
+
+            // Start processing in background (don't await)
+            orchestrator.processJob(job.id).catch((error) => {
+                console.error(`Job ${job.id} failed:`, error);
+            });
+
+            // Return immediately
+            res.status(202).json({
+                jobId: job.id,
+                status: job.status,
+                message: 'Website promo reel generation started',
+                website,
+                category: category || 'auto-detect',
             });
         })
     );

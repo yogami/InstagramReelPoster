@@ -17,8 +17,9 @@ export type ContentMode = 'direct-message' | 'parable';
  * Forced mode from job input (explicit user choice).
  * - 'direct': Force direct-message mode
  * - 'parable': Force parable mode
+ * - 'website-promo': Force website promotional reel mode
  */
-export type ForceMode = 'direct' | 'parable';
+export type ForceMode = 'direct' | 'parable' | 'website-promo';
 
 /**
  * Source type for parable content.

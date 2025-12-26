@@ -2,6 +2,7 @@ import { Segment } from './Segment';
 import { ReelManifest } from './ReelManifest';
 import { HookPlan } from './Growth';
 import { ContentMode, ForceMode, ParableIntent, ParableScriptPlan } from './Parable';
+import { WebsitePromoInput, WebsiteAnalysis, BusinessCategory, PromoScriptPlan } from './WebsitePromo';
 
 /**
  * Possible statuses for a ReelJob.
@@ -57,8 +58,10 @@ export interface ReelJobInput {
     seriesNumber?: number;
     /** Optional reel mode: 'discovery' (10-20s) or 'deep-dive' (25-40s) */
     reelMode?: ReelMode;
-    /** Force content mode: 'direct' or 'parable' (overrides auto-detection) */
+    /** Force content mode: 'direct', 'parable', or 'website-promo' (overrides auto-detection) */
     forceMode?: ForceMode;
+    /** Website promo input (alternative to sourceAudioUrl/transcript) */
+    websitePromoInput?: WebsitePromoInput;
 }
 
 /**
@@ -146,6 +149,16 @@ export interface ReelJob {
     /** Parable script plan (if parable mode) */
     parableScriptPlan?: ParableScriptPlan;
 
+    // Website Promo Mode:
+    /** Website promo input (if website-promo mode) */
+    websitePromoInput?: WebsitePromoInput;
+    /** Scraped website analysis results */
+    websiteAnalysis?: WebsiteAnalysis;
+    /** Detected business category */
+    businessCategory?: BusinessCategory;
+    /** Generated promo script plan */
+    promoScriptPlan?: PromoScriptPlan;
+
     /** Timestamps */
     createdAt: Date;
     updatedAt: Date;
@@ -163,12 +176,18 @@ export function createReelJob(
         throw new Error('ReelJob id cannot be empty');
     }
 
-    // Validate: either sourceAudioUrl or transcript must be provided
+    // Validate: either sourceAudioUrl, transcript, or websitePromoInput must be provided
     const hasAudio = input.sourceAudioUrl && input.sourceAudioUrl.trim().length > 0;
     const hasTranscript = input.transcript && input.transcript.trim().length > 0;
+    const hasWebsitePromo = input.websitePromoInput && input.websitePromoInput.websiteUrl.trim().length > 0;
 
-    if (!hasAudio && !hasTranscript) {
-        throw new Error('ReelJob requires either sourceAudioUrl or transcript');
+    if (!hasAudio && !hasTranscript && !hasWebsitePromo) {
+        throw new Error('ReelJob requires either sourceAudioUrl, transcript, or websitePromoInput');
+    }
+
+    // Validate consent for website promo
+    if (hasWebsitePromo && !input.websitePromoInput!.consent) {
+        throw new Error('websitePromoInput requires consent to be true');
     }
 
     const now = new Date();
@@ -194,6 +213,7 @@ export function createReelJob(
         seriesName: input.seriesName,
         seriesNumber: input.seriesNumber,
         reelMode: input.reelMode,
+        websitePromoInput: hasWebsitePromo ? input.websitePromoInput : undefined,
         createdAt: now,
         updatedAt: now,
     };

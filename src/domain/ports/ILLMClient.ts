@@ -6,6 +6,12 @@ import {
     ParableSourceChoice,
     ParableScriptPlan,
 } from '../entities/Parable';
+import {
+    BusinessCategory,
+    WebsiteAnalysis,
+    CategoryPromptTemplate,
+    PromoScriptPlan,
+} from '../entities/WebsitePromo';
 
 /**
  * ReelPlan represents the LLM's planning output for a reel.
@@ -228,4 +234,32 @@ export interface ILLMClient {
         mood: string,
         culture?: string
     ): Promise<string[]>;
+
+    // ============================================
+    // WEBSITE PROMO MODE METHODS
+    // ============================================
+
+    /**
+     * Detects business category from scraped website content.
+     * Uses LLM analysis to understand the business type.
+     * @param analysis Scraped website analysis
+     * @returns Detected business category
+     */
+    detectBusinessCategory?(analysis: WebsiteAnalysis): Promise<BusinessCategory>;
+
+    /**
+     * Generates a promotional reel script from website content.
+     * Creates hook → showcase → CTA structure based on category template.
+     * @param analysis Scraped website content
+     * @param category Detected or provided business category
+     * @param template Category-specific prompt template
+     * @param businessName Business name
+     * @returns Generated promo script plan
+     */
+    generatePromoScript?(
+        analysis: WebsiteAnalysis,
+        category: BusinessCategory,
+        template: CategoryPromptTemplate,
+        businessName: string
+    ): Promise<PromoScriptPlan>;
 }
