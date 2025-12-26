@@ -1,4 +1,5 @@
 import express, { Application, Request, Response } from 'express';
+import cors from 'cors';
 import { Config } from '../config';
 import { JobManager } from '../application/JobManager';
 import { ReelOrchestrator, OrchestratorDependencies } from '../application/ReelOrchestrator';
@@ -45,6 +46,14 @@ export function createApp(config: Config): Application {
     const app = express();
 
     // Middleware
+    app.use(cors({
+        origin: [
+            'http://localhost:8080',
+            'http://localhost:3000',
+            'https://reelberlin-demo-production.up.railway.app'
+        ],
+        credentials: true
+    }));
     app.use(express.json());
     app.use(express.urlencoded({ extended: true }));
 
@@ -227,7 +236,7 @@ function createDependencies(config: Config): {
         callbackHeader: config.callbackHeader,
     };
 
-    console.log(`📡 Callback configured: Header=${deps.callbackHeader}, Token=${deps.callbackToken ? (deps.callbackToken.substring(0, 5) + '...') : 'None'}`);
+    console.log(`📡 Callback configured: Header = ${deps.callbackHeader}, Token = ${deps.callbackToken ? (deps.callbackToken.substring(0, 5) + '...') : 'None'} `);
 
     const orchestrator = new ReelOrchestrator(deps);
 
