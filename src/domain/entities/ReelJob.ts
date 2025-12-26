@@ -158,6 +158,8 @@ export interface ReelJob {
     businessCategory?: BusinessCategory;
     /** Generated promo script plan */
     promoScriptPlan?: PromoScriptPlan;
+    /** Forced generation mode */
+    forceMode?: ForceMode;
 
     /** Timestamps */
     createdAt: Date;
@@ -213,6 +215,7 @@ export function createReelJob(
         seriesName: input.seriesName,
         seriesNumber: input.seriesNumber,
         reelMode: input.reelMode,
+        forceMode: input.forceMode,
         websitePromoInput: hasWebsitePromo ? input.websitePromoInput : undefined,
         createdAt: now,
         updatedAt: now,

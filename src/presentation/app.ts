@@ -19,6 +19,7 @@ import { ShortstackVideoRenderer } from '../infrastructure/video/ShortstackVideo
 import { FFmpegVideoRenderer } from '../infrastructure/video/FFmpegVideoRenderer';
 import { KieVideoClient } from '../infrastructure/video/KieVideoClient';
 import { CloudinaryStorageClient } from '../infrastructure/storage/CloudinaryStorageClient';
+import { WebsiteScraperClient } from '../infrastructure/scraper/WebsiteScraperClient';
 import { TelegramService } from './services/TelegramService';
 import { TelegramNotificationClient } from '../infrastructure/notifications/TelegramNotificationClient';
 import { IVideoRenderer } from '../domain/ports/IVideoRenderer';
@@ -214,6 +215,7 @@ function createDependencies(config: Config): {
     const hookAndStructureService = new HookAndStructureService(llmClient);
     const captionService = new CaptionService(llmClient);
     const growthInsightsService = new GrowthInsightsService();
+    const websiteScraperClient = new WebsiteScraperClient();
 
     const deps: OrchestratorDependencies = {
         transcriptionClient,
@@ -234,6 +236,7 @@ function createDependencies(config: Config): {
         storageClient: cloudinaryClient || undefined,
         callbackToken: config.callbackToken,
         callbackHeader: config.callbackHeader,
+        websiteScraperClient,
     };
 
     console.log(`📡 Callback configured: Header = ${deps.callbackHeader}, Token = ${deps.callbackToken ? (deps.callbackToken.substring(0, 5) + '...') : 'None'} `);
