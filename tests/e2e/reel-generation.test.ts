@@ -48,13 +48,47 @@ describe('ReelOrchestrator E2E', () => {
             })
             .persist();
 
-        // Mock OpenAI LLM Segments request
+        // Mock OpenAI LLM Commentary request (Iterative: 3 calls)
+        const segmentsFixture = loadFixture('openai-segment-content.json');
         nock('https://api.openai.com')
-            .post('/v1/chat/completions', body => /segments/i.test(body.messages[1].content))
+            .post('/v1/chat/completions', body => /spoken commentary for SEGMENT/i.test(body.messages[1].content))
+            .reply(200, (uri, requestBody: any) => {
+                const prompt = requestBody.messages[1].content;
+                const match = prompt.match(/SEGMENT (\d+)/);
+                const index = match ? parseInt(match[1], 10) - 1 : 0;
+                return {
+                    choices: [{
+                        message: {
+                            content: JSON.stringify({ commentary: segmentsFixture[index]?.commentary || "Default commentary" })
+                        }
+                    }]
+                };
+            })
+            .persist();
+
+        // Mock OpenAI LLM Visuals request (1 call)
+        nock('https://api.openai.com')
+            .post('/v1/chat/completions', body => /visual prompts for an Instagram Reel/i.test(body.messages[1].content))
             .reply(200, {
                 choices: [{
                     message: {
-                        content: JSON.stringify(loadFixture('openai-segment-content.json'))
+                        content: JSON.stringify(segmentsFixture.map((s: any) => ({
+                            imagePrompt: s.imagePrompt,
+                            caption: s.caption,
+                            continuityTags: s.continuityTags
+                        })))
+                    }
+                }]
+            })
+            .persist();
+
+        // Mock OpenAI LLM Adjust Commentary request
+        nock('https://api.openai.com')
+            .post('/v1/chat/completions', body => /adjust.*commentaries/i.test(body.messages[1].content))
+            .reply(200, {
+                choices: [{
+                    message: {
+                        content: JSON.stringify({ segments: segmentsFixture })
                     }
                 }]
             })

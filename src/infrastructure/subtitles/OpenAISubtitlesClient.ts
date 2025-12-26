@@ -10,6 +10,7 @@ export class OpenAISubtitlesClient implements ISubtitlesClient {
     private readonly apiKey: string;
     private readonly baseUrl: string;
     private readonly storageClient: CloudinaryStorageClient;
+    private readonly maxRetries: number = 3;
 
     constructor(
         apiKey: string,
@@ -32,60 +33,76 @@ export class OpenAISubtitlesClient implements ISubtitlesClient {
             throw new Error('Audio URL is required');
         }
 
-        try {
-            // Download the audio file
-            const audioResponse = await axios.get(audioUrl, {
-                responseType: 'arraybuffer',
-            });
+        for (let attempt = 0; attempt < this.maxRetries; attempt++) {
+            try {
+                // Determine file extension from URL or default to mp3
+                const extension = this.getExtensionFromUrl(audioUrl) || 'mp3';
+                const filename = `audio.${extension}`;
 
-            // Determine file extension from URL or default to mp3
-            const extension = this.getExtensionFromUrl(audioUrl) || 'mp3';
-            const filename = `audio.${extension}`;
+                // Download the audio file
+                const audioResponse = await axios.get(audioUrl, {
+                    responseType: 'arraybuffer',
+                });
 
-            // Create form data
-            const formData = new FormData();
-            formData.append('file', Buffer.from(audioResponse.data), {
-                filename,
-                contentType: this.getMimeType(extension),
-            });
-            formData.append('model', 'whisper-1');
-            formData.append('response_format', 'srt');
+                // Create form data
+                const formData = new FormData();
+                formData.append('file', Buffer.from(audioResponse.data), {
+                    filename,
+                    contentType: this.getMimeType(extension),
+                });
+                formData.append('model', 'whisper-1');
+                formData.append('response_format', 'srt');
 
-            // Send to OpenAI
-            const transcriptionResponse = await axios.post(
-                `${this.baseUrl}/v1/audio/transcriptions`,
-                formData,
-                {
-                    headers: {
-                        ...formData.getHeaders(),
-                        Authorization: `Bearer ${this.apiKey}`,
-                    },
+                // Send to OpenAI
+                const transcriptionResponse = await axios.post(
+                    `${this.baseUrl}/v1/audio/transcriptions`,
+                    formData,
+                    {
+                        headers: {
+                            ...formData.getHeaders(),
+                            Authorization: `Bearer ${this.apiKey}`,
+                        },
+                    }
+                );
+
+                const srtContent = transcriptionResponse.data;
+
+                // Upload SRT to Cloudinary instead of using data URL
+                // This prevents "Payload Too Large" errors in video renderers
+                const jobId = this.extractJobId(audioUrl);
+                const uploadResult = await this.storageClient.uploadRawContent(
+                    srtContent,
+                    `subtitles_${jobId || Date.now()}.srt`,
+                    { folder: 'instagram-reels/subtitles' }
+                );
+
+                return {
+                    subtitlesUrl: uploadResult.url,
+                    srtContent,
+                    format: 'srt',
+                };
+            } catch (error) {
+                if (axios.isAxiosError(error)) {
+                    const status = error.response?.status;
+                    const message = error.response?.data?.error?.message || error.message;
+
+                    if (this.shouldRetry(status, attempt)) {
+                        const delay = Math.pow(2, attempt + 1) * 1000;
+                        console.warn(`[Subtitles] Transient error (${status}), retrying in ${delay / 1000}s (Attempt ${attempt + 1}/${this.maxRetries})...`);
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                        continue;
+                    }
+
+                    throw new Error(`Subtitle generation failed: ${message}`);
                 }
-            );
-
-            const srtContent = transcriptionResponse.data;
-
-            // Upload SRT to Cloudinary instead of using data URL
-            // This prevents "Payload Too Large" errors in video renderers
-            const jobId = this.extractJobId(audioUrl);
-            const uploadResult = await this.storageClient.uploadRawContent(
-                srtContent,
-                `subtitles_${jobId || Date.now()}.srt`,
-                { folder: 'instagram-reels/subtitles' }
-            );
-
-            return {
-                subtitlesUrl: uploadResult.url,
-                srtContent,
-                format: 'srt',
-            };
-        } catch (error) {
-            if (axios.isAxiosError(error)) {
-                const message = error.response?.data?.error?.message || error.message;
-                throw new Error(`Subtitle generation failed: ${message}`);
+                throw error;
             }
-            throw error;
         }
+        throw new Error('Subtitle generation failed after max retries');
+    }
+
+    private shouldRetry(status: number | undefined, attempt: number): boolean {
+        return (status === 429 || status === 502 || status === 503 || status === 504) && attempt < this.maxRetries - 1;
     }
 
     private extractJobId(url: string): string | null {

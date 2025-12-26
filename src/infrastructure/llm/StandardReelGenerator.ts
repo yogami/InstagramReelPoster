@@ -36,11 +36,17 @@ export class StandardReelGenerator {
         const response = await this.openAI.chatCompletion(prompt, CHALLENGING_VIEW_SYSTEM_PROMPT, { jsonMode: true });
         const plan = this.openAI.parseJSON<ReelPlan>(response);
 
-        // Enforce segment count based on duration constraints (aim for ~5s segments)
-        // This ensures consistent pacing regardless of LLM hallucinations
-        const avgDuration = (constraints.minDurationSeconds + constraints.maxDurationSeconds) / 2;
-        const enforcedSegmentCount = Math.round(avgDuration / 5);
+        // Enforce segment count based on either LLM's chosen duration or the midpoint
+        // This ensures consistent pacing (~5s/segment)
+        if (!plan.targetDurationSeconds) {
+            plan.targetDurationSeconds = (constraints.minDurationSeconds + constraints.maxDurationSeconds) / 2;
+        }
 
+        // Defensive: Ensure LLM chosen duration respects constraints before calculating segments
+        if (plan.targetDurationSeconds < constraints.minDurationSeconds) plan.targetDurationSeconds = constraints.minDurationSeconds;
+        if (plan.targetDurationSeconds > constraints.maxDurationSeconds) plan.targetDurationSeconds = constraints.maxDurationSeconds;
+
+        const enforcedSegmentCount = Math.round(plan.targetDurationSeconds / 5);
         if (plan.segmentCount !== enforcedSegmentCount) {
             console.log(`[ReelPlan] Overriding LLM segment count ${plan.segmentCount} with calculated ${enforcedSegmentCount}`);
             plan.segmentCount = enforcedSegmentCount;
@@ -416,8 +422,9 @@ Respond with a JSON object:
 
     /**
      * Normalizes segment content to ensure it's always an array of SegmentContent.
+     * Exposed for resilience testing.
      */
-    private normalizeSegments(data: unknown): SegmentContent[] {
+    public normalizeSegments(data: unknown): SegmentContent[] {
         if (!data || typeof data !== 'object') {
             throw new Error(`LLM returned invalid segments format: ${JSON.stringify(data)}`);
         }

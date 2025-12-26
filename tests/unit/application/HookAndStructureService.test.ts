@@ -46,7 +46,7 @@ describe('HookAndStructureService', () => {
         llmClient.generateHooks.mockResolvedValue(['Hook']);
 
         const longPlan = { ...mockPlan, targetDurationSeconds: 60 };
-        const result = await service.optimizeStructure(mockTranscript, longPlan);
+        const result = await service.optimizeStructure(mockTranscript, longPlan, undefined, 'discovery');
 
         // Default discovery bias should clamp or reduce duration
         expect(result.targetDurationSeconds).toBeLessThan(60);

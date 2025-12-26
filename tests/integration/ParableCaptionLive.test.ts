@@ -171,10 +171,11 @@ async function testExtractParableIntent() {
     }
 }
 
-async function main() {
-    await testExtractParableIntent();
-    await testCaptionGeneration();
-    console.log('=== ALL LIVE TESTS PASSED ===');
-}
+describe('Parable Caption & Hashtag Live Test', () => {
+    jest.setTimeout(60000); // 1 minute for live API calls
 
-main().catch(console.error);
+    it('should extract parable intent and generate captions/hashtags', async () => {
+        await testExtractParableIntent();
+        await testCaptionGeneration();
+    });
+});

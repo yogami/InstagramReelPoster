@@ -12,7 +12,7 @@ describe('LLM Resilience - Segment Normalization', () => {
             { commentary: 'text 1', imagePrompt: 'prompt 1' },
             { commentary: 'text 2', imagePrompt: 'prompt 2' }
         ];
-        const result = client.normalizeSegments(input);
+        const result = client.standardReelGenerator.normalizeSegments(input);
         expect(result).toHaveLength(2);
         expect(result[0].commentary).toBe('text 1');
     });
@@ -24,14 +24,14 @@ describe('LLM Resilience - Segment Normalization', () => {
                 { commentary: 'text 2', imagePrompt: 'prompt 2' }
             ]
         };
-        const result = client.normalizeSegments(input);
+        const result = client.standardReelGenerator.normalizeSegments(input);
         expect(result).toHaveLength(2);
         expect(result[0].commentary).toBe('text 1');
     });
 
     it('should wrap a single object into an array', () => {
         const input = { commentary: 'text 1', imagePrompt: 'prompt 1' };
-        const result = client.normalizeSegments(input);
+        const result = client.standardReelGenerator.normalizeSegments(input);
         expect(result).toHaveLength(1);
         expect(result[0].commentary).toBe('text 1');
     });
@@ -41,14 +41,14 @@ describe('LLM Resilience - Segment Normalization', () => {
             "0": { commentary: 'text 1', imagePrompt: 'prompt 1' },
             "1": { commentary: 'text 2', imagePrompt: 'prompt 2' }
         };
-        const result = client.normalizeSegments(input);
+        const result = client.standardReelGenerator.normalizeSegments(input);
         expect(result).toHaveLength(2);
         expect(result[0].commentary).toBe('text 1');
     });
 
     it('should throw for completely invalid data types', () => {
-        expect(() => client.normalizeSegments("just some text")).toThrow();
-        expect(() => client.normalizeSegments(null)).toThrow();
-        expect(() => client.normalizeSegments(123)).toThrow();
+        expect(() => client.standardReelGenerator.normalizeSegments("just some text")).toThrow();
+        expect(() => client.standardReelGenerator.normalizeSegments(null)).toThrow();
+        expect(() => client.standardReelGenerator.normalizeSegments(123)).toThrow();
     });
 });

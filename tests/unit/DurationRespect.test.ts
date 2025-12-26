@@ -41,9 +41,9 @@ describe('OpenAILLMClient Duration Logic', () => {
         // Verify prompt logic
         const requestBody = mockedAxios.post.mock.calls[0][1] as any;
         const prompt = requestBody.messages[1].content;
-        expect(prompt).toContain('PRIORITY RULE'); // Confirms prompt has the instruction
-        expect(prompt).toContain('MUST stretch');
-        expect(prompt).toContain('mainCaption');
+        expect(prompt).toContain('targetDurationSeconds');
+        expect(prompt).toContain('segmentCount');
+        expect(prompt).toContain('mood');
     });
 
     test('Should clamp excessive segment counts to 15', async () => {

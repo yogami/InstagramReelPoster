@@ -17,6 +17,7 @@ const execAsync = promisify(exec);
 export class OpenAITranscriptionClient implements ITranscriptionClient {
     private readonly apiKey: string;
     private readonly baseUrl: string;
+    private readonly maxRetries: number = 3;
 
     constructor(apiKey: string, baseUrl: string = 'https://api.openai.com') {
         if (!apiKey) {
@@ -93,26 +94,48 @@ export class OpenAITranscriptionClient implements ITranscriptionClient {
             formData.append('prompt', 'Psychology, evolutionary biology, mating strategies, madonna-whore complex, archetypes, dual mating strategy, pair bonding, dopamine, hypergamy, intrasexual competition.');
 
             console.log(`[Whisper] Sending to OpenAI...`);
-            const transcriptionResponse = await axios.post(
-                `${this.baseUrl}/v1/audio/transcriptions`,
-                formData,
-                {
-                    headers: {
-                        ...formData.getHeaders(),
-                        Authorization: `Bearer ${this.apiKey}`,
-                    },
-                    maxContentLength: Infinity,
-                    maxBodyLength: Infinity,
-                }
-            );
 
-            return transcriptionResponse.data.trim();
-        } catch (error: any) {
-            console.error('[Whisper] Error:', error.message);
-            if (axios.isAxiosError(error)) {
-                const message = error.response?.data?.error?.message || error.message;
+            let lastError: any;
+            for (let attempt = 0; attempt < this.maxRetries; attempt++) {
+                try {
+                    const transcriptionResponse = await axios.post(
+                        `${this.baseUrl}/v1/audio/transcriptions`,
+                        formData,
+                        {
+                            headers: {
+                                ...formData.getHeaders(),
+                                Authorization: `Bearer ${this.apiKey}`,
+                            },
+                            maxContentLength: Infinity,
+                            maxBodyLength: Infinity,
+                        }
+                    );
+
+                    return transcriptionResponse.data.trim();
+                } catch (error: any) {
+                    lastError = error;
+                    if (axios.isAxiosError(error)) {
+                        const status = error.response?.status;
+                        const message = error.response?.data?.error?.message || error.message;
+
+                        if (this.shouldRetry(status, attempt)) {
+                            const delay = Math.pow(2, attempt + 1) * 1000;
+                            console.warn(`[Whisper] Transient error (${status}), retrying in ${delay / 1000}s (Attempt ${attempt + 1}/${this.maxRetries})...`);
+                            await new Promise(resolve => setTimeout(resolve, delay));
+                            continue;
+                        }
+                    }
+                    break; // Non-retryable error
+                }
+            }
+
+            if (axios.isAxiosError(lastError)) {
+                const message = lastError.response?.data?.error?.message || lastError.message;
                 throw new Error(`Transcription failed: ${message}`);
             }
+            throw lastError;
+        } catch (error: any) {
+            console.error('[Whisper] Error:', error.message);
             throw error;
         } finally {
             // Cleanup temp files
@@ -142,5 +165,9 @@ export class OpenAITranscriptionClient implements ITranscriptionClient {
             flac: 'audio/flac',
         };
         return mimeTypes[extension] || 'audio/mpeg';
+    }
+
+    private shouldRetry(status: number | undefined, attempt: number): boolean {
+        return (status === 429 || status === 502 || status === 503 || status === 504) && attempt < this.maxRetries - 1;
     }
 }

@@ -30,7 +30,7 @@ export class OpenAIService {
             maxRetries?: number;
         } = {}
     ): Promise<string> {
-        const { jsonMode = false, temperature = 0.7, maxRetries = 3 } = options;
+        const { jsonMode = false, temperature = 0.7, maxRetries = 5 } = options;
 
         for (let attempt = 0; attempt < maxRetries; attempt++) {
             try {
@@ -83,9 +83,12 @@ export class OpenAIService {
         const message = error.response?.data?.error?.message || error.message;
 
         if (this.shouldRetry(status, attempt, maxRetries)) {
-            const delay = Math.pow(2, attempt) * 1000;
-            console.warn(`[OpenAIService] Transient error (${status}), retrying in ${delay / 1000}s...`);
-            await new Promise(resolve => setTimeout(resolve, delay));
+            // Exponential backoff with jitter: 2s, 4s, 8s... + random(0-1000ms)
+            const baseDelay = Math.pow(2, attempt + 1) * 1000;
+            const jitter = Math.floor(Math.random() * 1000);
+            const delay = baseDelay + jitter;
+
+            await this.sleep(delay);
             return true;
         }
 
@@ -93,7 +96,8 @@ export class OpenAIService {
     }
 
     private shouldRetry(status: number | undefined, attempt: number, maxRetries: number): boolean {
-        return (status === 502 || status === 503 || status === 429) && attempt < maxRetries - 1;
+        // Status 429 = Rate Limit, 502/503/504 = Server errors
+        return (status === 429 || status === 502 || status === 503 || status === 504) && attempt < maxRetries - 1;
     }
 
     /**
@@ -106,5 +110,9 @@ export class OpenAIService {
         } catch {
             throw new Error(`Failed to parse LLM response as JSON: ${response.substring(0, 200)}...`);
         }
+    }
+
+    private sleep(ms: number): Promise<void> {
+        return new Promise(resolve => setTimeout(resolve, ms));
     }
 }

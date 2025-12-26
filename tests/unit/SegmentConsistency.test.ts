@@ -13,7 +13,8 @@ describe('ReelOrchestrator Segment Consistency', () => {
             llmClient: {
                 planReel: jest.fn(),
                 generateSegmentContent: jest.fn(),
-                adjustCommentaryLength: jest.fn()
+                adjustCommentaryLength: jest.fn(),
+                detectReelMode: jest.fn().mockResolvedValue({ isAnimatedMode: false })
             },
             ttsClient: { synthesize: jest.fn() },
             videoRenderer: {

@@ -153,17 +153,18 @@ PREVIOUS SEGMENTS (for context and flow):
 Generate ONLY the commentary for Segment {{currentIndex}}.
 - Role: {{segmentRole}} (hook = attention-grabber, body = explanation, payoff = conclusion)
 - Target length: {{wordsPerSegment}} words (MAXIMUM: {{hardCapPerSegment}} words)
-- Language: Simple English (A1/A2 level, 5th-8th grade)
-- Tone: Direct, challenging, no spiritual jargon
+- Language: Simple English (A1/A2 level)
+- Tone: Direct, challenging, grounded narration.
 
-=== RULES ===
-- Build on the previous segments, don't repeat them.
-- Keep sentences short and punchy.
-- If this is the hook: Stop the scroll with tension.
-- If this is the payoff: End with a mirror question like "Sound familiar?"
+=== NARRATION RULES (CRITICAL) ===
+1. NATURAL SPEECH: Write as if a real person is speaking to a friend. 
+2. COMPLETE SENTENCES: Every segment MUST end with a period, question mark, or exclamation mark. NO UNFINISHED FRAGMENTS.
+3. NO POETRY: Avoid line breaks, rhyming, or "poetic" stanzas. This is NARRATION, not a poem.
+4. FLOW: Connect logically to the previous segments. If you are starting a new thought, finish it within this segment.
+5. NO ELLIPSES: Do not end with "..." unless it's a deliberate dramatic pause (rare).
 
-Respond with a SINGLE JSON object (NOT an array):
-{ "commentary": "Your segment text here." }`;
+Respond with a SINGLE JSON object:
+{ "commentary": "Your natural, complete sentence narration here." }`;
 
 export const GENERATE_VISUALS_FROM_COMMENTARY_PROMPT = `Generate visual prompts for an Instagram Reel based on the provided commentary.
 
@@ -261,11 +262,11 @@ CRITICAL: The first sentence alone must make viewer stop scrolling.
 - Controlled intensity, not preaching
 - Think: documentary narrator revealing something uncomfortable
 
-=== LANGUAGE RULES ===
-- Use 5th-8th grade vocabulary
-- Short sentences. Simple words.
-- NO dense philosophy. NO spiritual jargon.
-- The simpler the language, the sharper the impact.
+=== LANGUAGE & NARRATION RULES ===
+- Use 5th-8th grade vocabulary.
+- COMPLETE SENTENCES ONLY. NO fragments, no poetic stanzas, no line breaks.
+- Write for the EAR: Ensure it sounds natural when spoken aloud.
+- The simpler the language, the sharper the impact. Avoid flowery metaphors.
 
 === VISUAL MOOD RULES ===
 Image prompts must encode emotional beats through color and composition:

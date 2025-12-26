@@ -390,7 +390,7 @@ describe('Integration: Segment Count in Plan', () => {
                 choices: [{
                     message: {
                         content: JSON.stringify({
-                            targetDurationSeconds: 12,
+                            targetDurationSeconds: 15,
                             segmentCount: 5, // LLM tries to override our calculation
                             musicTags: ['ambient'],
                             musicPrompt: 'calm',

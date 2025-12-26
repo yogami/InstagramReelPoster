@@ -114,15 +114,21 @@ describe('OpenAIImageClient', () => {
         it('should handle 429 rate limit after retries', async () => {
             const client = new OpenAIImageClient(apiKey, baseUrl);
 
-            // Mock 3 consecutive 429 errors (maxRetries = 3)
+            // Mock sleep to return immediately
+            (client as any).sleep = jest.fn().mockResolvedValue(undefined);
+
+            // Mock 5 consecutive 429 errors (maxRetries = 5)
             nock(baseUrl)
                 .post('/v1/images/generations')
-                .times(3)
+                .times(5)
                 .reply(429, {
                     error: { message: 'Rate limit exceeded' }
                 });
 
             await expect(client.generateImage('Test')).rejects.toThrow('Image generation failed: Rate limit exceeded');
+
+            // Verify sleep was called 4 times (for 5 attempts, we sleep between attempts)
+            expect((client as any).sleep).toHaveBeenCalledTimes(4);
         });
 
         it('should handle 500 server error', async () => {

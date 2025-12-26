@@ -11,7 +11,7 @@ import {
 export class OpenAIImageClient implements IImageClient {
     private readonly apiKey: string;
     private readonly baseUrl: string;
-    private readonly maxRetries: number = 3;
+    private readonly maxRetries: number = 5;
 
     constructor(apiKey: string, baseUrl: string = 'https://api.openai.com') {
         if (!apiKey) {
@@ -66,10 +66,14 @@ export class OpenAIImageClient implements IImageClient {
                     const status = error.response?.status;
                     const message = error.response?.data?.error?.message || error.message;
 
-                    // Retry on transient errors (502, 503, 429)
-                    if ((status === 502 || status === 503 || status === 429) && attempt < this.maxRetries - 1) {
-                        console.warn(`[DALL-E] Transient error (${status}), retrying in ${Math.pow(2, attempt)}s...`);
-                        await this.sleep(Math.pow(2, attempt) * 1000);
+                    // Retry on transient errors (502, 503, 504, 429)
+                    if ((status === 502 || status === 503 || status === 504 || status === 429) && attempt < this.maxRetries - 1) {
+                        const baseDelay = Math.pow(2, attempt + 1) * 1000;
+                        const jitter = Math.floor(Math.random() * 1000);
+                        const delay = baseDelay + jitter;
+
+                        console.warn(`[DALL-E] Transient error (${status}), retrying in ${delay / 1000}s (Attempt ${attempt + 1}/${this.maxRetries})...`);
+                        await this.sleep(delay);
                         continue;
                     }
 

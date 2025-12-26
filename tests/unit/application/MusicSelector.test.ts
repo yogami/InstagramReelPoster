@@ -138,12 +138,14 @@ describe('MusicSelector Edge Cases', () => {
             const catalog = createMockCatalog(tracks);
             const selector = new MusicSelector(catalog, null, null);
 
+            jest.spyOn(Math, 'random').mockReturnValue(0);
             const result = await selector.selectMusic(['ambient', 'calm'], 30, 'Music');
 
             // MusicSelector picks from matches - the exact order depends on internal scoring
-            // Both 'exact-match' and 'close-match' are valid picks; just verify we got a match
+            // deterministic pick (index 0) should be exact-match
             expect(result).not.toBeNull();
-            expect(['exact-match', 'close-match'].includes(result!.track.id)).toBe(true);
+            expect(result!.track.id).toBe('exact-match');
+            jest.spyOn(Math, 'random').mockRestore();
         });
     });
 

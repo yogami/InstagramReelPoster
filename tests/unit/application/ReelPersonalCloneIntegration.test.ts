@@ -26,6 +26,7 @@ describe('ReelOrchestrator - Personal Clone Integration', () => {
         mockDeps = {
             transcriptionClient: { transcribe: jest.fn().mockResolvedValue('Transcript text') },
             llmClient: {
+                detectReelMode: jest.fn().mockResolvedValue({ isAnimatedMode: false }),
                 planReel: jest.fn().mockResolvedValue({ targetDurationSeconds: 30, segmentCount: 2 }),
                 generateSegmentContent: jest.fn().mockResolvedValue([
                     { commentary: 'Segment 1', imagePrompt: 'Prompt 1' },

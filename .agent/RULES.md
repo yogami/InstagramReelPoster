@@ -32,10 +32,11 @@ When in Planning Mode, always use the peer-planner approach:
    - **Edge cases** (missing fields, malformed JSON, array-as-string, single-object-instead-of-array)
    - **Mock responses** (include valid but structurally varied JSON to test normalization logic)
 
-3. **Defensive LLM Integration**:
+   - **Deterministic Structural Control**: Move structural logic (counts, loops, branching) into the CODE, not the prompt. If exactly N items are required, use a loop in the code to call the LLM N times (Iterative Generation) rather than asking for a batch of N. Batch generation is non-deterministic and unreliable for exact counts.
+   - **Immutable Parameters**: Critical parameters derived from planning (e.g., segment counts, total duration) must be enforced as immutable. Prevent downstream services or "optimization" steps from silently overriding strictly enforced planning constants.
    - **Strict Schema Enforcement**: Prefer OpenAI Structured Outputs or Zod schema validation over naked `json_mode`.
    - **Robust Normalization**: All LLM parsing logic MUST handle "hallucinated" structures (e.g., auto-wrapping single objects into arrays, unwrapping nested result keys).
-   - **Strategic Retries**: Implement retry loops for non-deterministic structural failures (e.g., requested 10 items, got 1).
+   - **Strategic Retries**: Implement retry loops for non-deterministic structural failures (e.g., JSON parse errors or empty results).
 
 4. **Test Loop**:
    - Write acceptance tests → Craft prompt → Validate with real API → Add to codebase

@@ -183,23 +183,53 @@ Respond ONLY with JSON: { "captionBody": "...", "hashtags": ["#tag1", ...] }`;
     }
 
     private async callOllama(prompt: string): Promise<string> {
-        const response = await axios.post(
-            `${this.serverUrl}/api/generate`,
-            {
-                model: this.model,
-                prompt: prompt,
-                system: this.systemPrompt,
-                stream: false,
-                format: 'json',
-                options: { temperature: 0.7 },
-            },
-            {
-                headers: { 'Content-Type': 'application/json' },
-                timeout: 180000,
-            }
-        );
+        const maxRetries = 3;
+        let lastError: any;
 
-        return response.data.response;
+        for (let attempt = 0; attempt < maxRetries; attempt++) {
+            try {
+                const response = await axios.post(
+                    `${this.serverUrl}/api/generate`,
+                    {
+                        model: this.model,
+                        prompt: prompt,
+                        system: this.systemPrompt,
+                        stream: false,
+                        format: 'json',
+                        options: { temperature: 0.7 },
+                    },
+                    {
+                        headers: { 'Content-Type': 'application/json' },
+                        timeout: 180000,
+                    }
+                );
+
+                return response.data.response;
+            } catch (error: any) {
+                lastError = error;
+                if (axios.isAxiosError(error)) {
+                    const status = error.response?.status;
+                    // Retry on transient errors (502, 503, 429)
+                    if ((status === 429 || status === 502 || status === 503) && attempt < maxRetries - 1) {
+                        const baseDelay = Math.pow(2, attempt + 1) * 1000;
+                        const jitter = Math.floor(Math.random() * 1000);
+                        const delay = baseDelay + jitter;
+
+                        console.warn(`[LocalLLM] Transient error (${status}), retrying in ${delay / 1000}s (Attempt ${attempt + 1}/${maxRetries})...`);
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                        continue;
+                    }
+                }
+                break; // Non-retryable or max retries reached
+            }
+        }
+
+        if (axios.isAxiosError(lastError)) {
+            const status = lastError.response?.status;
+            const message = lastError.response?.data?.error || lastError.message;
+            throw new Error(`Local LLM call failed (${status}): ${message}`);
+        }
+        throw lastError;
     }
 
     private normalizeSegments(data: any): SegmentContent[] {

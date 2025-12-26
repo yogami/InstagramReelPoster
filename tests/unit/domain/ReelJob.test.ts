@@ -61,13 +61,8 @@ describe('ReelJob', () => {
         });
 
         it('should throw error for empty sourceAudioUrl', () => {
-            const input: ReelJobInput = {
-                sourceAudioUrl: '   ',
-            };
-
-            expect(() => createReelJob('job-123', input, defaultDurationRange)).toThrow(
-                'ReelJob sourceAudioUrl cannot be empty'
-            );
+            const input = { sourceAudioUrl: '' };
+            expect(() => createReelJob('job-1', input, defaultDurationRange)).toThrow('ReelJob requires either sourceAudioUrl or transcript');
         });
 
         it('should throw error for invalid duration range', () => {

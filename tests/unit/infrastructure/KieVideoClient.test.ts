@@ -25,14 +25,15 @@ describe('KieVideoClient', () => {
 
             // Mock task creation
             mockedAxios.post.mockResolvedValueOnce({
-                data: { data: { taskId: mockJobId } }
+                data: { code: 200, data: { taskId: mockJobId } }
             });
 
             // Mock polling status - pending then success
             mockedAxios.get
-                .mockResolvedValueOnce({ data: { data: { state: 'processing' } } })
+                .mockResolvedValueOnce({ data: { code: 200, data: { state: 'processing' } } })
                 .mockResolvedValueOnce({
                     data: {
+                        code: 200,
                         data: {
                             state: 'success',
                             resultJson: JSON.stringify({ resultUrls: [mockVideoUrl] })
@@ -74,8 +75,8 @@ describe('KieVideoClient', () => {
         });
 
         it('should throw error if production fails', async () => {
-            mockedAxios.post.mockResolvedValueOnce({ data: { data: { taskId: 'job-err' } } });
-            mockedAxios.get.mockResolvedValueOnce({ data: { data: { state: 'failed', error: 'Content policy violation' } } });
+            mockedAxios.post.mockResolvedValueOnce({ data: { code: 200, data: { taskId: 'job-err' } } });
+            mockedAxios.get.mockResolvedValueOnce({ data: { code: 200, data: { state: 'failed', error: 'Content policy violation' } } });
 
             await expect(client.generateAnimatedVideo({
                 theme: 'Test',
@@ -84,8 +85,8 @@ describe('KieVideoClient', () => {
         });
 
         it('should timeout if max attempts reached', async () => {
-            mockedAxios.post.mockResolvedValueOnce({ data: { data: { taskId: 'job-timeout' } } });
-            mockedAxios.get.mockResolvedValue({ data: { data: { state: 'processing' } } });
+            mockedAxios.post.mockResolvedValueOnce({ data: { code: 200, data: { taskId: 'job-timeout' } } });
+            mockedAxios.get.mockResolvedValue({ data: { code: 200, data: { state: 'processing' } } });
 
             await expect(client.generateAnimatedVideo({
                 theme: 'Test',
