@@ -19,6 +19,14 @@ import {
     ParableScriptPlan,
     ParableBeat,
 } from '../domain/entities/Parable';
+import {
+    BusinessCategory,
+    WebsiteAnalysis,
+    PromoScriptPlan,
+    PromoSceneContent,
+} from '../domain/entities/WebsitePromo';
+import { IWebsiteScraperClient } from '../domain/ports/IWebsiteScraperClient';
+import { getPromptTemplate, getMusicStyle, detectCategoryFromKeywords } from '../infrastructure/llm/CategoryPrompts';
 
 import { ITranscriptionClient } from '../domain/ports/ITranscriptionClient';
 import { ILLMClient, ReelPlan, SegmentContent } from '../domain/ports/ILLMClient';
@@ -55,6 +63,7 @@ export interface OrchestratorDependencies {
     captionService?: ICaptionService;
     growthInsightsService?: IGrowthInsightsService;
     storageClient?: CloudinaryStorageClient;
+    websiteScraperClient?: IWebsiteScraperClient;
     callbackToken?: string;
     callbackHeader?: string;
     notificationClient?: INotificationClient;
@@ -103,6 +112,21 @@ export class ReelOrchestrator {
         }
 
         try {
+            // ============================================
+            // WEBSITE PROMO MODE (Early Branch)
+            // ============================================
+            const refreshedJobForMode = await this.deps.jobManager.getJob(jobId);
+            const forceModeCheck = (refreshedJobForMode as any)?.forceMode;
+
+            if (forceModeCheck === 'website-promo' && job.websitePromoInput) {
+                console.log(`[${jobId}] Using WEBSITE PROMO pipeline...`);
+                return await this.processWebsitePromoJob(jobId, job);
+            }
+
+            // ============================================
+            // STANDARD PIPELINE (Transcript-based)
+            // ============================================
+
             // Step 1: Transcribe
             let transcript = job.transcript;
             if (!transcript) {
@@ -1048,5 +1072,250 @@ export class ReelOrchestrator {
         }
     }
 
+    /**
+     * Processes a website promo reel job.
+     * Orchestrates: scrape → detect category → generate script → render.
+     */
+    private async processWebsitePromoJob(jobId: string, job: ReelJob): Promise<ReelJob> {
+        const websiteInput = job.websitePromoInput!;
+        console.log(`[${jobId}] Website Promo: Scraping ${websiteInput.websiteUrl}`);
+
+        try {
+            // Step 1: Scrape and analyze website
+            const websiteAnalysis = await this.scrapeWebsiteForPromo(jobId, websiteInput.websiteUrl);
+
+            // Step 2: Detect business category
+            const category = await this.detectCategoryForPromo(jobId, websiteInput, websiteAnalysis);
+
+            // Step 3: Generate promo script
+            const { promoScript, businessName } = await this.generatePromoContent(
+                jobId, websiteInput, websiteAnalysis, category
+            );
+
+            // Step 4: Render the promo reel (TTS → Music → Images → Video)
+            return await this.renderPromoReel(jobId, job, promoScript, category, businessName);
+
+        } catch (error) {
+            return await this.handlePromoJobError(jobId, job, error);
+        }
+    }
+
+    /**
+     * Scrapes website for promo content.
+     */
+    private async scrapeWebsiteForPromo(jobId: string, websiteUrl: string): Promise<WebsiteAnalysis> {
+        await this.updateJobStatus(jobId, 'planning', 'Analyzing business website...');
+
+        if (!this.deps.websiteScraperClient) {
+            throw new Error('WebsiteScraperClient is required for website promo mode');
+        }
+
+        const websiteAnalysis = await this.deps.websiteScraperClient.scrapeWebsite(websiteUrl);
+        await this.deps.jobManager.updateJob(jobId, { websiteAnalysis });
+        console.log(`[${jobId}] Website scraped: hero="${websiteAnalysis.heroText}"`);
+
+        return websiteAnalysis;
+    }
+
+    /**
+     * Detects business category from website or user input.
+     */
+    private async detectCategoryForPromo(
+        jobId: string,
+        websiteInput: { category?: BusinessCategory },
+        websiteAnalysis: WebsiteAnalysis
+    ): Promise<BusinessCategory> {
+        if (websiteInput.category) {
+            console.log(`[${jobId}] Category provided by user: ${websiteInput.category}`);
+            await this.deps.jobManager.updateJob(jobId, { businessCategory: websiteInput.category });
+            return websiteInput.category;
+        }
+
+        let category: BusinessCategory = 'service';
+
+        if (this.deps.llmClient.detectBusinessCategory) {
+            try {
+                category = await this.deps.llmClient.detectBusinessCategory(websiteAnalysis);
+                console.log(`[${jobId}] Category detected via LLM: ${category}`);
+            } catch (err) {
+                console.warn(`[${jobId}] LLM category detection failed, using keyword fallback:`, err);
+                const keywordResult = detectCategoryFromKeywords(websiteAnalysis.keywords);
+                category = keywordResult.category;
+                console.log(`[${jobId}] Category detected via keywords: ${category} (confidence: ${keywordResult.confidence.toFixed(2)})`);
+            }
+        } else {
+            // Fallback to keyword detection
+            const keywordResult = detectCategoryFromKeywords(websiteAnalysis.keywords);
+            category = keywordResult.category;
+            console.log(`[${jobId}] Category detected via keywords: ${category}`);
+        }
+
+        await this.deps.jobManager.updateJob(jobId, { businessCategory: category });
+        return category;
+    }
+
+    /**
+     * Generates promo script content from website analysis.
+     */
+    private async generatePromoContent(
+        jobId: string,
+        websiteInput: { businessName?: string },
+        websiteAnalysis: WebsiteAnalysis,
+        category: BusinessCategory
+    ): Promise<{ promoScript: PromoScriptPlan; businessName: string }> {
+        await this.updateJobStatus(jobId, 'generating_commentary', 'Creating promotional script...');
+
+        const businessName = websiteInput.businessName || websiteAnalysis.detectedBusinessName || 'Local Business';
+        const template = getPromptTemplate(category);
+
+        if (!this.deps.llmClient.generatePromoScript) {
+            throw new Error('LLMClient.generatePromoScript is required for website promo mode');
+        }
+
+        const promoScript = await this.deps.llmClient.generatePromoScript(
+            websiteAnalysis, category, template, businessName
+        );
+        await this.deps.jobManager.updateJob(jobId, { promoScriptPlan: promoScript });
+        console.log(`[${jobId}] Promo script generated: "${promoScript.coreMessage}" with ${promoScript.scenes.length} scenes`);
+
+        return { promoScript, businessName };
+    }
+
+    /**
+     * Renders the promo reel through TTS → Music → Images → Video pipeline.
+     */
+    private async renderPromoReel(
+        jobId: string,
+        job: ReelJob,
+        promoScript: PromoScriptPlan,
+        category: BusinessCategory,
+        businessName: string
+    ): Promise<ReelJob> {
+        const segmentContent = this.convertPromoScenesToSegments(promoScript);
+        const targetDuration = promoScript.scenes.reduce((sum, scene) => sum + scene.duration, 0);
+        const fullCommentary = segmentContent.map(s => s.commentary).join(' ');
+
+        await this.deps.jobManager.updateJob(jobId, {
+            targetDurationSeconds: targetDuration,
+            mainCaption: promoScript.caption,
+            transcript: `Website Promo: ${promoScript.coreMessage}`,
+        });
+
+        // Prepare all assets (voiceover, music, images, subtitles)
+        const assets = await this.preparePromoAssets(jobId, segmentContent, fullCommentary, targetDuration, category);
+
+        // Build manifest
+        const manifest = createReelManifest({
+            durationSeconds: assets.voiceoverDuration,
+            voiceoverUrl: assets.voiceoverUrl,
+            musicUrl: assets.musicUrl,
+            musicDurationSeconds: assets.musicDurationSeconds,
+            segments: assets.segmentsWithImages,
+            subtitlesUrl: assets.subtitlesUrl,
+        });
+
+        // Finalize and return completed job
+        return await this.finalizePromoJob(jobId, job, manifest, category, businessName);
+    }
+
+    /**
+     * Converts promo scenes to standard segment content format.
+     */
+    private convertPromoScenesToSegments(promoScript: PromoScriptPlan): SegmentContent[] {
+        return promoScript.scenes.map((scene: PromoSceneContent) => ({
+            commentary: scene.narration,
+            imagePrompt: scene.imagePrompt,
+            caption: scene.subtitle,
+        }));
+    }
+
+    /**
+     * Prepares all assets for promo reel (voiceover, music, images, subtitles).
+     */
+    private async preparePromoAssets(
+        jobId: string,
+        segmentContent: SegmentContent[],
+        fullCommentary: string,
+        targetDuration: number,
+        category: BusinessCategory
+    ) {
+        // Synthesize voiceover
+        await this.updateJobStatus(jobId, 'synthesizing_voiceover', 'Creating voiceover...');
+        const { voiceoverUrl, voiceoverDuration } = await this.synthesizeWithAdjustment(fullCommentary, targetDuration);
+        await this.deps.jobManager.updateJob(jobId, { voiceoverUrl, voiceoverDurationSeconds: voiceoverDuration, fullCommentary });
+
+        // Select music
+        await this.updateJobStatus(jobId, 'selecting_music', 'Selecting background music...');
+        const musicStyle = getMusicStyle(category);
+        const musicResult = await this.deps.musicSelector.selectMusic([musicStyle], voiceoverDuration, `${category} promo`);
+        const musicUrl = musicResult?.track?.audioUrl;
+        const musicDurationSeconds = musicResult?.track?.durationSeconds;
+        if (musicUrl) {
+            await this.deps.jobManager.updateJob(jobId, { musicUrl, musicDurationSeconds, musicSource: musicResult.source });
+        }
+
+        // Build segments and generate images
+        const segments = this.buildSegments(segmentContent, voiceoverDuration);
+        await this.updateJobStatus(jobId, 'generating_images', 'Creating visuals...');
+        const segmentsWithImages = await this.generateImages(segments, jobId);
+        await this.deps.jobManager.updateJob(jobId, { segments: segmentsWithImages });
+
+        // Generate subtitles
+        await this.updateJobStatus(jobId, 'generating_subtitles', 'Creating subtitles...');
+        const subtitlesResult = await this.deps.subtitlesClient.generateSubtitles(voiceoverUrl);
+        await this.deps.jobManager.updateJob(jobId, { subtitlesUrl: subtitlesResult.subtitlesUrl });
+
+        return { voiceoverUrl, voiceoverDuration, musicUrl, musicDurationSeconds, segmentsWithImages, subtitlesUrl: subtitlesResult.subtitlesUrl };
+    }
+
+    /**
+     * Finalizes promo job: render video, complete job, send notifications.
+     */
+    private async finalizePromoJob(
+        jobId: string,
+        job: ReelJob,
+        manifest: ReelManifest,
+        category: BusinessCategory,
+        businessName: string
+    ): Promise<ReelJob> {
+        await this.updateJobStatus(jobId, 'building_manifest', 'Preparing final video...');
+        await this.deps.jobManager.updateJob(jobId, { manifest });
+
+        await this.updateJobStatus(jobId, 'rendering', 'Rendering final video...');
+        const renderResult = await this.deps.videoRenderer.render(manifest);
+        const finalVideoUrl = renderResult.videoUrl;
+
+        const completedJob = completeJob(await this.deps.jobManager.getJob(jobId) as ReelJob, finalVideoUrl, manifest);
+        await this.deps.jobManager.updateJob(jobId, { status: 'completed', finalVideoUrl, manifest });
+
+        if (completedJob.telegramChatId && this.deps.notificationClient) {
+            await this.deps.notificationClient.sendNotification(
+                completedJob.telegramChatId,
+                `🎉 *Your website promo reel is ready!*\n\n🏪 ${businessName}\n📁 Category: ${category}\n\n${finalVideoUrl}`
+            );
+        }
+        await this.notifyCallback(completedJob);
+        return completedJob;
+    }
+
+    /**
+     * Handles errors in website promo job processing.
+     */
+    private async handlePromoJobError(jobId: string, job: ReelJob, error: unknown): Promise<never> {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error(`[${jobId}] Website promo job failed:`, error);
+
+        const failedJob = failJob(job, errorMessage); // Use failJob to get the updated job object
+        await this.deps.jobManager.updateJob(jobId, { status: 'failed', error: errorMessage });
+
+        if (job.telegramChatId && this.deps.notificationClient) {
+            await this.deps.notificationClient.sendNotification(
+                job.telegramChatId,
+                `❌ *Website promo reel failed*\n\n${this.getFriendlyErrorMessage(errorMessage)}`
+            );
+        }
+
+        throw error;
+    }
 
 }
