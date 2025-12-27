@@ -60,7 +60,9 @@ export function createReelRoutes(
                 sourceAudioUrl,
                 targetDurationRange,
                 moodOverrides,
-                callbackUrl: req.body.callbackUrl || config.makeWebhookUrl,
+                callbackUrl: (forceMode === 'website-promo')
+                    ? req.body.callbackUrl
+                    : (req.body.callbackUrl || config.makeWebhookUrl),
                 forceMode,
             };
             const job = await jobManager.createJob(input);
@@ -136,7 +138,7 @@ export function createReelRoutes(
                     language,
                     providedMedia,
                 },
-                callbackUrl: callbackUrl || config.makeWebhookUrl,
+                callbackUrl: callbackUrl, // Do not fallback to global Make.com webhook for promo reels
                 forceMode: 'website-promo',
             };
             const job = await jobManager.createJob(input);
