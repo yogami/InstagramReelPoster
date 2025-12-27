@@ -68,104 +68,120 @@ def render_video(
     os.makedirs(job_dir, exist_ok=True)
     
     try:
-        print(f"[FFmpeg] Job {job_id}: Downloading assets...")
+        print(f"[FFmpeg] Job {job_id}: Processing...")
+        print(f"[FFmpeg] Parameters: voiceover={bool(voiceover_url)}, music={bool(music_url)}, segments={len(segments) if segments else 0}")
         
-        # Download assets
-        voiceover_path = download_file(voiceover_url, f"{job_dir}/voiceover.mp3")
+        # Download voiceover
+        try:
+            voiceover_path = download_file(voiceover_url, f"{job_dir}/voiceover.mp3")
+            voiceover_duration = get_duration(voiceover_path)
+            print(f"[FFmpeg] Voiceover duration: {voiceover_duration}s")
+        except Exception as e:
+            raise Exception(f"Failed to download or parse voiceover: {e}")
+            
+        # Download music
+        music_path = None
+        if music_url:
+            try:
+                print(f"[FFmpeg] Downloading music from: {music_url[:50]}...")
+                music_path = download_file(music_url, f"{job_dir}/music.mp3")
+                print(f"[FFmpeg] Music downloaded successfully: {music_path}")
+                # Verify music has audio stream
+                mus_dur = get_duration(music_path)
+                print(f"[FFmpeg] Music file duration: {mus_dur}s")
+            except Exception as e:
+                print(f"[FFmpeg] Warning: Music download or probe failed: {e}. Proceeding without music.")
+                music_path = None
         
-        # Get exact voiceover duration
-        voiceover_duration = get_duration(voiceover_path)
-        print(f"[FFmpeg] Voiceover duration: {voiceover_duration}s")
+        # Download subtitles
+        subtitles_path = None
+        if subtitles_url:
+            try:
+                subtitles_path = download_file(subtitles_url, f"{job_dir}/subtitles.srt")
+            except:
+                print("Warning: Subtitles download failed")
         
-        music_path = download_file(music_url, f"{job_dir}/music.mp3") if music_url else None
-        subtitles_path = download_file(subtitles_url, f"{job_dir}/subtitles.srt") if subtitles_url else None
-        
-        # Logo handling (for overlay or branding slide)
+        # Logo handling
         logo_path = None
         if logo_url:
-            logo_path = download_file(logo_url, f"{job_dir}/logo.png")
-        if branding and branding.get('logoUrl'):
-             # If branding logo is different or explicitly passed
              try:
-                 download_file(branding.get('logoUrl'), f"{job_dir}/branding_logo.png")
-                 logo_path = f"{job_dir}/branding_logo.png"
-             except:
-                 print("Warning: Branding logo download failed, using default logo or none")
+                logo_path = download_file(logo_url, f"{job_dir}/logo.png")
+             except: pass
+        if branding and branding.get('logoUrl'):
+             try:
+                 p = download_file(branding.get('logoUrl'), f"{job_dir}/branding_logo.png")
+                 logo_path = p
+             except: pass
 
         # Download visual assets
         video_paths = []
         image_paths = []
         
+        # Create a blank black placeholder
+        black_img = f"{job_dir}/black.png"
+        from PIL import Image as PILImage
+        PILImage.new('RGB', (1080, 1920), color='black').save(black_img)
+        
         if animated_video_urls:
             for i, url in enumerate(animated_video_urls):
                 try:
-                    p = download_file(url, f"{job_dir}/video_{i}.mp4")
-                    video_paths.append(p)
-                except Exception as e:
-                    print(f"Error downloading video {i}: {e}")
+                    video_paths.append(download_file(url, f"{job_dir}/video_{i}.mp4"))
+                except:
+                    print(f"Error downloading video {i}")
         elif animated_video_url:
              try:
                 video_paths.append(download_file(animated_video_url, f"{job_dir}/source_video.mp4"))
-             except Exception as e:
-                print(f"Error downloading source video: {e}")
+             except: pass
         elif segments:
             for i, seg in enumerate(segments):
                 try:
                     path = download_file(seg['image_url'], f"{job_dir}/image_{i}.png")
-                    image_paths.append({
-                        'path': path,
-                        'start': seg['start'],
-                        'end': seg['end'],
-                    })
-                except Exception as e:
-                    print(f"Error downloading segment image {i}: {e}")
+                except:
+                    print(f"Error downloading segment image {i}, using black placeholder")
+                    path = black_img
+                
+                image_paths.append({
+                    'path': path,
+                    'start': seg['start'],
+                    'end': seg['end'],
+                })
         
-        # Generate Branding Slides if requested
-        if branding and image_paths:
-            # Generate Info Slide
+        # Generate Branding Slides
+        if branding:
             info_slide_path = f"{job_dir}/info_slide.png"
             create_info_slide(branding, info_slide_path)
             
-            # Generate Logo/Outro Slide
             logo_slide_path = f"{job_dir}/logo_slide.png"
             create_logo_slide(branding, logo_slide_path, logo_path)
             
-            # Append Info Slide (3s)
+            # Use 4s each for branding slides
+            info_dur = 4.0
+            logo_dur = 4.0
+            
+            last_end = image_paths[-1]['end'] if image_paths else 0
+            
             image_paths.append({
                 'path': info_slide_path,
-                'start': image_paths[-1]['end'],
-                'end': image_paths[-1]['end'] + 3.0
+                'start': last_end,
+                'end': last_end + info_dur
             })
             
-            # Append Logo Slide (3s)
             image_paths.append({
                 'path': logo_slide_path,
-                'start': image_paths[-1]['end'],
-                'end': image_paths[-1]['end'] + 3.0
+                'start': last_end + info_dur,
+                'end': last_end + info_dur + logo_dur
             })
-            
-        # OVERSHOOT FIX:
-        # Calculate current visual duration
-        total_visual_dur = 0
-        if image_paths:
-            total_visual_dur = image_paths[-1]['end']
-        
-        # If visual is shorter than voiceover, extend the last slide
+
+        # OVERSHOOT FIX
+        total_visual_dur = image_paths[-1]['end'] if image_paths else 0
         if total_visual_dur < voiceover_duration:
-             needed = voiceover_duration - total_visual_dur + 1.0 # +1s buffer
-             print(f"[FFmpeg] Extending last slide by {needed:.2f}s to match voiceover")
+             needed = voiceover_duration - total_visual_dur + 0.5
              if image_paths:
                  image_paths[-1]['end'] += needed
              total_visual_dur = image_paths[-1]['end'] if image_paths else 0
 
-        # Filter out any None paths (redundant if using throw, but good safety)
-        video_paths = [p for p in video_paths if p]
-        
-        if not video_paths and not image_paths:
-             raise Exception("No valid visual assets found")
+        print(f"[FFmpeg] Final visual duration: {total_visual_dur}s")
 
-        print(f"[FFmpeg] Job {job_id}: Building FFmpeg command...")
-        
         output_path = f"{job_dir}/output.mp4"
         
         # Build FFmpeg command
@@ -178,191 +194,119 @@ def render_video(
             image_paths=image_paths,
             logo_path=logo_path,
             logo_position=logo_position,
+            total_duration=total_visual_dur,
             output_path=output_path,
         )
         
-        print(f"[FFmpeg] Job {job_id}: Rendering...")
+        print(f"[FFmpeg] Job {job_id}: Executing FFmpeg...")
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
         
         if result.returncode != 0:
-            print(f"[FFmpeg] STDERR: {result.stderr[-2000:]}") # Print last 2000 chars
-            raise Exception(f"FFmpeg failed: {result.stderr[-500:]}")
+            print(f"[FFmpeg] ERROR: {result.stderr[-2000:]}")
+            raise Exception(f"FFmpeg failed with exit code {result.returncode}")
         
-        print(f"[FFmpeg] Job {job_id}: Uploading result...")
-        
-        # Upload to Cloudinary if configured, else return base64
         cloudinary_url = os.environ.get("CLOUDINARY_URL")
         if cloudinary_url:
             video_url = upload_to_cloudinary(output_path, job_id, cloudinary_url)
         else:
             video_url = file_to_data_uri(output_path)
         
-        print(f"[FFmpeg] Job {job_id}: Complete!")
-        
+        print(f"[FFmpeg] Job {job_id}: Done!")
         return {
             "video_url": video_url,
             "render_id": job_id,
         }
     finally:
-        # Cleanup
         import shutil
         shutil.rmtree(job_dir, ignore_errors=True)
 
 
 def get_duration(file_path: str) -> float:
-    """Get duration of media file using ffprobe."""
+    """Get duration using ffprobe."""
     try:
         cmd = [
-            'ffprobe', 
-            '-v', 'error', 
-            '-show_entries', 'format=duration', 
-            '-of', 'default=noprint_wrappers=1:nokey=1', 
-            file_path
+            'ffprobe', '-v', 'error', '-show_entries', 'format=duration', 
+            '-of', 'default=noprint_wrappers=1:nokey=1', file_path
         ]
         result = subprocess.run(cmd, capture_output=True, text=True, check=True)
         return float(result.stdout.strip())
     except Exception as e:
-        print(f"Warning: Failed to get duration for {file_path}: {e}")
-        # Hallucinate a safe default? Or 30s?
+        print(f"[FFmpeg] Warning ffprobe failed for {file_path}: {e}")
         return 30.0
 
 def create_info_slide(branding: dict, output_path: str):
-    """Generate an image with address and hours using Pillow."""
     from PIL import Image, ImageDraw, ImageFont
-    
-    # Create dark background
     W, H = 1080, 1920
-    img = Image.new('RGB', (W, H), color='#121212') # Darker grey
+    img = Image.new('RGB', (W, H), color='#0a0a0a')
     draw = ImageDraw.Draw(img)
-    
-    # Load fonts (fallback to default if Arial not found)
     try:
-        title_font = ImageFont.truetype("/usr/share/fonts/truetype/custom/Arial.ttf", 80)
+        title_font = ImageFont.truetype("/usr/share/fonts/truetype/custom/Arial.ttf", 85)
         text_font = ImageFont.truetype("/usr/share/fonts/truetype/custom/Arial.ttf", 55)
-        small_font = ImageFont.truetype("/usr/share/fonts/truetype/custom/Arial.ttf", 45)
+        label_font = ImageFont.truetype("/usr/share/fonts/truetype/custom/Arial.ttf", 45)
     except:
-        title_font = ImageFont.load_default()
-        text_font = ImageFont.load_default() 
-        small_font = ImageFont.load_default()
+        title_font = text_font = label_font = ImageFont.load_default()
     
-    # Draw Business Name
-    name = branding.get('businessName', 'Visit Us')
-    draw.text((W/2, 400), name, font=title_font, fill='#FFFFFF', anchor="mm")
-    
-    # Draw Info Section
-    y_pos = 750
-    
+    draw.text((W/2, 400), branding.get('businessName', 'Visit Us'), font=title_font, fill='#FFFFFF', anchor="mm")
+    y = 750
     if branding.get('address'):
-        draw.text((W/2, y_pos), "LOCATION", font=small_font, fill='#FFD700', anchor="mm") # Gold color
-        y_pos += 80
-        # Simple wrap for address
-        addr = branding.get('address')
-        lines = wrap_text(addr, text_font, 900)
+        draw.text((W/2, y), "LOCATION", font=label_font, fill='#FFD700', anchor="mm")
+        y += 85
+        lines = wrap_text(branding.get('address'), text_font, 900)
         for line in lines:
-            draw.text((W/2, y_pos), line, font=text_font, fill='#EEEEEE', anchor="mm")
-            y_pos += 70
-        y_pos += 100
-        
+            draw.text((W/2, y), line, font=text_font, fill='#DDDDDD', anchor="mm")
+            y += 75
+        y += 110
     if branding.get('hours'):
-        draw.text((W/2, y_pos), "OPENING HOURS", font=small_font, fill='#FFD700', anchor="mm")
-        y_pos += 80
-        hours = branding.get('hours')
-        h_lines = hours.split('\n')
-        for h_line in h_lines:
-             wrapped_h = wrap_text(h_line, text_font, 900)
-             for line in wrapped_h:
-                draw.text((W/2, y_pos), line, font=text_font, fill='#EEEEEE', anchor="mm")
-                y_pos += 70
-
+        draw.text((W/2, y), "OPENING HOURS", font=label_font, fill='#FFD700', anchor="mm")
+        y += 85
+        for h_line in branding.get('hours').split('\n'):
+             for line in wrap_text(h_line, text_font, 900):
+                draw.text((W/2, y), line, font=text_font, fill='#DDDDDD', anchor="mm")
+                y += 75
     img.save(output_path)
 
-
 def create_logo_slide(branding: dict, output_path: str, logo_path: str):
-    """Generate a final slide with large logo."""
     from PIL import Image, ImageDraw, ImageFont
-    
     W, H = 1080, 1920
     img = Image.new('RGB', (W, H), color='#000000')
-    draw = ImageDraw.Draw(img)
-    
-    # Load logo
     if logo_path and os.path.exists(logo_path):
         try:
             logo = Image.open(logo_path).convert("RGBA")
-            # Resize
             logo.thumbnail((800, 800), Image.Resampling.LANCZOS)
-            # Center logo
-            lw, lh = logo.size
-            img.paste(logo, (int((W-lw)/2), int((H-lh)/2)), logo)
-        except Exception as e:
-            print(f"Failed to place logo: {e}")
-            
-    # Draw Business Name below
+            img.paste(logo, (int((W-logo.size[0])/2), int((H-logo.size[1])/2)), logo)
+        except: pass
     if branding.get('businessName'):
-        try:
-            font = ImageFont.truetype("/usr/share/fonts/truetype/custom/Arial.ttf", 60)
-        except:
-            font = ImageFont.load_default()
-            
-        draw.text((W/2, H - 300), branding.get('businessName'), font=font, fill='white', anchor="mm")
-        
+        draw = ImageDraw.Draw(img)
+        try: font = ImageFont.truetype("/usr/share/fonts/truetype/custom/Arial.ttf", 65)
+        except: font = ImageFont.load_default()
+        draw.text((W/2, H - 350), branding.get('businessName'), font=font, fill='white', anchor="mm")
     img.save(output_path)
 
-
 def wrap_text(text, font, max_width):
-    """Wrap text to fit width."""
-    from PIL import ImageFont
     lines = []
     if not text: return lines
-    
     words = text.split()
-    current_line = []
-    
+    current = []
     for word in words:
-        current_line.append(word)
-        line_str = ' '.join(current_line)
-        try:
-            w = font.getlength(line_str)
-        except:
-             w = len(line_str) * 20
-        
+        current.append(word)
+        try: w = font.getlength(' '.join(current))
+        except: w = len(' '.join(current)) * 25
         if w > max_width:
-            if len(current_line) == 1:
-                lines.append(line_str)
-                current_line = []
-            else:
-                current_line.pop()
-                lines.append(' '.join(current_line))
-                current_line = [word]
-                
-    if current_line:
-        lines.append(' '.join(current_line))
-        
+            if len(current) == 1: lines.append(current.pop()); current = []
+            else: last = current.pop(); lines.append(' '.join(current)); current = [last]
+    if current: lines.append(' '.join(current))
     return lines
 
-
 def download_file(url: str, dest: str) -> str:
-    """Download a file from URL or decode data URI. Raises error on failure."""
-    if not url: 
-        raise ValueError("Empty URL provided")
-    
-    try:
-        if url.startswith('data:'):
-            # Data URI
-            _, data = url.split(',', 1)
-            with open(dest, 'wb') as f:
-                f.write(base64.b64decode(data))
-            return dest
-        
-        response = requests.get(url, timeout=30)
-        response.raise_for_status()
-        with open(dest, 'wb') as f:
-            f.write(response.content)
+    if not url: raise ValueError("URL is empty")
+    if url.startswith('data:'):
+        _, data = url.split(',', 1)
+        with open(dest, 'wb') as f: f.write(base64.b64decode(data))
         return dest
-    except Exception as e:
-        print(f"Error downloading {url}: {e}")
-        raise # Re-raise to fail early or be caught by strict handler
-
+    r = requests.get(url, timeout=45)
+    r.raise_for_status()
+    with open(dest, 'wb') as f: f.write(r.content)
+    return dest
 
 def build_ffmpeg_command(
     voiceover_path: str,
@@ -373,124 +317,84 @@ def build_ffmpeg_command(
     image_paths: list,
     logo_path: str,
     logo_position: str,
+    total_duration: float,
     output_path: str,
 ) -> list:
-    """Build the FFmpeg command."""
     cmd = ['ffmpeg', '-y']
     filter_complex = []
     
-    # Input 0: Voiceover
-    cmd.extend(['-i', voiceover_path])
-    
-    # Input 1 (optional): Music
-    audio_input_idx = 1
+    # Inputs
+    cmd.extend(['-i', voiceover_path]) # Input 0 (Audio or Video with Audio)
     if music_path:
-        cmd.extend(['-stream_loop', '-1', '-i', music_path])
-        audio_input_idx = 2
+        # Loop music infinitely
+        cmd.extend(['-stream_loop', '-1', '-i', music_path]) # Input 1
+        a_idx = 2
+    else:
+        a_idx = 1
     
-    # Visual inputs
-    visual_input_start = audio_input_idx
+    # Visuals start index
+    v_start = a_idx
     
-    # 1. VISUAL PIPELINE
+    # Visual Concatenation
     if video_paths:
         if len(video_paths) == 1:
             cmd.extend(['-stream_loop', '-1', '-i', video_paths[0]])
-            filter_complex.append(f'[{visual_input_start}:v]scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1,format=yuv420p[vbase]')
+            filter_complex.append(f'[{v_start}:v]scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1,format=yuv420p[vbase]')
         else:
-            for vp in video_paths:
-                cmd.extend(['-i', vp])
-            concat_parts = ''
+            for vp in video_paths: cmd.extend(['-i', vp])
+            parts = ''
             for i in range(len(video_paths)):
-                idx = visual_input_start + i
-                filter_complex.append(f'[{idx}:v]scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1,format=yuv420p[v{i}]')
-                concat_parts += f'[v{i}]'
-            filter_complex.append(f'{concat_parts}concat=n={len(video_paths)}:v=1:a=0[vbase]')
-            
+                filter_complex.append(f'[{v_start+i}:v]scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1,format=yuv420p[v{i}]')
+                parts += f'[v{i}]'
+            filter_complex.append(f'{parts}concat=n={len(video_paths)}:v=1:a=0[vbase]')
     elif image_paths:
-        img_outputs = []
+        img_outs = []
         for i, img in enumerate(image_paths):
-            duration = img['end'] - img['start']
-            duration = max(duration, 0.1)
-            
-            cmd.extend(['-loop', '1', '-t', str(duration), '-i', img['path']])
-            idx = visual_input_start + i
-            filter_complex.append(f'[{idx}:v]scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1,format=yuv420p[img{i}]')
-            img_outputs.append(f'[img{i}]')
-        filter_complex.append(f'{"".join(img_outputs)}concat=n={len(image_paths)}:v=1:a=0[vbase]')
-    else:
-        duration = 10
-        filter_complex.append(f'color=c=black:s=1080x1920:d={duration}[vbase]')
+            dur = max(img['end'] - img['start'], 0.1)
+            cmd.extend(['-loop', '1', '-t', str(dur), '-i', img['path']])
+            filter_complex.append(f'[{v_start+i}:v]scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1,format=yuv420p[im{i}]')
+            img_outs.append(f'[im{i}]')
+        filter_complex.append(f'{"".join(img_outs)}concat=n={len(image_paths)}:v=1:a=0[vbase]')
     
-    last_vid_tag = 'vbase'
-    
-    # 3. SUBTITLE PIPELINE
+    v_tag = 'vbase'
     if subtitles_path:
-        filter_complex.append(f"[{last_vid_tag}]subtitles={subtitles_path}:force_style='FontName=Arial,FontSize=24,PrimaryColour=&H00FFFFFF,BackColour=&H80000000,BorderStyle=3,Outline=1,Shadow=0,MarginV=60'[vburned]")
-        last_vid_tag = 'vburned'
+        filter_complex.append(f"[{v_tag}]subtitles={subtitles_path}:force_style='FontName=Arial,FontSize=24,PrimaryColour=&H00FFFFFF,BackColour=&H80000000,BorderStyle=3,Outline=1,Shadow=0,MarginV=60'[vburned]")
+        v_tag = 'vburned'
     
-    # 4. AUDIO PIPELINE
-    # Music Volume + Ducking or Mixing
+    # AUDIO MIXING (V5 REMASTERED)
+    # We explicitly target the first audio stream of each input [index:a:0]
+    # We use pan to ensure stereo and then amix.
+    
+    # Voiceover Processing
+    filter_complex.append(f'[0:a:0]aresample=44100,pan=stereo|c0=c0|c1=c1[vo_ready]')
+    
     if music_path:
-        # Music Volume 0.25 (User asked for clearer music)
-        filter_complex.append(f'[1:a]volume=0.25[bgmusic]')
+        # Music Processing (Higher volume 0.45)
+        filter_complex.append(f'[1:a:0]aresample=44100,pan=stereo|c0=c0|c1=c1,volume=0.45[bg_ready]')
         
-        # amix: inputs=2:duration=first (stops when voiceover stops).
-        # This cuts music when voiceover ends (or vice versa).
-        # BUT we extended visuals to match voiceover.
-        # So "first" (voiceover) should be roughly equal to "longest" (visuals).
-        # We'll use duration=first to ensure we don't end up with infinite music loop.
-        # Warning: if slides extend beyond voiceover (e.g. +1s buffer), duration=first cuts audio early.
-        # But audio IS voiceover. So cuts music early.
-        # We want music to play over slides too.
-        # Solution: "duration=longest" but we must limit the output with -t.
-        # Since we use -t below, duration=longest is safe for the FILTER.
-        
-        filter_complex.append(f'[0:a][bgmusic]amix=inputs=2:duration=longest:dropout_transition=2[audio_mixed]')
-        audio_out = 'audio_mixed'
+        # amix: duration=longest ensures music plays even if voiceover is slightly shorter (due to padding/slides)
+        # We rely on -t to cut the infinite music stream.
+        filter_complex.append(f'[vo_ready][bg_ready]amix=inputs=2:duration=longest:dropout_transition=2[a_mixed]')
+        a_tag = 'a_mixed'
     else:
-        filter_complex.append('[0:a]anull[audio_out]')
-        audio_out = 'audio_out'
+        a_tag = 'vo_ready'
         
     cmd.extend(['-filter_complex', ';'.join(filter_complex)])
-    cmd.extend(['-map', f'[{last_vid_tag}]', '-map', f'[{audio_out}]'])
+    cmd.extend(['-map', f'[{v_tag}]', '-map', f'[{a_tag}]'])
     
-    # Force output duration to match correct visual duration (which was extended to cover voiceover)
-    # The image path loop used '-t' for each segment.
-    # The concat filter produces a stream of length sum(durations).
-    # We should trust the concat stream length.
-    # BUT, to be safe against infinite loops, we can use -shortest?
-    # No, -shortest cuts to shortest stream. If voiceover is shorter than extended visual (rare if we padded), it cuts visual.
-    # If music is infinite, -shortest cuts to video/voiceover.
-    # So -shortest is usually correct here IF video is finite.
-    # Our video is finite (concat of loops with -t).
+    # Output Duration Control
+    cmd.extend(['-t', str(total_duration)])
     
-    cmd.append('-shortest') # Stop when video or voiceover ends
-    
-    cmd.extend(['-c:v', 'libx264', '-c:a', 'aac', '-pix_fmt', 'yuv420p', '-movflags', '+faststart'])
-    cmd.extend(['-ac', '2']) # Stereo Audio
+    # Output Format
+    cmd.extend(['-c:v', 'libx264', '-c:a', 'aac', '-ac', '2', '-pix_fmt', 'yuv420p', '-movflags', '+faststart'])
     cmd.append(output_path)
-    
     return cmd
 
-
 def upload_to_cloudinary(file_path: str, job_id: str, cloudinary_url: str) -> str:
-    """Upload video to Cloudinary."""
-    import cloudinary
     import cloudinary.uploader
-    
     cloudinary.config(cloudinary_url=cloudinary_url)
-    
-    result = cloudinary.uploader.upload(
-        file_path,
-        resource_type="video",
-        folder="instagram-reels/renders",
-        public_id=f"reel_{job_id}",
-    )
-    return result['secure_url']
-
+    r = cloudinary.uploader.upload(file_path, resource_type="video", folder="instagram-reels/renders", public_id=f"re_{job_id}")
+    return r['secure_url']
 
 def file_to_data_uri(file_path: str) -> str:
-    """Convert file to base64 data URI."""
-    with open(file_path, 'rb') as f:
-        data = base64.b64encode(f.read()).decode('utf-8')
-    return f"data:video/mp4;base64,{data}"
+    with open(file_path, 'rb') as f: return f"data:video/mp4;base64,{base64.b64encode(f.read()).decode('utf-8')}"
