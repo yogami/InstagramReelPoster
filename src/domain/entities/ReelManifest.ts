@@ -33,6 +33,10 @@ export interface ReelManifest {
     musicDurationSeconds?: number;
     /** URL to the subtitles file (SRT or VTT) */
     subtitlesUrl: string;
+    /** URL to the company logo image */
+    logoUrl?: string;
+    /** Where to place the logo (beginning, end, or overlay) */
+    logoPosition?: 'beginning' | 'end' | 'overlay';
 }
 
 /**
@@ -47,6 +51,8 @@ export function createReelManifest(params: {
     musicUrl?: string;
     musicDurationSeconds?: number;
     subtitlesUrl: string;
+    logoUrl?: string;
+    logoPosition?: 'beginning' | 'end' | 'overlay';
 }): ReelManifest {
     if (params.durationSeconds <= 0) {
         throw new Error('Manifest durationSeconds must be positive');
@@ -93,5 +99,7 @@ export function createReelManifest(params: {
         musicUrl: params.musicUrl?.trim(),
         musicDurationSeconds: params.musicDurationSeconds,
         subtitlesUrl: params.subtitlesUrl.trim(),
+        logoUrl: params.logoUrl,
+        logoPosition: params.logoPosition,
     };
 }
