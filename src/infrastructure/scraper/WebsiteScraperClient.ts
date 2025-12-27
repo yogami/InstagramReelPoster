@@ -311,6 +311,8 @@ export class WebsiteScraperClient implements IWebsiteScraperClient {
         const logoUrl = this.detectLogo(html, sourceUrl);
         const address = this.detectAddress(bodyTextRaw);
         const openingHours = this.detectOpeningHours(bodyTextRaw);
+        const phone = this.detectPhone(bodyTextRaw);
+        const email = this.detectEmail(bodyTextRaw, html);
 
         return {
             heroText,
@@ -320,6 +322,8 @@ export class WebsiteScraperClient implements IWebsiteScraperClient {
             detectedLocation,
             address,
             openingHours,
+            phone,
+            email,
             logoUrl,
             sourceUrl,
         };
@@ -610,5 +614,38 @@ export class WebsiteScraperClient implements IWebsiteScraperClient {
             return text.substring(index, index + 150).split(/[.!]/)[0].trim();
         }
         return undefined;
+    }
+
+    /**
+     * Detects phone number from text.
+     */
+    private detectPhone(text: string): string | undefined {
+        // Support common formats: +49..., 030..., (030)...
+        const phonePattern = /(?:\+?\d{1,3}[-. \s]?)?\(?\d{2,5}\)?[-. \s]?\d{3,10}[-. \s]?\d{0,5}/;
+        const matches = text.match(phonePattern);
+
+        // Filter out matches that are too short to be real phones
+        if (matches) {
+            const cleaned = matches[0].replace(/[^\d+]/g, '');
+            if (cleaned.length >= 8) {
+                return matches[0].trim();
+            }
+        }
+        return undefined;
+    }
+
+    /**
+     * Detects email address.
+     */
+    private detectEmail(text: string, html: string): string | undefined {
+        // Check mailto: links first as they are most reliable
+        const mailtoMatch = html.match(/mailto:([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i);
+        if (mailtoMatch) {
+            return mailtoMatch[1];
+        }
+
+        const emailPattern = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;
+        const match = text.match(emailPattern);
+        return match ? match[0] : undefined;
     }
 }

@@ -3,7 +3,7 @@ FFmpeg Video Rendering Endpoint for Beam.cloud
 
 Composites video from images + voiceover + music + subtitles using FFmpeg.
 Features:
-- Slide Generation for Info (Hours/Address) and Logo
+- Slide Generation for Unified Conclusion (Logo, Address, Hours, Contact)
 - Smart Audio Mixing (Music Ducking)
 - Duration Matching (Extends video if audio is longer)
 
@@ -58,7 +58,7 @@ def render_video(
     logo_url: str = None,
     logo_position: str = None,
     music_duration_seconds: float = None,
-    branding: dict = None,  # {logoUrl, businessName, address, hours}
+    branding: dict = None,  # {logoUrl, businessName, address, hours, phone, email}
 ) -> dict:
     """
     Render a video using FFmpeg with slide generation support.
@@ -69,7 +69,6 @@ def render_video(
     
     try:
         print(f"[FFmpeg] Job {job_id}: Processing...")
-        print(f"[FFmpeg] Parameters: voiceover={bool(voiceover_url)}, music={bool(music_url)}, segments={len(segments) if segments else 0}")
         
         # Download voiceover
         try:
@@ -83,15 +82,9 @@ def render_video(
         music_path = None
         if music_url:
             try:
-                print(f"[FFmpeg] Downloading music from: {music_url[:50]}...")
                 music_path = download_file(music_url, f"{job_dir}/music.mp3")
-                print(f"[FFmpeg] Music downloaded successfully: {music_path}")
-                # Verify music has audio stream
-                mus_dur = get_duration(music_path)
-                print(f"[FFmpeg] Music file duration: {mus_dur}s")
             except Exception as e:
-                print(f"[FFmpeg] Warning: Music download or probe failed: {e}. Proceeding without music.")
-                music_path = None
+                print(f"[FFmpeg] Warning: Music download failed: {e}")
         
         # Download subtitles
         subtitles_path = None
@@ -103,15 +96,12 @@ def render_video(
         
         # Logo handling
         logo_path = None
-        if logo_url:
+        primary_logo_url = (branding.get('logoUrl') if branding else None) or logo_url
+        if primary_logo_url:
              try:
-                logo_path = download_file(logo_url, f"{job_dir}/logo.png")
-             except: pass
-        if branding and branding.get('logoUrl'):
-             try:
-                 p = download_file(branding.get('logoUrl'), f"{job_dir}/branding_logo.png")
-                 logo_path = p
-             except: pass
+                logo_path = download_file(primary_logo_url, f"{job_dir}/logo.png")
+             except: 
+                print(f"[FFmpeg] Could not download logo from {primary_logo_url}")
 
         # Download visual assets
         video_paths = []
@@ -127,7 +117,7 @@ def render_video(
                 try:
                     video_paths.append(download_file(url, f"{job_dir}/video_{i}.mp4"))
                 except:
-                    print(f"Error downloading video {i}")
+                    video_paths.append(black_img) # Fallback to black for missing video in array
         elif animated_video_url:
              try:
                 video_paths.append(download_file(animated_video_url, f"{job_dir}/source_video.mp4"))
@@ -137,7 +127,6 @@ def render_video(
                 try:
                     path = download_file(seg['image_url'], f"{job_dir}/image_{i}.png")
                 except:
-                    print(f"Error downloading segment image {i}, using black placeholder")
                     path = black_img
                 
                 image_paths.append({
@@ -146,30 +135,19 @@ def render_video(
                     'end': seg['end'],
                 })
         
-        # Generate Branding Slides
+        # Generate Unified Conclusion Slide
         if branding:
-            info_slide_path = f"{job_dir}/info_slide.png"
-            create_info_slide(branding, info_slide_path)
+            conclusion_slide_path = f"{job_dir}/conclusion_slide.png"
+            create_conclusion_slide(branding, conclusion_slide_path, logo_path)
             
-            logo_slide_path = f"{job_dir}/logo_slide.png"
-            create_logo_slide(branding, logo_slide_path, logo_path)
-            
-            # Use 4s each for branding slides
-            info_dur = 4.0
-            logo_dur = 4.0
-            
+            # Use 5s for the conclusion slide
+            conc_dur = 5.0
             last_end = image_paths[-1]['end'] if image_paths else 0
             
             image_paths.append({
-                'path': info_slide_path,
+                'path': conclusion_slide_path,
                 'start': last_end,
-                'end': last_end + info_dur
-            })
-            
-            image_paths.append({
-                'path': logo_slide_path,
-                'start': last_end + info_dur,
-                'end': last_end + info_dur + logo_dur
+                'end': last_end + conc_dur
             })
 
         # OVERSHOOT FIX
@@ -211,7 +189,6 @@ def render_video(
         else:
             video_url = file_to_data_uri(output_path)
         
-        print(f"[FFmpeg] Job {job_id}: Done!")
         return {
             "video_url": video_url,
             "render_id": job_id,
@@ -222,7 +199,6 @@ def render_video(
 
 
 def get_duration(file_path: str) -> float:
-    """Get duration using ffprobe."""
     try:
         cmd = [
             'ffprobe', '-v', 'error', '-show_entries', 'format=duration', 
@@ -231,55 +207,64 @@ def get_duration(file_path: str) -> float:
         result = subprocess.run(cmd, capture_output=True, text=True, check=True)
         return float(result.stdout.strip())
     except Exception as e:
-        print(f"[FFmpeg] Warning ffprobe failed for {file_path}: {e}")
         return 30.0
 
-def create_info_slide(branding: dict, output_path: str):
+def create_conclusion_slide(branding: dict, output_path: str, logo_path: str):
     from PIL import Image, ImageDraw, ImageFont
     W, H = 1080, 1920
-    img = Image.new('RGB', (W, H), color='#0a0a0a')
+    # Background: Slate dark theme
+    img = Image.new('RGB', (W, H), color='#0f172a')
     draw = ImageDraw.Draw(img)
-    try:
-        title_font = ImageFont.truetype("/usr/share/fonts/truetype/custom/Arial.ttf", 85)
-        text_font = ImageFont.truetype("/usr/share/fonts/truetype/custom/Arial.ttf", 55)
-        label_font = ImageFont.truetype("/usr/share/fonts/truetype/custom/Arial.ttf", 45)
-    except:
-        title_font = text_font = label_font = ImageFont.load_default()
     
-    draw.text((W/2, 400), branding.get('businessName', 'Visit Us'), font=title_font, fill='#FFFFFF', anchor="mm")
-    y = 750
-    if branding.get('address'):
-        draw.text((W/2, y), "LOCATION", font=label_font, fill='#FFD700', anchor="mm")
-        y += 85
-        lines = wrap_text(branding.get('address'), text_font, 900)
-        for line in lines:
-            draw.text((W/2, y), line, font=text_font, fill='#DDDDDD', anchor="mm")
-            y += 75
-        y += 110
-    if branding.get('hours'):
-        draw.text((W/2, y), "OPENING HOURS", font=label_font, fill='#FFD700', anchor="mm")
-        y += 85
-        for h_line in branding.get('hours').split('\n'):
-             for line in wrap_text(h_line, text_font, 900):
-                draw.text((W/2, y), line, font=text_font, fill='#DDDDDD', anchor="mm")
-                y += 75
-    img.save(output_path)
-
-def create_logo_slide(branding: dict, output_path: str, logo_path: str):
-    from PIL import Image, ImageDraw, ImageFont
-    W, H = 1080, 1920
-    img = Image.new('RGB', (W, H), color='#000000')
+    try:
+        title_font = ImageFont.truetype("/usr/share/fonts/truetype/custom/Arial.ttf", 95)
+        info_font = ImageFont.truetype("/usr/share/fonts/truetype/custom/Arial.ttf", 50)
+        label_font = ImageFont.truetype("/usr/share/fonts/truetype/custom/Arial.ttf", 40)
+    except:
+        title_font = info_font = label_font = ImageFont.load_default()
+    
+    y = 300
+    # 1. Logo
     if logo_path and os.path.exists(logo_path):
         try:
             logo = Image.open(logo_path).convert("RGBA")
-            logo.thumbnail((800, 800), Image.Resampling.LANCZOS)
-            img.paste(logo, (int((W-logo.size[0])/2), int((H-logo.size[1])/2)), logo)
+            logo.thumbnail((500, 500), Image.Resampling.LANCZOS)
+            img.paste(logo, (int((W-logo.size[0])/2), y), logo)
+            y += logo.size[1] + 80
         except: pass
-    if branding.get('businessName'):
-        draw = ImageDraw.Draw(img)
-        try: font = ImageFont.truetype("/usr/share/fonts/truetype/custom/Arial.ttf", 65)
-        except: font = ImageFont.load_default()
-        draw.text((W/2, H - 350), branding.get('businessName'), font=font, fill='white', anchor="mm")
+    
+    # 2. Business Name
+    name = branding.get('businessName', 'Visit Us')
+    draw.text((W/2, y), name.upper(), font=title_font, fill='#f8fafc', anchor="mm")
+    y += 150
+
+    # Draw a small gold separator
+    draw.rectangle([W/2 - 100, y - 40, W/2 + 100, y - 35], fill='#fbbf24')
+    
+    def draw_section(label, content, current_y):
+        if not content: return current_y
+        draw.text((W/2, current_y), label, font=label_font, fill='#94a3b8', anchor="mm")
+        current_y += 60
+        lines = wrap_text(content, info_font, 950)
+        for line in lines:
+            draw.text((W/2, current_y), line, font=info_font, fill='#e2e8f0', anchor="mm")
+            current_y += 70
+        return current_y + 60
+
+    # 3. Address
+    y = draw_section("LOCATION", branding.get('address'), y)
+    
+    # 4. Hours
+    y = draw_section("OPENING HOURS", branding.get('hours'), y)
+    
+    # 5. Contact info (Phone / Email / Website if available)
+    contact_parts = []
+    if branding.get('phone'): contact_parts.append(branding.get('phone'))
+    if branding.get('email'): contact_parts.append(branding.get('email'))
+    
+    if contact_parts:
+        y = draw_section("CONTACT", " | ".join(contact_parts), y)
+
     img.save(output_path)
 
 def wrap_text(text, font, max_width):
@@ -323,19 +308,14 @@ def build_ffmpeg_command(
     cmd = ['ffmpeg', '-y']
     filter_complex = []
     
-    # Inputs
-    cmd.extend(['-i', voiceover_path]) # Input 0 (Audio or Video with Audio)
+    cmd.extend(['-i', voiceover_path]) # 0
     if music_path:
-        # Loop music infinitely
-        cmd.extend(['-stream_loop', '-1', '-i', music_path]) # Input 1
+        cmd.extend(['-stream_loop', '-1', '-i', music_path]) # 1
         a_idx = 2
     else:
         a_idx = 1
     
-    # Visuals start index
     v_start = a_idx
-    
-    # Visual Concatenation
     if video_paths:
         if len(video_paths) == 1:
             cmd.extend(['-stream_loop', '-1', '-i', video_paths[0]])
@@ -358,22 +338,14 @@ def build_ffmpeg_command(
     
     v_tag = 'vbase'
     if subtitles_path:
+        # Burn subtitles only on the first part of the video if possible, but simpler to just burn all.
         filter_complex.append(f"[{v_tag}]subtitles={subtitles_path}:force_style='FontName=Arial,FontSize=24,PrimaryColour=&H00FFFFFF,BackColour=&H80000000,BorderStyle=3,Outline=1,Shadow=0,MarginV=60'[vburned]")
         v_tag = 'vburned'
     
-    # AUDIO MIXING (V5 REMASTERED)
-    # We explicitly target the first audio stream of each input [index:a:0]
-    # We use pan to ensure stereo and then amix.
-    
-    # Voiceover Processing
+    # Audio Remastered v5 fix
     filter_complex.append(f'[0:a:0]aresample=44100,pan=stereo|c0=c0|c1=c1[vo_ready]')
-    
     if music_path:
-        # Music Processing (Higher volume 0.45)
         filter_complex.append(f'[1:a:0]aresample=44100,pan=stereo|c0=c0|c1=c1,volume=0.45[bg_ready]')
-        
-        # amix: duration=longest ensures music plays even if voiceover is slightly shorter (due to padding/slides)
-        # We rely on -t to cut the infinite music stream.
         filter_complex.append(f'[vo_ready][bg_ready]amix=inputs=2:duration=longest:dropout_transition=2[a_mixed]')
         a_tag = 'a_mixed'
     else:
@@ -381,11 +353,7 @@ def build_ffmpeg_command(
         
     cmd.extend(['-filter_complex', ';'.join(filter_complex)])
     cmd.extend(['-map', f'[{v_tag}]', '-map', f'[{a_tag}]'])
-    
-    # Output Duration Control
     cmd.extend(['-t', str(total_duration)])
-    
-    # Output Format
     cmd.extend(['-c:v', 'libx264', '-c:a', 'aac', '-ac', '2', '-pix_fmt', 'yuv420p', '-movflags', '+faststart'])
     cmd.append(output_path)
     return cmd

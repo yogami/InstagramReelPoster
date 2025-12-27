@@ -43,6 +43,8 @@ export interface ReelManifest {
         businessName: string;
         address?: string;
         hours?: string;
+        phone?: string;
+        email?: string;
     };
 }
 

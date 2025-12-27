@@ -126,6 +126,10 @@ export interface WebsiteAnalysis {
     address?: string;
     /** Scraped opening hours */
     openingHours?: string;
+    /** Scraped phone number */
+    phone?: string;
+    /** Scraped email address */
+    email?: string;
     /** Scraped logo URL */
     logoUrl?: string;
     /** Raw keywords extracted for category detection */

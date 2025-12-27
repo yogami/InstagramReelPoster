@@ -1399,6 +1399,8 @@ export class ReelOrchestrator {
                 businessName: businessName,
                 address: websiteAnalysis.address,
                 hours: websiteAnalysis.openingHours,
+                phone: websiteAnalysis.phone,
+                email: websiteAnalysis.email,
             };
         }
 
