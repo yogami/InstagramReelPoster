@@ -94,7 +94,7 @@ export function createReelRoutes(
     router.post(
         '/website',
         asyncHandler(async (req: Request, res: Response) => {
-            const { website, businessName, category, consent, callbackUrl, language } = req.body;
+            const { website, businessName, category, consent, callbackUrl, language, media } = req.body;
 
             // Validate website URL
             if (!website || typeof website !== 'string') {
@@ -119,6 +119,13 @@ export function createReelRoutes(
                 throw new BadRequestError(`category must be one of: ${validCategories.join(', ')}`);
             }
 
+            // Validate media if provided (must be array of strings)
+            let providedMedia: string[] | undefined;
+            if (media && Array.isArray(media)) {
+                providedMedia = media.filter((m: unknown) => typeof m === 'string').slice(0, 5);
+                console.log(`[website] Received ${providedMedia.length} user-provided media files`);
+            }
+
             // Create job with website promo input
             const input: ReelJobInput = {
                 websitePromoInput: {
@@ -127,6 +134,7 @@ export function createReelRoutes(
                     category,
                     consent: true,
                     language,
+                    providedMedia,
                 },
                 callbackUrl: callbackUrl || config.makeWebhookUrl,
                 forceMode: 'website-promo',

@@ -1217,7 +1217,7 @@ export class ReelOrchestrator {
         // Prepare all assets (voiceover, music, images)
         const config = getConfig();
         const promoVoiceId = job.voiceId || config.fishAudioPromoVoiceId;
-        const assets = await this.preparePromoAssets(jobId, segmentContent, fullCommentary, targetDuration, category, promoScript, promoVoiceId);
+        const assets = await this.preparePromoAssets(jobId, job, segmentContent, fullCommentary, targetDuration, category, promoScript, promoVoiceId);
 
         // Build manifest
         const manifest = createReelManifest({
@@ -1245,6 +1245,7 @@ export class ReelOrchestrator {
 
     private async preparePromoAssets(
         jobId: string,
+        job: ReelJob,
         segmentContent: SegmentContent[],
         fullCommentary: string,
         targetDuration: number,
@@ -1276,9 +1277,10 @@ export class ReelOrchestrator {
         const scrapedMedia = promoScript?.compliance?.source === 'public-website'
             ? (await this.deps.jobManager.getJob(jobId))?.websiteAnalysis?.scrapedMedia || []
             : [];
+        const userProvidedMedia = job.websitePromoInput?.providedMedia || [];
         const resolvedMedia = this.resolveMediaForScenes(
             promoScript?.scenes || [],
-            [], // userMedia (not implemented in V1)
+            userProvidedMedia,
             scrapedMedia
         );
 

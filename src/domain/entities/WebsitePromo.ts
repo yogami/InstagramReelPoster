@@ -95,6 +95,8 @@ export interface WebsitePromoInput {
     consent: boolean;
     /** Output language for the promo reel (e.g., 'en', 'de') */
     language?: string;
+    /** User-provided media (base64 data URIs or URLs) - used with highest priority */
+    providedMedia?: string[];
 }
 
 /**
