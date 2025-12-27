@@ -1,4 +1,5 @@
 import axios from 'axios';
+import * as cheerio from 'cheerio';
 import { IWebsiteScraperClient, ScrapeOptions } from '../../domain/ports/IWebsiteScraperClient';
 import {
     WebsiteAnalysis,
@@ -271,22 +272,38 @@ export class WebsiteScraperClient implements IWebsiteScraperClient {
      * For production, consider adding cheerio for more robust parsing.
      */
     private parseHtml(html: string, sourceUrl: string): WebsiteAnalysis {
-        const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
-        const title = titleMatch ? this.cleanText(titleMatch[1]) : '';
+        const $ = cheerio.load(html);
 
-        const h1Match = html.match(/<h1[^>]*>([^<]+)<\/h1>/i);
-        const h1Text = h1Match ? this.cleanText(h1Match[1]) : '';
+        // Remove known junk/interstitial/popup elements from the DOM before text extraction
+        $('script, style, noscript, iframe, nav, footer, aside, button, input, textarea, select').remove();
 
-        const metaDescMatch = html.match(/<meta[^>]*name=["']description["'][^>]*content=["']([^"']+)["']/i)
-            || html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*name=["']description["']/i);
-        const metaDescription = metaDescMatch ? this.cleanText(metaDescMatch[1]) : '';
+        // Target common popup/consent/modal classes and IDs
+        // This effectively ignores popups that are present in the HTML
+        $('[class*="modal"], [id*="modal"], [class*="popup"], [id*="popup"], [class*="cookie"], [id*="cookie"], [class*="consent"], [id*="consent"], [class*="overlay"], [id*="overlay"], [class*="banner"], [id*="banner"], .privacy-policy, .terms-service').remove();
 
-        const ogSiteNameMatch = html.match(/<meta[^>]*property=["']og:site_name["'][^>]*content=["']([^"']+)["']/i);
-        const ogSiteName = ogSiteNameMatch ? this.cleanText(ogSiteNameMatch[1]) : '';
+        const title = this.cleanText($('title').text() || '');
+        const h1Text = this.cleanText($('h1').first().text() || '');
+
+        // Extract meta description/OG description
+        const metaDescription = this.cleanText(
+            $('meta[name="description"]').attr('content') ||
+            $('meta[property="og:description"]').attr('content') ||
+            ''
+        );
+
+        const ogSiteName = this.cleanText($('meta[property="og:site_name"]').attr('content') || '');
 
         const heroText = h1Text || title;
-        const bodyTextRaw = this.extractBodyText(html);
+
+        // Text extraction strategy: Focus on core content areas if possible
+        const contentSelector = $('main').length ? 'main' : ($('article').length ? 'article' : 'body');
+        const bodyTextRaw = this.cleanText($(contentSelector).text());
         const bodyTextLower = bodyTextRaw.toLowerCase();
+
+        // Detect if this is likely an intermediate/bot-check page
+        if (this.isIntermediatePage(bodyTextLower, title.toLowerCase())) {
+            console.log(`[Scraper] Warning: Potential intermediate/redirect page detected for ${sourceUrl}`);
+        }
 
         const keywords = this.extractKeywords(bodyTextLower);
         const detectedBusinessName = this.detectBusinessName(ogSiteName, title, heroText);
@@ -309,14 +326,48 @@ export class WebsiteScraperClient implements IWebsiteScraperClient {
     }
 
     /**
-     * Extracts readable text from HTML body.
+     * Detects if the page is an intermediate bot-check or redirect page.
+     */
+    private isIntermediatePage(text: string, title: string): boolean {
+        const indicators = [
+            'checking your browser',
+            'please wait',
+            'redirecting',
+            'cloudflare',
+            'enable cookies',
+            'verify you are human',
+            'access denied'
+        ];
+
+        return indicators.some(ind => text.includes(ind) || title.includes(ind));
+    }
+
+    /**
+     * Extracts readable text from HTML body using Cheerio and filters out popups.
      */
     private extractBodyText(html: string): string {
-        let text = html.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '');
-        text = text.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '');
-        text = text.replace(/<[^>]+>/g, ' ');
-        text = text.replace(/\s+/g, ' ').trim();
-        return text;
+        const $ = cheerio.load(html);
+
+        // Remove known junk/interstitial/popup elements from the DOM
+        $('script, style, noscript, iframe, nav, footer, aside, button, input, textarea, select').remove();
+        $('[class*="modal"], [id*="modal"], [class*="popup"], [id*="popup"], [class*="cookie"], [id*="cookie"], [class*="consent"], [id*="consent"], [class*="overlay"], [id*="overlay"], [class*="banner"], [id*="banner"], .privacy-policy, .terms-service').remove();
+
+        return this.cleanText($('body').text());
+    }
+
+    /**
+     * Cleans and normalizes text by removing extra whitespace and decoding HTML entities.
+     */
+    private cleanText(text: string): string {
+        return text
+            .replace(/\s+/g, ' ')
+            .trim()
+            .replace(/&amp;/g, '&')
+            .replace(/&quot;/g, '"')
+            .replace(/&#39;/g, "'")
+            .replace(/&lt;/g, '<')
+            .replace(/&gt;/g, '>')
+            .replace(/&nbsp;/g, ' ');
     }
 
     /**
@@ -380,20 +431,7 @@ export class WebsiteScraperClient implements IWebsiteScraperClient {
         return undefined;
     }
 
-    /**
-     * Cleans extracted text by removing extra whitespace and decoding HTML entities.
-     */
-    private cleanText(text: string): string {
-        return text
-            .replace(/&amp;/g, '&')
-            .replace(/&lt;/g, '<')
-            .replace(/&gt;/g, '>')
-            .replace(/&quot;/g, '"')
-            .replace(/&#39;/g, "'")
-            .replace(/&nbsp;/g, ' ')
-            .replace(/\s+/g, ' ')
-            .trim();
-    }
+
 
     /**
      * Validates URL format.
