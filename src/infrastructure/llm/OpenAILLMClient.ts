@@ -166,12 +166,14 @@ export class OpenAILLMClient implements ILLMClient {
     async selectMusicTags(
         transcript: string,
         mood: string,
-        culture?: string
+        culture?: string,
+        context?: string
     ): Promise<string[]> {
         const prompt = `You are a music curator for short-form video content.
 
-CONTENT:
+CONTENT/CONTEXT:
 """
+${context || ''}
 ${transcript.substring(0, 500)}
 """
 
@@ -179,7 +181,7 @@ MOOD: ${mood}
 ${culture ? `CULTURE HINT: ${culture}` : ''}
 
 AVAILABLE MUSIC TAGS (pick 3-5 that best match the content):
- indian, chinese, japanese, arabic, african, latin, western, tech, modern, self-improvement, new-age, epic, motivational, uplifting, dark, calm, meditation, suspense, creative, contemplative, healing, focus, cinematic, ambient, psychedelic, classical, tribal, electronic, minimalist, spiritual, heroic, mysterious, romantic, sci-fi, alien, zen, adventure, growth, productivity
+ indian, chinese, japanese, arabic, african, latin, western, tech, modern, self-improvement, new-age, epic, motivational, uplifting, dark, calm, meditation, suspense, creative, contemplative, healing, focus, cinematic, ambient, psychedelic, classical, tribal, electronic, minimalist, spiritual, heroic, mysterious, romantic, sci-fi, alien, zen, adventure, growth, productivity, upbeat, corporate, business, professional, lifestyle, trendy, pop
 
 Return ONLY a JSON object: { "tags": ["tag1", "tag2", "tag3", ...] }`;
 
@@ -270,9 +272,18 @@ Return JSON with format: { "category": "cafe|gym|shop|service|restaurant|studio"
         analysis: WebsiteAnalysis,
         category: BusinessCategory,
         template: CategoryPromptTemplate,
-        businessName: string
+        businessName: string,
+        language: string
     ): Promise<PromoScriptPlan> {
-        const prompt = `Create a 17-second Instagram Reel promo script for this business:
+        const langMap: Record<string, string> = {
+            'en': 'English',
+            'de': 'German'
+        };
+        const targetLanguage = langMap[language] || 'English';
+
+        const prompt = `Create a 17-second Instagram Reel promo script for this business.
+        
+CRITICAL: The script (narration, caption, coreMessage) MUST be in ${targetLanguage}.
 
 Business: ${businessName}
 Category: ${category}
@@ -280,7 +291,7 @@ Location: ${analysis.detectedLocation || 'Berlin'}
 Website Description: ${analysis.metaDescription}
 Hero Message: ${analysis.heroText}
 
-Use this category-optimized template as a starting point:
+Use this category-optimized template for structure:
 - Hook (4s): "${template.hook}"
 - Showcase (8s): "${template.showcase}"
 - CTA (5s): "${template.cta}"
@@ -289,19 +300,19 @@ Use this category-optimized template as a starting point:
 Generate 3 scenes following hook→showcase→CTA structure.
 Each scene needs:
 - duration: seconds for this scene
-- imagePrompt: Detailed image generation prompt (include style, lighting, mood)
-- narration: What the voiceover says (conversational, not robotic)
-- subtitle: Short text overlay
+- imagePrompt: Detailed image generation prompt (Must stay in English for the image generator)
+- narration: What the voiceover says (in ${targetLanguage}, conversational)
+- subtitle: Short text overlay (in ${targetLanguage})
 - role: "hook", "showcase", or "cta"
 
 Also generate:
-- coreMessage: One-line tagline with emoji
-- musicStyle: Music mood that fits (e.g., "warm-acoustic-local")
-- caption: Instagram caption with hashtags
+- coreMessage: One-line tagline (in ${targetLanguage})
+- musicStyle: Music mood that fits (in English)
+- caption: Instagram caption (in ${targetLanguage})
 
 Return JSON:
 {
-  "coreMessage": "Business Name: tagline with emoji",
+  "coreMessage": "...",
   "scenes": [
     { "duration": 4, "imagePrompt": "...", "narration": "...", "subtitle": "...", "role": "hook" },
     { "duration": 8, "imagePrompt": "...", "narration": "...", "subtitle": "...", "role": "showcase" },
@@ -327,6 +338,7 @@ Return JSON:
             scenes: result.scenes,
             musicStyle: result.musicStyle,
             caption: result.caption,
+            language,
             compliance: {
                 source: 'public-website',
                 consent: true,

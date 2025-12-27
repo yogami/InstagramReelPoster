@@ -62,6 +62,10 @@ export interface ReelJobInput {
     forceMode?: ForceMode;
     /** Website promo input (alternative to sourceAudioUrl/transcript) */
     websitePromoInput?: WebsitePromoInput;
+    /** Optional language for the reel (e.g., 'en', 'de') */
+    language?: string;
+    /** Optional voice ID for TTS synthesis */
+    voiceId?: string;
 }
 
 /**
@@ -136,6 +140,8 @@ export interface ReelJob {
     // Phase 2 Growth Layer:
     /** Optimized hook plan */
     hookPlan?: HookPlan;
+    /** Voice ID used for TTS synthesis */
+    voiceId?: string;
     /** Expanded caption body (re-generated for virality) */
     captionBody?: string;
     /** Array of optimized hashtags */
@@ -160,6 +166,8 @@ export interface ReelJob {
     promoScriptPlan?: PromoScriptPlan;
     /** Forced generation mode */
     forceMode?: ForceMode;
+    /** Language for the reel */
+    language?: string;
 
     /** Timestamps */
     createdAt: Date;
@@ -217,6 +225,8 @@ export function createReelJob(
         reelMode: input.reelMode,
         forceMode: input.forceMode,
         websitePromoInput: hasWebsitePromo ? input.websitePromoInput : undefined,
+        language: input.language || 'en',
+        voiceId: input.voiceId,
         createdAt: now,
         updatedAt: now,
     };

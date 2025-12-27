@@ -8,7 +8,8 @@ import { Segment } from '../../../src/domain/entities/Segment';
 jest.mock('../../../src/config', () => ({
     getConfig: jest.fn(() => ({
         speakingRateWps: 1.66,
-        makeWebhookUrl: 'https://hook.make.com/test'
+        makeWebhookUrl: 'https://hook.make.com/test',
+        fishAudioPromoVoiceId: 'promo-voice-123'
     }))
 }));
 
@@ -24,7 +25,9 @@ describe('ReelOrchestrator', () => {
             getJob: jest.fn(),
             updateJob: jest.fn(),
             createJob: jest.fn(),
-            getAllJobs: jest.fn()
+            getAllJobs: jest.fn(),
+            updateStatus: jest.fn(),
+            failJob: jest.fn()
         } as any;
 
         mockDeps = {
@@ -304,6 +307,65 @@ describe('ReelOrchestrator', () => {
 
             expect(mockDeps.fallbackImageClient.generateImage).toHaveBeenCalled();
             expect(result[0].imageUrl).toContain('fallback');
+        });
+    });
+
+    describe('renderPromoReel', () => {
+        const promoScript: any = {
+            caption: 'Promo caption',
+            coreMessage: 'Core message',
+            scenes: [
+                { duration: 5, narration: 'Scene 1', imagePrompt: 'Prompt 1', subtitle: 'Sub 1', role: 'hook' }
+            ],
+            musicStyle: 'upbeat'
+        };
+
+        const job: any = {
+            id: 'job-promo',
+            websitePromoInput: { websiteUrl: 'https://test.com' }
+        };
+
+        beforeEach(() => {
+            mockJobManager.getJob.mockResolvedValue(job);
+            mockJobManager.updateJob.mockResolvedValue(job);
+            // mock preparePromoAssets to avoid depth
+            (orchestrator as any).preparePromoAssets = jest.fn().mockResolvedValue({
+                voiceoverUrl: 'vo-url',
+                voiceoverDuration: 5,
+                musicUrl: 'music-url',
+                musicDurationSeconds: 5,
+                segmentsWithImages: [{ index: 0, startSeconds: 0, endSeconds: 5, imageUrl: 'img-url', commentary: 'test' }]
+            });
+            (orchestrator as any).finalizePromoJob = jest.fn().mockResolvedValue(job);
+        });
+
+        test('should use job.voiceId if provided', async () => {
+            const promoJob = { ...job, voiceId: 'custom-voice-999' };
+            await (orchestrator as any).renderPromoReel('job-promo', promoJob, promoScript, 'service', 'Test Biz');
+
+            expect((orchestrator as any).preparePromoAssets).toHaveBeenCalledWith(
+                expect.anything(),
+                expect.anything(),
+                expect.anything(),
+                expect.anything(),
+                expect.anything(),
+                promoScript,
+                'custom-voice-999'
+            );
+        });
+
+        test('should fall back to fishAudioPromoVoiceId from config if job.voiceId is missing', async () => {
+            await (orchestrator as any).renderPromoReel('job-promo', job, promoScript, 'service', 'Test Biz');
+
+            expect((orchestrator as any).preparePromoAssets).toHaveBeenCalledWith(
+                expect.anything(),
+                expect.anything(),
+                expect.anything(),
+                expect.anything(),
+                expect.anything(),
+                promoScript,
+                'promo-voice-123'
+            );
         });
     });
 });

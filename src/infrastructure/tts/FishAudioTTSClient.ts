@@ -36,7 +36,7 @@ export class FishAudioTTSClient implements ITTSClient {
                 `${this.baseUrl}/v1/tts`,
                 {
                     text: text.trim(),
-                    reference_id: this.voiceId,
+                    reference_id: options?.voiceId || this.voiceId,
                     format: options?.format || 'mp3',
                     speed: options?.speed || 1.0,
                     pitch: options?.pitch || 1.0,

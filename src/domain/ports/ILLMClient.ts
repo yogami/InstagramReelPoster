@@ -232,7 +232,8 @@ export interface ILLMClient {
     selectMusicTags?(
         transcript: string,
         mood: string,
-        culture?: string
+        culture?: string,
+        context?: string
     ): Promise<string[]>;
 
     // ============================================
@@ -260,6 +261,7 @@ export interface ILLMClient {
         analysis: WebsiteAnalysis,
         category: BusinessCategory,
         template: CategoryPromptTemplate,
-        businessName: string
+        businessName: string,
+        language: string
     ): Promise<PromoScriptPlan>;
 }

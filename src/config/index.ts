@@ -20,6 +20,7 @@ export interface Config {
     fishAudioApiKey: string;
     fishAudioBaseUrl: string;
     fishAudioVoiceId: string;
+    fishAudioPromoVoiceId: string;
 
     // Telegram & Callbacks
     telegramBotToken: string;
@@ -146,6 +147,7 @@ export function loadConfig(): Config {
         fishAudioApiKey: getEnvVar('FISH_AUDIO_API_KEY'),
         fishAudioBaseUrl: getEnvVar('FISH_AUDIO_BASE_URL', 'https://api.fish.audio'),
         fishAudioVoiceId: getEnvVar('FISH_AUDIO_VOICE_ID'),
+        fishAudioPromoVoiceId: getEnvVar('FISH_AUDIO_PROMO_VOICE_ID', '88b18e0d81474a0ca08e2ea6f9df5ff4'),
 
         // Music Catalog
         musicCatalogApiKey: getEnvVar('MUSIC_CATALOG_API_KEY', ''),

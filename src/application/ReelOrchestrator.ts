@@ -24,6 +24,7 @@ import {
     WebsiteAnalysis,
     PromoScriptPlan,
     PromoSceneContent,
+    WebsitePromoInput,
 } from '../domain/entities/WebsitePromo';
 import { IWebsiteScraperClient } from '../domain/ports/IWebsiteScraperClient';
 import { getPromptTemplate, getMusicStyle, detectCategoryFromKeywords } from '../infrastructure/llm/CategoryPrompts';
@@ -390,7 +391,8 @@ export class ReelOrchestrator {
                 const fullCommentary = segmentContent.map((s) => s.commentary).join(' ');
                 const { voiceoverUrl, voiceoverDuration, speed } = await this.synthesizeWithAdjustment(
                     fullCommentary,
-                    plan.targetDurationSeconds
+                    plan.targetDurationSeconds,
+                    job.voiceId
                 );
                 console.log(`[${jobId}] Voiceover generated: duration=${voiceoverDuration}s`);
 
@@ -791,15 +793,16 @@ export class ReelOrchestrator {
      */
     private async synthesizeWithAdjustment(
         text: string,
-        targetDuration: number
+        targetDuration: number,
+        voiceId?: string
     ): Promise<{ voiceoverUrl: string; voiceoverDuration: number; speed: number }> {
         // First pass at normal speed
         let result: any;
         let speed = 1.0;
 
         try {
-            console.log('[TTS] Attempting synthesis with primary client (Fish Audio)...');
-            result = await this.deps.ttsClient.synthesize(text);
+            console.log(`[TTS] Attempting synthesis with primary client (Fish Audio)...${voiceId ? ` (Voice: ${voiceId})` : ''}`);
+            result = await this.deps.ttsClient.synthesize(text, { voiceId });
         } catch (error: any) {
             console.error('[TTS] ❌ Primary TTS (Fish Audio) failed. Falling back to OpenAI.');
             console.error(`[TTS] Error Details: ${error.message}`);
@@ -823,7 +826,7 @@ export class ReelOrchestrator {
             if (speed !== 1.0) {
                 try {
                     console.log(`[TTS] Applying speed adjustment (${speed.toFixed(2)}x) with pitch 0.9...`);
-                    result = await this.deps.ttsClient.synthesize(text, { speed, pitch: 0.9 });
+                    result = await this.deps.ttsClient.synthesize(text, { speed, pitch: 0.9, voiceId });
                 } catch (error: any) {
                     console.warn('[TTS] ⚠️ Primary TTS speed adjustment failed:', error.message);
 
@@ -1122,7 +1125,7 @@ export class ReelOrchestrator {
      */
     private async detectCategoryForPromo(
         jobId: string,
-        websiteInput: { category?: BusinessCategory },
+        websiteInput: WebsitePromoInput,
         websiteAnalysis: WebsiteAnalysis
     ): Promise<BusinessCategory> {
         if (websiteInput.category) {
@@ -1159,7 +1162,7 @@ export class ReelOrchestrator {
      */
     private async generatePromoContent(
         jobId: string,
-        websiteInput: { businessName?: string },
+        websiteInput: WebsitePromoInput,
         websiteAnalysis: WebsiteAnalysis,
         category: BusinessCategory
     ): Promise<{ promoScript: PromoScriptPlan; businessName: string }> {
@@ -1173,7 +1176,7 @@ export class ReelOrchestrator {
         }
 
         const promoScript = await this.deps.llmClient.generatePromoScript(
-            websiteAnalysis, category, template, businessName
+            websiteAnalysis, category, template, businessName, websiteInput.language || 'en'
         );
         await this.deps.jobManager.updateJob(jobId, { promoScriptPlan: promoScript });
         console.log(`[${jobId}] Promo script generated: "${promoScript.coreMessage}" with ${promoScript.scenes.length} scenes`);
@@ -1201,17 +1204,18 @@ export class ReelOrchestrator {
             transcript: `Website Promo: ${promoScript.coreMessage}`,
         });
 
-        // Prepare all assets (voiceover, music, images, subtitles)
-        const assets = await this.preparePromoAssets(jobId, segmentContent, fullCommentary, targetDuration, category);
+        // Prepare all assets (voiceover, music, images)
+        const config = getConfig();
+        const promoVoiceId = job.voiceId || config.fishAudioPromoVoiceId;
+        const assets = await this.preparePromoAssets(jobId, segmentContent, fullCommentary, targetDuration, category, promoScript, promoVoiceId);
 
         // Build manifest
         const manifest = createReelManifest({
             durationSeconds: assets.voiceoverDuration,
             voiceoverUrl: assets.voiceoverUrl,
-            musicUrl: assets.musicUrl,
             musicDurationSeconds: assets.musicDurationSeconds,
             segments: assets.segmentsWithImages,
-            subtitlesUrl: assets.subtitlesUrl,
+            subtitlesUrl: '', // Disabled for promo
         });
 
         // Finalize and return completed job
@@ -1229,25 +1233,25 @@ export class ReelOrchestrator {
         }));
     }
 
-    /**
-     * Prepares all assets for promo reel (voiceover, music, images, subtitles).
-     */
     private async preparePromoAssets(
         jobId: string,
         segmentContent: SegmentContent[],
         fullCommentary: string,
         targetDuration: number,
-        category: BusinessCategory
+        category: BusinessCategory,
+        promoScript?: PromoScriptPlan,
+        voiceId?: string
     ) {
         // Synthesize voiceover
         await this.updateJobStatus(jobId, 'synthesizing_voiceover', 'Creating voiceover...');
-        const { voiceoverUrl, voiceoverDuration } = await this.synthesizeWithAdjustment(fullCommentary, targetDuration);
+        const { voiceoverUrl, voiceoverDuration } = await this.synthesizeWithAdjustment(fullCommentary, targetDuration, voiceId);
         await this.deps.jobManager.updateJob(jobId, { voiceoverUrl, voiceoverDurationSeconds: voiceoverDuration, fullCommentary });
 
         // Select music
         await this.updateJobStatus(jobId, 'selecting_music', 'Selecting background music...');
         const musicStyle = getMusicStyle(category);
-        const musicResult = await this.deps.musicSelector.selectMusic([musicStyle], voiceoverDuration, `${category} promo`);
+        const musicContext = promoScript ? `Business: ${promoScript.businessName}, Category: ${category}, Tone: ${promoScript.musicStyle}` : `${category} promo`;
+        const musicResult = await this.deps.musicSelector.selectMusic([musicStyle], voiceoverDuration, musicContext);
         const musicUrl = musicResult?.track?.audioUrl;
         const musicDurationSeconds = musicResult?.track?.durationSeconds;
         if (musicUrl) {
@@ -1260,12 +1264,12 @@ export class ReelOrchestrator {
         const segmentsWithImages = await this.generateImages(segments, jobId);
         await this.deps.jobManager.updateJob(jobId, { segments: segmentsWithImages });
 
-        // Generate subtitles
-        await this.updateJobStatus(jobId, 'generating_subtitles', 'Creating subtitles...');
-        const subtitlesResult = await this.deps.subtitlesClient.generateSubtitles(voiceoverUrl);
-        await this.deps.jobManager.updateJob(jobId, { subtitlesUrl: subtitlesResult.subtitlesUrl });
+        // Generate subtitles (Disabled for promo reels per user request)
+        // await this.updateJobStatus(jobId, 'generating_subtitles', 'Creating subtitles...');
+        // const subtitlesResult = await this.deps.subtitlesClient.generateSubtitles(voiceoverUrl);
+        // await this.deps.jobManager.updateJob(jobId, { subtitlesUrl: subtitlesResult.subtitlesUrl });
 
-        return { voiceoverUrl, voiceoverDuration, musicUrl, musicDurationSeconds, segmentsWithImages, subtitlesUrl: subtitlesResult.subtitlesUrl };
+        return { voiceoverUrl, voiceoverDuration, musicUrl, musicDurationSeconds, segmentsWithImages };
     }
 
     /**

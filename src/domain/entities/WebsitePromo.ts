@@ -30,6 +30,8 @@ export interface WebsitePromoInput {
     category?: BusinessCategory;
     /** User consent to scrape the website (REQUIRED for legal compliance) */
     consent: boolean;
+    /** Output language for the promo reel (e.g., 'en', 'de') */
+    language?: string;
 }
 
 /**
@@ -108,6 +110,8 @@ export interface PromoScriptPlan {
         consent: boolean;
         scrapedAt: Date;
     };
+    /** Generation language */
+    language: string;
 }
 
 /**

@@ -18,6 +18,8 @@ export interface TTSOptions {
     format?: 'mp3' | 'wav' | 'ogg';
     /** Pitch adjustment (0.5 - 2.0 range, default 1.0) */
     pitch?: number;
+    /** Optional voice ID override */
+    voiceId?: string;
 }
 
 /**

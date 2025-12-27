@@ -63,10 +63,7 @@ export function createReelManifest(params: {
     if (!params.voiceoverUrl.trim()) {
         throw new Error('Manifest voiceoverUrl cannot be empty');
     }
-    // Music is optional - no validation needed
-    if (!params.subtitlesUrl.trim()) {
-        throw new Error('Manifest subtitlesUrl cannot be empty');
-    }
+    // Music and subtitles are optional - no validation needed
 
     let manifestSegments: ManifestSegment[] | undefined;
 
