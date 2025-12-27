@@ -72,6 +72,19 @@ export interface Config {
     // Pixabay
     pixabayApiKey: string;
 
+    // Beam.cloud (Primary Image Generation)
+    beamcloudApiKey: string;
+    beamcloudEndpointUrl: string;
+    beamcloudEnabled: boolean;
+
+    // Beam.cloud (Primary Video Generation)
+    beamcloudVideoEndpointUrl: string;
+    beamcloudVideoEnabled: boolean;
+
+    // Beam.cloud (FFmpeg Video Rendering)
+    beamcloudRenderEndpointUrl: string;
+    beamcloudRenderEnabled: boolean;
+
     // Personal Clone Feature Flags
     featureFlags: {
         usePersonalCloneTTS: boolean;  // Use local XTTS v2 instead of Fish Audio
@@ -198,6 +211,19 @@ export function loadConfig(): Config {
 
         // Pixabay
         pixabayApiKey: getEnvVar('PIXABAY_API_KEY', ''),
+
+        // Beam.cloud (Primary Image Generation)
+        beamcloudApiKey: getEnvVar('BEAMCLOUD_API_KEY', ''),
+        beamcloudEndpointUrl: getEnvVar('BEAMCLOUD_ENDPOINT_URL', 'https://app.beam.cloud/endpoint/flux1-image'),
+        beamcloudEnabled: getEnvVarBoolean('BEAMCLOUD_ENABLED', false),
+
+        // Beam.cloud (Primary Video Generation)
+        beamcloudVideoEndpointUrl: getEnvVar('BEAMCLOUD_VIDEO_ENDPOINT_URL', ''),
+        beamcloudVideoEnabled: getEnvVarBoolean('BEAMCLOUD_VIDEO_ENABLED', false),
+
+        // Beam.cloud (FFmpeg Video Rendering)
+        beamcloudRenderEndpointUrl: getEnvVar('BEAMCLOUD_RENDER_ENDPOINT_URL', ''),
+        beamcloudRenderEnabled: getEnvVarBoolean('BEAMCLOUD_RENDER_ENABLED', false),
 
         // Personal Clone Feature Flags (all default to false - non-breaking)
         featureFlags: {

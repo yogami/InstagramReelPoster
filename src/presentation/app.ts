@@ -12,12 +12,18 @@ import { FishAudioTTSClient } from '../infrastructure/tts/FishAudioTTSClient';
 import { InMemoryMusicCatalogClient } from '../infrastructure/music/InMemoryMusicCatalogClient';
 import { KieMusicGeneratorClient } from '../infrastructure/music/KieMusicGeneratorClient';
 import { OpenRouterImageClient } from '../infrastructure/images/OpenRouterImageClient';
+import { BeamcloudImageClient } from '../infrastructure/images/BeamcloudImageClient';
+import { FallbackImageClient } from '../infrastructure/images/FallbackImageClient';
 import { OpenAIImageClient } from '../infrastructure/images/OpenAIImageClient';
 import { PixabayImageClient } from '../infrastructure/images/PixabayImageClient';
 import { OpenAISubtitlesClient } from '../infrastructure/subtitles/OpenAISubtitlesClient';
 import { ShortstackVideoRenderer } from '../infrastructure/video/ShortstackVideoRenderer';
 import { FFmpegVideoRenderer } from '../infrastructure/video/FFmpegVideoRenderer';
 import { KieVideoClient } from '../infrastructure/video/KieVideoClient';
+import { BeamcloudVideoClient } from '../infrastructure/video/BeamcloudVideoClient';
+import { FallbackVideoClient } from '../infrastructure/video/FallbackVideoClient';
+import { BeamcloudVideoRenderer } from '../infrastructure/video/BeamcloudVideoRenderer';
+import { FallbackVideoRenderer } from '../infrastructure/video/FallbackVideoRenderer';
 import { CloudinaryStorageClient } from '../infrastructure/storage/CloudinaryStorageClient';
 import { WebsiteScraperClient } from '../infrastructure/scraper/WebsiteScraperClient';
 import { TelegramService } from './services/TelegramService';
@@ -142,11 +148,27 @@ function createDependencies(config: Config): {
     if (!config.openrouterApiKey) {
         throw new Error('OPENROUTER_API_KEY is required for image generation');
     }
-    const imageClient = new OpenRouterImageClient(
+
+    // Create OpenRouter client (always needed as fallback)
+    const openRouterClient = new OpenRouterImageClient(
         config.openrouterApiKey,
         config.openrouterModel,
         config.openrouterBaseUrl
     );
+
+    // Use Beam.cloud FLUX1 as primary when enabled, with OpenRouter as fallback
+    let imageClient;
+    if (config.beamcloudEnabled && config.beamcloudApiKey && config.beamcloudEndpointUrl) {
+        const beamClient = new BeamcloudImageClient(
+            config.beamcloudApiKey,
+            config.beamcloudEndpointUrl
+        );
+        imageClient = new FallbackImageClient(beamClient, openRouterClient, 'Beam.cloud FLUX1', 'OpenRouter');
+        console.log('✅ Image generation: Beam.cloud FLUX1 (primary) → OpenRouter (fallback)');
+    } else {
+        imageClient = openRouterClient;
+        console.log('✅ Image generation: OpenRouter (primary)');
+    }
 
     // Fallback Image Client (Pixabay = Free, OpenRouter = Paid)
     const fallbackImageClient = config.pixabayApiKey
@@ -159,20 +181,32 @@ function createDependencies(config: Config): {
 
     // Video Renderer Selection
     let videoRenderer: IVideoRenderer;
+
     if (config.videoRenderer === 'ffmpeg') {
+        // Local FFmpeg (legacy/dev mode)
         if (!cloudinaryClient) {
-            console.error('❌ FFmpeg renderer requires Cloudinary for hosting the result. Falling back to Shortstack (if configured) or erroring.');
-            // Fallback logic could go here, but strict failure is better for debugging
-            throw new Error('FFmpeg renderer requires Cloudinary configuration (CLOUDINARY_CLOUD_NAME, etc.)');
+            throw new Error('FFmpeg renderer requires Cloudinary configuration');
         }
         console.log('🎥 Using FFmpeg Video Renderer (Local)');
         videoRenderer = new FFmpegVideoRenderer(cloudinaryClient);
     } else {
-        console.log('🎥 Using Shotstack Video Renderer (Cloud)');
-        videoRenderer = new ShortstackVideoRenderer(
+        // Cloud Renderers
+        const shotstackRenderer = new ShortstackVideoRenderer(
             config.shotstackApiKey,
             config.shotstackBaseUrl
         );
+
+        if (config.beamcloudRenderEnabled && config.beamcloudApiKey && config.beamcloudRenderEndpointUrl) {
+            const beamRenderer = new BeamcloudVideoRenderer(
+                config.beamcloudApiKey,
+                config.beamcloudRenderEndpointUrl
+            );
+            videoRenderer = new FallbackVideoRenderer(beamRenderer, shotstackRenderer, 'Beam.cloud FFmpeg', 'Shotstack');
+            console.log('🎥 Video rendering: Beam.cloud FFmpeg (primary) → Shotstack (fallback)');
+        } else {
+            videoRenderer = shotstackRenderer;
+            console.log('🎥 Video rendering: Shotstack (primary)');
+        }
     }
 
     // Music clients
@@ -207,9 +241,23 @@ function createDependencies(config: Config): {
         ? new TelegramNotificationClient(telegramService)
         : undefined;
 
-    const animatedVideoClient = config.kieApiKey
+    // Animated Video Client - Beam.cloud (primary) with Kie.ai (fallback)
+    let animatedVideoClient;
+    const kieVideoClient = config.kieApiKey
         ? new KieVideoClient(config.kieApiKey, config.kieVideoBaseUrl, config.kieVideoModel)
         : new MockAnimatedVideoClient();
+
+    if (config.beamcloudVideoEnabled && config.beamcloudApiKey && config.beamcloudVideoEndpointUrl) {
+        const beamVideoClient = new BeamcloudVideoClient(
+            config.beamcloudApiKey,
+            config.beamcloudVideoEndpointUrl
+        );
+        animatedVideoClient = new FallbackVideoClient(beamVideoClient, kieVideoClient, 'Beam.cloud Mochi', 'Kie.ai');
+        console.log('✅ Video generation: Beam.cloud Mochi (primary) → Kie.ai (fallback)');
+    } else {
+        animatedVideoClient = kieVideoClient;
+        console.log('✅ Video generation: Kie.ai (primary)');
+    }
 
     // Phase 2: Growth Layer Services
     const hookAndStructureService = new HookAndStructureService(llmClient);
