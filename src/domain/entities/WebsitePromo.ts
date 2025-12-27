@@ -97,6 +97,10 @@ export interface WebsitePromoInput {
     language?: string;
     /** User-provided media (base64 data URIs or URLs) - used with highest priority */
     providedMedia?: string[];
+    /** Company logo URL to be included in the reel */
+    logoUrl?: string;
+    /** Where to place the logo (beginning, end, or overlay) */
+    logoPosition?: 'beginning' | 'end' | 'overlay';
 }
 
 /**
@@ -118,6 +122,12 @@ export interface WebsiteAnalysis {
     detectedBusinessName?: string;
     /** Detected location (e.g., Berlin, Kreuzberg) */
     detectedLocation?: string;
+    /** Scraped address from footer or contact page */
+    address?: string;
+    /** Scraped opening hours */
+    openingHours?: string;
+    /** Scraped logo URL */
+    logoUrl?: string;
     /** Raw keywords extracted for category detection */
     keywords: string[];
     /** The original URL that was scraped */
@@ -185,6 +195,10 @@ export interface PromoScriptPlan {
     };
     /** Generation language */
     language: string;
+    /** Company logo URL */
+    logoUrl?: string;
+    /** Company logo position */
+    logoPosition?: 'beginning' | 'end' | 'overlay';
 }
 
 /**

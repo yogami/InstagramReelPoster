@@ -285,10 +285,15 @@ export class WebsiteScraperClient implements IWebsiteScraperClient {
         const ogSiteName = ogSiteNameMatch ? this.cleanText(ogSiteNameMatch[1]) : '';
 
         const heroText = h1Text || title;
-        const bodyText = this.extractBodyText(html).toLowerCase();
-        const keywords = this.extractKeywords(bodyText);
+        const bodyTextRaw = this.extractBodyText(html);
+        const bodyTextLower = bodyTextRaw.toLowerCase();
+
+        const keywords = this.extractKeywords(bodyTextLower);
         const detectedBusinessName = this.detectBusinessName(ogSiteName, title, heroText);
-        const detectedLocation = this.detectLocation(bodyText);
+        const detectedLocation = this.detectLocation(bodyTextLower);
+        const logoUrl = this.detectLogo(html, sourceUrl);
+        const address = this.detectAddress(bodyTextRaw);
+        const openingHours = this.detectOpeningHours(bodyTextRaw);
 
         return {
             heroText,
@@ -296,6 +301,9 @@ export class WebsiteScraperClient implements IWebsiteScraperClient {
             keywords,
             detectedBusinessName,
             detectedLocation,
+            address,
+            openingHours,
+            logoUrl,
             sourceUrl,
         };
     }
@@ -502,5 +510,67 @@ export class WebsiteScraperClient implements IWebsiteScraperClient {
 
         // Limit to top 10 images
         return images.slice(0, 10);
+    }
+
+    /**
+     * Detects logo URL from HTML.
+     */
+    private detectLogo(html: string, sourceUrl: string): string | undefined {
+        const logoPatterns = [
+            /<img[^>]+src=["']([^"']+)["'][^>]*class=["'][^"']*logo[^"']*["']/i,
+            /<img[^>]+class=["'][^"']*logo[^"']*["'][^>]*src=["']([^"']+)["']/i,
+            /<img[^>]+src=["']([^"']+)["'][^>]*id=["'][^"']*logo[^"']*["']/i,
+            /<link[^>]+rel=["']icon["'][^>]*href=["']([^"']+)["']/i,
+            /<link[^>]+rel=["']shortcut icon["'][^>]*href=["']([^"']+)["']/i,
+        ];
+
+        for (const pattern of logoPatterns) {
+            const match = html.match(pattern);
+            if (match) {
+                let src = match[1];
+                try {
+                    return new URL(src, sourceUrl).href;
+                } catch {
+                    // continue
+                }
+            }
+        }
+        return undefined;
+    }
+
+    /**
+     * Detects address from text content.
+     */
+    private detectAddress(text: string): string | undefined {
+        // Look for pattern: <Street> <Number>, <Zip> <City>
+        // Regex for detecting German-style address snippet
+        // Example: "Friedrichstr. 123, 10117 Berlin"
+        const addressPattern = /([A-ZÄÖÜ][a-zäöüß\s.-]+\s\d+[a-z]?,\s*\d{5}\s*[A-ZÄÖÜ][a-zäöüß]+)/;
+        const match = text.match(addressPattern);
+        if (match) {
+            return match[1];
+        }
+
+        // Fallback: Look for "Address:" label
+        const labelMatch = text.match(/(?:address|anschrift|standort)[:\s]+([^.]+)/i);
+        if (labelMatch) {
+            return labelMatch[1].substring(0, 100).trim();
+        }
+
+        return undefined;
+    }
+
+    /**
+     * Detects opening hours.
+     */
+    private detectOpeningHours(text: string): string | undefined {
+        // Look for "Opening Hours" or "Öffnungszeiten" block
+        const startMatch = text.match(/(?:opening hours|öffnungszeiten)[:\s]*/i);
+        if (startMatch) {
+            const index = startMatch.index! + startMatch[0].length;
+            // Grab next 150 chars as it might contain multiple days
+            return text.substring(index, index + 150).split(/[.!]/)[0].trim();
+        }
+        return undefined;
     }
 }

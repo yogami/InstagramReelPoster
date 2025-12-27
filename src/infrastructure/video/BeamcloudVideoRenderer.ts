@@ -50,6 +50,7 @@ export class BeamcloudVideoRenderer implements IVideoRenderer {
                     music_duration_seconds: manifest.musicDurationSeconds || null,
                     logo_url: manifest.logoUrl || null,
                     logo_position: manifest.logoPosition || null,
+                    branding: manifest.branding || null,
                 },
                 {
                     headers: {

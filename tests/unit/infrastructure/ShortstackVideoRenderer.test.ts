@@ -211,6 +211,46 @@ describe('ShortstackVideoRenderer', () => {
             const musicTrack = capturedPayload.timeline.tracks[2];
             expect(musicTrack.clips.length).toBe(3); // 45s / 20s = 3 clips needed
         });
+
+        it('should include logo track when logoUrl is provided', async () => {
+            const renderer = new ShortstackVideoRenderer(apiKey, baseUrl, 100, 5);
+            const manifest: ReelManifest = {
+                ...createTestManifest(),
+                logoUrl: 'https://example.com/logo.png',
+                logoPosition: 'end',
+            };
+
+            let capturedPayload: any;
+            nock(baseUrl)
+                .post('/render', (body) => {
+                    capturedPayload = body;
+                    return true;
+                })
+                .reply(200, { response: { id: 'render-logo' } });
+
+            nock(baseUrl)
+                .get('/render/render-logo')
+                .reply(200, { response: { status: 'done', url: 'https://test.com/video.mp4' } });
+
+            await renderer.render(manifest);
+
+            // With subtitles and voiceover and music, tracks are: 
+            // 0: Captions, 1: Logo, 2: Voiceover, 3: Music, 4: Visuals
+            // Wait, let's check the order in the code.
+            /*
+            const tracks = [];
+            if (manifest.logoUrl) tracks.push({ clips: [logoClip] });
+            if (manifest.subtitlesUrl) tracks.push({ clips: [captionClip] });
+            tracks.push({ clips: [voiceoverClip] });
+            if (musicClips.length > 0) tracks.push({ clips: musicClips });
+            tracks.push(visualTrack);
+            */
+            const logoTrack = capturedPayload.timeline.tracks[0];
+            expect(logoTrack.clips[0].asset.src).toBe('https://example.com/logo.png');
+            expect(logoTrack.clips[0].position).toBe('topRight');
+            expect(logoTrack.clips[0].start).toBe(10); // 15s duration - 5s
+            expect(logoTrack.clips[0].length).toBe(5);
+        });
     });
 
     describe('Rate limiting and retries', () => {

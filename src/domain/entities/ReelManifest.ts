@@ -37,6 +37,13 @@ export interface ReelManifest {
     logoUrl?: string;
     /** Where to place the logo (beginning, end, or overlay) */
     logoPosition?: 'beginning' | 'end' | 'overlay';
+    /** Branding details for info slides (address, hours, etc.) */
+    branding?: {
+        logoUrl: string;
+        businessName: string;
+        address?: string;
+        hours?: string;
+    };
 }
 
 /**

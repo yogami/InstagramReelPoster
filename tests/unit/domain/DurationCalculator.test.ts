@@ -43,29 +43,29 @@ describe('DurationCalculator', () => {
     });
 
     describe('calculateTargetWordCount', () => {
-        it('should calculate word count for target duration (targeting 98% safety)', () => {
-            // 10 * 0.98 * 2.5 = 24.5 -> floor = 24
+        it('should calculate word count for target duration (targeting 99% safety)', () => {
+            // 10 * 0.99 * 2.5 = 24.75 -> floor = 24
             expect(calculateTargetWordCount(10, 2.5)).toBe(24);
-            // 30 * 0.98 * 2.0 = 58.8 -> floor = 58
-            expect(calculateTargetWordCount(30, 2.0)).toBe(58);
+            // 30 * 0.99 * 2.0 = 59.4 -> floor = 59
+            expect(calculateTargetWordCount(30, 2.0)).toBe(59);
         });
 
         it('should use floor to ensure no overshoot', () => {
-            // 10 * 0.98 * 2.3 = 22.54 -> floor = 22
+            // 10 * 0.99 * 2.3 = 22.77 -> floor = 22
             expect(calculateTargetWordCount(10, 2.3)).toBe(22);
         });
     });
 
     describe('isDurationWithinTolerance', () => {
-        it('should return true when within default tolerance of 1.5s', () => {
+        it('should return true when within default tolerance of 0.5s', () => {
             expect(isDurationWithinTolerance(30, 30)).toBe(true);
-            expect(isDurationWithinTolerance(31.5, 30)).toBe(true);
-            expect(isDurationWithinTolerance(28.5, 30)).toBe(true);
+            expect(isDurationWithinTolerance(30.5, 30)).toBe(true);
+            expect(isDurationWithinTolerance(29.5, 30)).toBe(true);
         });
 
         it('should return false when outside default tolerance', () => {
-            expect(isDurationWithinTolerance(32, 30)).toBe(false);
-            expect(isDurationWithinTolerance(28, 30)).toBe(false);
+            expect(isDurationWithinTolerance(31, 30)).toBe(false);
+            expect(isDurationWithinTolerance(29, 30)).toBe(false);
         });
 
         it('should use custom tolerance', () => {
@@ -106,17 +106,17 @@ describe('DurationCalculator', () => {
     });
 
     describe('needsTextAdjustment', () => {
-        it('should return "ok" when within [95%, 100%] range (default 5% tolerance)', () => {
+        it('should return "ok" when within [97%, 100%] range (default 3% tolerance)', () => {
             expect(needsTextAdjustment(30, 30)).toBe('ok');
-            expect(needsTextAdjustment(28.5, 30)).toBe('ok'); // -5% is boundary
+            expect(needsTextAdjustment(29.1, 30)).toBe('ok'); // -3% is boundary
         });
 
         it('should return "shorter" even for small overshoots', () => {
             expect(needsTextAdjustment(30.1, 30)).toBe('shorter');
         });
 
-        it('should return "longer" when text is below 95%', () => {
-            expect(needsTextAdjustment(28.4, 30)).toBe('longer');
+        it('should return "longer" when text is below 97%', () => {
+            expect(needsTextAdjustment(29, 30)).toBe('longer');
         });
 
         it('should return "shorter" when text is too long', () => {

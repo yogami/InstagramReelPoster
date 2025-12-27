@@ -39,6 +39,7 @@ interface ShotstackClip {
         out?: 'fade' | 'reveal' | 'wipeLeft' | 'wipeRight' | 'slideLeft' | 'slideRight' | 'slideUp' | 'slideDown' | 'carouselLeft' | 'carouselRight' | 'carouselUp' | 'carouselDown' | 'shuffleTopRight' | 'shuffleRightTop' | 'shuffleRightBottom' | 'shuffleBottomRight' | 'shuffleBottomLeft' | 'shuffleLeftBottom' | 'shuffleLeftTop' | 'shuffleTopLeft' | 'zoom';
     };
     effect?: 'zoomIn' | 'zoomOut' | 'slideLeft' | 'slideRight' | 'slideUp' | 'slideDown';
+    scale?: number;
     offset?: {
         x?: number;
         y?: number;
@@ -282,6 +283,34 @@ export class ShortstackVideoRenderer implements IVideoRenderer {
 
         // Build tracks
         const tracks: { clips: ShotstackClip[] }[] = [];
+
+        // Track: Logo (top layer)
+        if (manifest.logoUrl) {
+            const logoClip: ShotstackClip = {
+                asset: {
+                    type: 'image',
+                    src: manifest.logoUrl,
+                },
+                start: manifest.logoPosition === 'end'
+                    ? Math.max(0, manifest.durationSeconds - 5)
+                    : 0,
+                length: manifest.logoPosition === 'overlay'
+                    ? manifest.durationSeconds
+                    : (manifest.logoPosition === 'end' ? 5 : 3),
+                position: 'topRight',
+                offset: {
+                    x: -0.05,
+                    y: 0.05
+                },
+                transition: {
+                    in: 'fade',
+                    out: 'fade'
+                },
+                fit: 'contain',
+                scale: 0.2
+            };
+            tracks.push({ clips: [logoClip] });
+        }
 
         // Track: Captions/Subtitles (top layer)
         if (manifest.subtitlesUrl) {

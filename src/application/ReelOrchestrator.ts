@@ -821,13 +821,17 @@ export class ReelOrchestrator {
             }
         }
 
-        // Check if we need speed adjustment
-        const diff = Math.abs(result.durationSeconds - targetDuration);
-        if (diff > 1.5) {
+        // Check if we need speed adjustment (Strict: 95-100% of target)
+        const deviation = (result.durationSeconds - targetDuration) / targetDuration;
+        const absDiff = Math.abs(result.durationSeconds - targetDuration);
+
+        // Adjust if deviation > 0 (too long) or deviation < -0.05 (too short, <95%)
+        // OR if absolute difference is more than 0.5s for short reels
+        if (deviation > 0 || deviation < -0.04 || absDiff > 0.5) {
             speed = calculateSpeedAdjustment(result.durationSeconds, targetDuration);
             if (speed !== 1.0) {
                 try {
-                    console.log(`[TTS] Applying speed adjustment (${speed.toFixed(2)}x) with pitch 0.9...`);
+                    console.log(`[TTS] Applying speed adjustment (${speed.toFixed(2)}x) to hit target ${targetDuration}s (current: ${result.durationSeconds.toFixed(2)}s)...`);
                     result = await this.deps.ttsClient.synthesize(text, { speed, pitch: 0.9, voiceId });
                 } catch (error: any) {
                     console.warn('[TTS] ⚠️ Primary TTS speed adjustment failed:', error.message);
@@ -1188,6 +1192,13 @@ export class ReelOrchestrator {
         const promoScript = await this.deps.llmClient.generatePromoScript(
             websiteAnalysis, category, template, businessName, websiteInput.language || 'en'
         );
+
+        // Include logo from input if present
+        if (websiteInput.logoUrl) {
+            promoScript.logoUrl = websiteInput.logoUrl;
+            promoScript.logoPosition = websiteInput.logoPosition || 'end';
+        }
+
         await this.deps.jobManager.updateJob(jobId, { promoScriptPlan: promoScript });
         console.log(`[${jobId}] Promo script generated: "${promoScript.coreMessage}" with ${promoScript.scenes.length} scenes`);
 
@@ -1226,6 +1237,8 @@ export class ReelOrchestrator {
             musicDurationSeconds: assets.musicDurationSeconds,
             segments: assets.segmentsWithImages,
             subtitlesUrl: '', // Disabled for promo
+            logoUrl: promoScript.logoUrl,
+            logoPosition: promoScript.logoPosition,
         });
 
         // Finalize and return completed job
@@ -1377,6 +1390,18 @@ export class ReelOrchestrator {
         businessName: string
     ): Promise<ReelJob> {
         await this.updateJobStatus(jobId, 'building_manifest', 'Preparing final video...');
+        const websiteAnalysis = job.websiteAnalysis;
+
+        // Populate branding for Info Slides if we have data
+        if (websiteAnalysis) {
+            manifest.branding = {
+                logoUrl: websiteAnalysis.logoUrl || manifest.logoUrl || '',
+                businessName: businessName,
+                address: websiteAnalysis.address,
+                hours: websiteAnalysis.openingHours,
+            };
+        }
+
         await this.deps.jobManager.updateJob(jobId, { manifest });
 
         await this.updateJobStatus(jobId, 'rendering', 'Rendering final video...');

@@ -93,6 +93,33 @@ describe('WebsiteScraperClient', () => {
             expect(result.detectedLocation).toBe('Kreuzberg');
         });
 
+        it('should extract branding (logo, address, opening hours)', async () => {
+            nock('https://branding-test.de')
+                .get('/')
+                .reply(200, `
+                    <html>
+                        <head>
+                            <title>Branding Test</title>
+                        </head>
+                        <body>
+                            <img src="/assets/logo-main.png" class="header-logo" alt="Logo">
+                            <p class="address">Address: Musterstraße 42, 10115 Berlin</p>
+                            <div class="hours">
+                                Opening Hours:
+                                Mon-Fri: 9:00 - 18:00
+                                Sat: 10:00 - 16:00
+                            </div>
+                        </body>
+                    </html>
+                `);
+
+            const result = await client.scrapeWebsite('https://branding-test.de/');
+
+            expect(result.logoUrl).toBe('https://branding-test.de/assets/logo-main.png');
+            expect(result.address).toContain('Musterstraße 42, 10115 Berlin');
+            expect(result.openingHours).toContain('Mon-Fri: 9:00 - 18:00');
+        });
+
         it('should extract business name from og:site_name', async () => {
             nock('https://fancy-restaurant.de')
                 .get('/')
