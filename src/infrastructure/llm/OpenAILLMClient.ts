@@ -281,6 +281,16 @@ Return JSON with format: { "category": "cafe|gym|shop|service|restaurant|studio"
         };
         const targetLanguage = langMap[language] || 'English';
 
+        // Build Site DNA context for the prompt
+        const siteDNA = analysis.siteDNA;
+        const siteDNAContext = siteDNA ? `
+SITE DNA ANALYSIS (Use these insights to create higher-converting content):
+- Pain Score: ${siteDNA.painScore}/10 ${siteDNA.painScore >= 7 ? '(High pain awareness - lean into problem/solution framing)' : siteDNA.painScore >= 4 ? '(Moderate - balance problem/solution)' : '(Low - focus on benefits)'}
+- Trust Signals: ${siteDNA.trustSignals.length > 0 ? siteDNA.trustSignals.slice(0, 3).join(', ') : 'None found'}
+- Urgency: ${siteDNA.urgency || 'None detected'}
+${analysis.testimonialsContent?.quotes?.length ? `- Top Testimonial: "${analysis.testimonialsContent.quotes[0]}"` : ''}
+` : '';
+
         const prompt = `Create a 17-second Instagram Reel promo script for this business.
         
 CRITICAL: The script (narration, caption, coreMessage) MUST be in ${targetLanguage}.
@@ -290,12 +300,17 @@ Category: ${category}
 Location: ${analysis.detectedLocation || 'Berlin'}
 Website Description: ${analysis.metaDescription}
 Hero Message: ${analysis.heroText}
-
+${siteDNAContext}
 Use this category-optimized template for structure:
 - Hook (4s): "${template.hook}"
 - Showcase (8s): "${template.showcase}"
 - CTA (5s): "${template.cta}"
 - Visual style: ${template.visuals}
+
+INSTRUCTIONS:
+${siteDNA && siteDNA.painScore >= 7 ? '- Start with a pain-point hook that resonates with the customer wound' : '- Start with a curiosity-driven hook'}
+${siteDNA && siteDNA.trustSignals.length > 0 ? '- Incorporate social proof in the showcase section' : ''}
+${siteDNA && siteDNA.urgency ? `- End with urgency: "${siteDNA.urgency}"` : '- End with a clear call-to-action'}
 
 Generate 3 scenes following hook→showcase→CTA structure.
 Each scene needs:
@@ -322,7 +337,7 @@ Return JSON:
   "caption": "..."
 }`;
 
-        const systemPrompt = 'You are a viral Instagram Reels producer specializing in local business promos. Your content is engaging, punchy, and drives action.';
+        const systemPrompt = 'You are a viral Instagram Reels producer specializing in local business promos. Your content is engaging, punchy, and drives action. You understand consumer psychology and use pain points, trust signals, and urgency to create high-converting content.';
         const response = await this.openAIService.chatCompletion(prompt, systemPrompt, { jsonMode: true });
         const result = this.openAIService.parseJSON<{
             coreMessage: string;

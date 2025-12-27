@@ -28,6 +28,7 @@ import {
 } from '../domain/entities/WebsitePromo';
 import { IWebsiteScraperClient } from '../domain/ports/IWebsiteScraperClient';
 import { getPromptTemplate, getMusicStyle, detectCategoryFromKeywords } from '../infrastructure/llm/CategoryPrompts';
+import { SemanticAnalyzer } from '../infrastructure/analysis/SemanticAnalyzer';
 
 import { ITranscriptionClient } from '../domain/ports/ITranscriptionClient';
 import { ILLMClient, ReelPlan, SegmentContent } from '../domain/ports/ILLMClient';
@@ -1113,9 +1114,17 @@ export class ReelOrchestrator {
             throw new Error('WebsiteScraperClient is required for website promo mode');
         }
 
-        const websiteAnalysis = await this.deps.websiteScraperClient.scrapeWebsite(websiteUrl);
+        // Enable multi-page scraping for richer Site DNA
+        const websiteAnalysis = await this.deps.websiteScraperClient.scrapeWebsite(websiteUrl, {
+            includeSubpages: true,
+        });
+
+        // Perform Semantic DNA analysis
+        const semanticAnalyzer = new SemanticAnalyzer();
+        websiteAnalysis.siteDNA = semanticAnalyzer.analyzeSiteDNA(websiteAnalysis);
+
         await this.deps.jobManager.updateJob(jobId, { websiteAnalysis });
-        console.log(`[${jobId}] Website scraped: hero="${websiteAnalysis.heroText}"`);
+        console.log(`[${jobId}] Website scraped: hero="${websiteAnalysis.heroText}", painScore=${websiteAnalysis.siteDNA?.painScore}, trustSignals=${websiteAnalysis.siteDNA?.trustSignals.length}`);
 
         return websiteAnalysis;
     }

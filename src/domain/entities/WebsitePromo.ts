@@ -19,6 +19,50 @@ export type BusinessCategory =
     | 'studio';
 
 /**
+ * Site DNA - Psychological analysis of business website.
+ * Scores and signals used for higher-converting promo generation.
+ */
+export interface SiteDNA {
+    /** Pain score (0-10) - How well the site communicates customer problems */
+    painScore: number;
+
+    /** Trust signals extracted from site (testimonials, ratings, client counts, press mentions) */
+    trustSignals: string[];
+
+    /** Urgency trigger if found (e.g., "Limited spots", "Book now", countdown detected) */
+    urgency: string | null;
+
+    /** Confidence score for the DNA analysis (0-1) */
+    confidence: number;
+}
+
+/**
+ * Content from pricing page analysis.
+ */
+export interface PricingContent {
+    /** Pain points mentioned on pricing page */
+    painPoints: string[];
+    /** Pricing tiers if found */
+    pricingTiers: string[];
+    /** Raw text content */
+    rawText: string;
+}
+
+/**
+ * Content from testimonials page analysis.
+ */
+export interface TestimonialsContent {
+    /** Extracted testimonial quotes */
+    quotes: string[];
+    /** Star ratings found (e.g., "4.9/5") */
+    starRatings: string[];
+    /** Client counts (e.g., "500+ clients") */
+    clientCounts: string[];
+    /** Press mentions (e.g., "Featured in TechCrunch") */
+    pressMentions: string[];
+}
+
+/**
  * Input for creating a website promo reel job.
  */
 export interface WebsitePromoInput {
@@ -45,6 +89,10 @@ export interface WebsiteAnalysis {
     metaDescription: string;
     /** About page content (if found) */
     aboutContent?: string;
+    /** Content from /pricing page if scraped */
+    pricingContent?: PricingContent;
+    /** Content from /testimonials page if scraped */
+    testimonialsContent?: TestimonialsContent;
     /** Detected business name from meta tags or title */
     detectedBusinessName?: string;
     /** Detected location (e.g., Berlin, Kreuzberg) */
@@ -53,6 +101,8 @@ export interface WebsiteAnalysis {
     keywords: string[];
     /** The original URL that was scraped */
     sourceUrl: string;
+    /** Semantic Site DNA analysis */
+    siteDNA?: SiteDNA;
 }
 
 /**

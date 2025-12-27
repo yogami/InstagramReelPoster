@@ -94,7 +94,7 @@ export function createReelRoutes(
     router.post(
         '/website',
         asyncHandler(async (req: Request, res: Response) => {
-            const { website, businessName, category, consent, callbackUrl } = req.body;
+            const { website, businessName, category, consent, callbackUrl, language } = req.body;
 
             // Validate website URL
             if (!website || typeof website !== 'string') {
@@ -126,6 +126,7 @@ export function createReelRoutes(
                     businessName,
                     category,
                     consent: true,
+                    language,
                 },
                 callbackUrl: callbackUrl || config.makeWebhookUrl,
                 forceMode: 'website-promo',

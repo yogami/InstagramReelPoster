@@ -148,6 +148,170 @@ describe('WebsiteScraperClient', () => {
         });
     });
 
+    describe('multi-page scraping', () => {
+        it('should scrape /about page when includeSubpages is true', async () => {
+            nock('https://business.de')
+                .get('/')
+                .reply(200, `
+                    <html>
+                        <head><title>Business</title></head>
+                        <body><h1>Welcome</h1></body>
+                    </html>
+                `)
+                .get('/about')
+                .reply(200, `
+                    <html>
+                        <body>
+                            <p>We have been serving customers since 2010. Our team of experts is dedicated to quality.</p>
+                        </body>
+                    </html>
+                `);
+
+            const result = await client.scrapeWebsite('https://business.de/', { includeSubpages: true });
+
+            expect(result.aboutContent).toBeDefined();
+            expect(result.aboutContent).toContain('serving customers since 2010');
+        });
+
+        it('should scrape /pricing page and extract pain points', async () => {
+            nock('https://business.de')
+                .get('/')
+                .reply(200, `
+                    <html>
+                        <head><title>Business</title></head>
+                        <body><h1>Welcome</h1></body>
+                    </html>
+                `)
+                .get('/pricing')
+                .reply(200, `
+                    <html>
+                        <body>
+                            <p>Tired of wasting money? Frustrated with slow results?</p>
+                            <div class="tier">Basic - $10/mo</div>
+                            <div class="tier">Pro - $25/mo</div>
+                        </body>
+                    </html>
+                `);
+
+            const result = await client.scrapeWebsite('https://business.de/', { includeSubpages: true });
+
+            expect(result.pricingContent).toBeDefined();
+            expect(result.pricingContent?.rawText).toContain('wasting money');
+        });
+
+        it('should scrape /testimonials page and extract trust signals', async () => {
+            nock('https://business.de')
+                .get('/')
+                .reply(200, `
+                    <html>
+                        <head><title>Business</title></head>
+                        <body><h1>Welcome</h1></body>
+                    </html>
+                `)
+                .get('/testimonials')
+                .reply(200, `
+                    <html>
+                        <body>
+                            <div class="testimonial">"Great service, highly recommend!" - John D.</div>
+                            <div class="rating">4.9 out of 5 stars</div>
+                            <p>500+ satisfied customers</p>
+                            <p>Featured in TechCrunch</p>
+                        </body>
+                    </html>
+                `);
+
+            const result = await client.scrapeWebsite('https://business.de/', { includeSubpages: true });
+
+            expect(result.testimonialsContent).toBeDefined();
+            expect(result.testimonialsContent?.starRatings).toContain('4.9 out of 5 stars');
+            expect(result.testimonialsContent?.clientCounts).toContain('500+ satisfied customers');
+            expect(result.testimonialsContent?.pressMentions).toContain('Featured in TechCrunch');
+        });
+
+        it('should gracefully handle 404 on subpages', async () => {
+            nock('https://business.de')
+                .get('/')
+                .reply(200, `
+                    <html>
+                        <head><title>Business</title></head>
+                        <body><h1>Welcome</h1></body>
+                    </html>
+                `)
+                .get('/about')
+                .reply(404)
+                .get('/pricing')
+                .reply(404)
+                .get('/testimonials')
+                .reply(404);
+
+            const result = await client.scrapeWebsite('https://business.de/', { includeSubpages: true });
+
+            expect(result.heroText).toBe('Welcome');
+            expect(result.aboutContent).toBeUndefined();
+            expect(result.pricingContent).toBeUndefined();
+            expect(result.testimonialsContent).toBeUndefined();
+        });
+
+        it('should not scrape subpages when includeSubpages is false', async () => {
+            nock('https://business.de')
+                .get('/')
+                .reply(200, `
+                    <html>
+                        <head><title>Business</title></head>
+                        <body><h1>Welcome</h1></body>
+                    </html>
+                `);
+
+            const result = await client.scrapeWebsite('https://business.de/', { includeSubpages: false });
+
+            expect(result.heroText).toBe('Welcome');
+            expect(result.aboutContent).toBeUndefined();
+            expect(result.pricingContent).toBeUndefined();
+            expect(result.testimonialsContent).toBeUndefined();
+        });
+    });
+
+    describe('testimonial extraction', () => {
+        it('should extract quotes from testimonial blocks', async () => {
+            nock('https://business.de')
+                .get('/')
+                .reply(200, '<html><head><title>Biz</title></head><body><h1>Hi</h1></body></html>')
+                .get('/testimonials')
+                .reply(200, `
+                    <html>
+                        <body>
+                            <blockquote>"This changed my life!" - Sarah</blockquote>
+                            <div class="quote">"Amazing product, would buy again!"</div>
+                        </body>
+                    </html>
+                `);
+
+            const result = await client.scrapeWebsite('https://business.de/', { includeSubpages: true });
+
+            expect(result.testimonialsContent?.quotes.length).toBeGreaterThan(0);
+        });
+
+        it('should extract star ratings in various formats', async () => {
+            nock('https://business.de')
+                .get('/')
+                .reply(200, '<html><head><title>Biz</title></head><body><h1>Hi</h1></body></html>')
+                .get('/testimonials')
+                .reply(200, `
+                    <html>
+                        <body>
+                            <span>4.9/5 stars</span>
+                            <span>5 out of 5</span>
+                            <span>Rating: 4.8/5</span>
+                        </body>
+                    </html>
+                `);
+
+            const result = await client.scrapeWebsite('https://business.de/', { includeSubpages: true });
+
+            expect(result.testimonialsContent?.starRatings.length).toBeGreaterThanOrEqual(1);
+        });
+    });
+
     describe('error handling', () => {
         it('should throw error for invalid URL', async () => {
             await expect(client.scrapeWebsite('not-a-valid-url'))

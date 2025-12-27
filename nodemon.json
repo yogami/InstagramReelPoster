@@ -1,0 +1,11 @@
+{
+    "ignore": [
+        "data/*",
+        "tests/*",
+        "coverage/*"
+    ],
+    "watch": [
+        "src"
+    ],
+    "ext": "ts,json"
+}

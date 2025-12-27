@@ -1,6 +1,10 @@
 import axios from 'axios';
-import { IWebsiteScraperClient } from '../../domain/ports/IWebsiteScraperClient';
-import { WebsiteAnalysis } from '../../domain/entities/WebsitePromo';
+import { IWebsiteScraperClient, ScrapeOptions } from '../../domain/ports/IWebsiteScraperClient';
+import {
+    WebsiteAnalysis,
+    PricingContent,
+    TestimonialsContent,
+} from '../../domain/entities/WebsitePromo';
 
 /**
  * Website scraper client using axios + cheerio for HTML parsing.
@@ -18,7 +22,7 @@ export class WebsiteScraperClient implements IWebsiteScraperClient {
     /**
      * Scrapes a website for business information.
      */
-    async scrapeWebsite(url: string): Promise<WebsiteAnalysis> {
+    async scrapeWebsite(url: string, options?: ScrapeOptions): Promise<WebsiteAnalysis> {
         if (!url || !this.isValidUrl(url)) {
             throw new Error('Invalid website URL provided');
         }
@@ -35,7 +39,13 @@ export class WebsiteScraperClient implements IWebsiteScraperClient {
             });
 
             const html = response.data;
-            return this.parseHtml(html, url);
+            const analysis = this.parseHtml(html, url);
+
+            if (options?.includeSubpages) {
+                await this.scrapeSubpages(url, analysis);
+            }
+
+            return analysis;
         } catch (error) {
             if (axios.isAxiosError(error)) {
                 if (error.code === 'ECONNABORTED') {
@@ -54,39 +64,226 @@ export class WebsiteScraperClient implements IWebsiteScraperClient {
     }
 
     /**
+     * Scrapes subpages (/about, /pricing, /testimonials) with error tolerance.
+     */
+    private async scrapeSubpages(baseUrl: string, analysis: WebsiteAnalysis): Promise<void> {
+        const base = new URL(baseUrl);
+        const baseOrigin = base.origin;
+
+        const subpagePromises = [
+            this.scrapeSubpage(`${baseOrigin}/about`),
+            this.scrapeSubpage(`${baseOrigin}/pricing`),
+            this.scrapeSubpage(`${baseOrigin}/testimonials`),
+        ];
+
+        const [aboutHtml, pricingHtml, testimonialsHtml] = await Promise.all(subpagePromises);
+
+        if (aboutHtml) {
+            analysis.aboutContent = this.extractBodyText(aboutHtml);
+        }
+
+        if (pricingHtml) {
+            analysis.pricingContent = this.extractPricingContent(pricingHtml);
+        }
+
+        if (testimonialsHtml) {
+            analysis.testimonialsContent = this.extractTestimonials(testimonialsHtml);
+        }
+    }
+
+    /**
+     * Scrapes a subpage with error tolerance (returns null on failure).
+     */
+    private async scrapeSubpage(url: string): Promise<string | null> {
+        try {
+            const response = await axios.get(url, {
+                headers: {
+                    'User-Agent': this.userAgent,
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                    'Accept-Language': 'en-US,en;q=0.5',
+                },
+                timeout: this.timeout,
+                maxRedirects: 3,
+            });
+            return response.data;
+        } catch {
+            return null;
+        }
+    }
+
+    /**
+     * Extracts pricing content from pricing page HTML.
+     */
+    private extractPricingContent(html: string): PricingContent {
+        const rawText = this.extractBodyText(html);
+        const painPoints = this.extractPainPoints(rawText);
+        const pricingTiers = this.extractPricingTiers(html);
+
+        return {
+            painPoints,
+            pricingTiers,
+            rawText,
+        };
+    }
+
+    /**
+     * Extracts pain points from text content.
+     */
+    private extractPainPoints(text: string): string[] {
+        const painPhrases = [
+            /tired\s+of\s+([^.?!]+)/gi,
+            /frustrated\s+with\s+([^.?!]+)/gi,
+            /struggling\s+to\s+([^.?!]+)/gi,
+            /wasting\s+([^.?!]+)/gi,
+            /losing\s+([^.?!]+)/gi,
+        ];
+
+        const painPoints: string[] = [];
+        for (const phrase of painPhrases) {
+            let match;
+            while ((match = phrase.exec(text)) !== null) {
+                painPoints.push(match[0].trim());
+            }
+        }
+
+        return painPoints;
+    }
+
+    /**
+     * Extracts pricing tiers from HTML.
+     */
+    private extractPricingTiers(html: string): string[] {
+        const tiers: string[] = [];
+        const tierPattern = /\$\d+(?:\.\d{2})?(?:\/(?:mo|month|yr|year))?/gi;
+        let match;
+        while ((match = tierPattern.exec(html)) !== null) {
+            tiers.push(match[0]);
+        }
+        return tiers;
+    }
+
+    /**
+     * Extracts testimonial content from testimonials page HTML.
+     */
+    private extractTestimonials(html: string): TestimonialsContent {
+        const rawText = this.extractBodyText(html);
+        const quotes = this.extractQuotes(html);
+        const starRatings = this.extractStarRatings(rawText);
+        const clientCounts = this.extractClientCounts(rawText);
+        const pressMentions = this.extractPressMentions(rawText);
+
+        return {
+            quotes,
+            starRatings,
+            clientCounts,
+            pressMentions,
+        };
+    }
+
+    /**
+     * Extracts quotes from testimonial HTML.
+     */
+    private extractQuotes(html: string): string[] {
+        const quotes: string[] = [];
+
+        const blockquotePattern = /<blockquote[^>]*>([^<]+)<\/blockquote>/gi;
+        let match;
+        while ((match = blockquotePattern.exec(html)) !== null) {
+            quotes.push(this.cleanText(match[1]));
+        }
+
+        const quotePattern = /"([^"]{20,200})"/g;
+        const text = this.extractBodyText(html);
+        while ((match = quotePattern.exec(text)) !== null) {
+            if (!quotes.includes(match[1])) {
+                quotes.push(match[1]);
+            }
+        }
+
+        return quotes;
+    }
+
+    /**
+     * Extracts star ratings from text.
+     */
+    private extractStarRatings(text: string): string[] {
+        const ratings: string[] = [];
+        const patterns = [
+            /\d+(?:\.\d+)?\s*(?:out\s+of\s+)?\/?5\s*stars?/gi,
+            /\d+(?:\.\d+)?\/5/gi,
+        ];
+
+        for (const pattern of patterns) {
+            let match;
+            while ((match = pattern.exec(text)) !== null) {
+                const rating = match[0].trim();
+                if (!ratings.includes(rating)) {
+                    ratings.push(rating);
+                }
+            }
+        }
+
+        return ratings;
+    }
+
+    /**
+     * Extracts client count mentions from text.
+     */
+    private extractClientCounts(text: string): string[] {
+        const counts: string[] = [];
+        const pattern = /\d+\+?\s*(?:satisfied|happy)?\s*(?:clients?|customers?|users?)/gi;
+
+        let match;
+        while ((match = pattern.exec(text)) !== null) {
+            counts.push(match[0].trim());
+        }
+
+        return counts;
+    }
+
+    /**
+     * Extracts press mentions from text.
+     */
+    private extractPressMentions(text: string): string[] {
+        const mentions: string[] = [];
+        const patterns = [
+            /featured\s+in\s+\w+/gi,
+            /as\s+seen\s+on\s+\w+/gi,
+        ];
+
+        for (const pattern of patterns) {
+            let match;
+            while ((match = pattern.exec(text)) !== null) {
+                mentions.push(match[0].trim());
+            }
+        }
+
+        return mentions;
+    }
+
+    /**
      * Parses HTML content to extract business information.
      * Note: This is a lightweight implementation without cheerio dependency.
      * For production, consider adding cheerio for more robust parsing.
      */
     private parseHtml(html: string, sourceUrl: string): WebsiteAnalysis {
-        // Extract title
         const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
         const title = titleMatch ? this.cleanText(titleMatch[1]) : '';
 
-        // Extract H1 (first one)
         const h1Match = html.match(/<h1[^>]*>([^<]+)<\/h1>/i);
         const h1Text = h1Match ? this.cleanText(h1Match[1]) : '';
 
-        // Extract meta description
         const metaDescMatch = html.match(/<meta[^>]*name=["']description["'][^>]*content=["']([^"']+)["']/i)
             || html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*name=["']description["']/i);
         const metaDescription = metaDescMatch ? this.cleanText(metaDescMatch[1]) : '';
 
-        // Extract og:site_name for business name
         const ogSiteNameMatch = html.match(/<meta[^>]*property=["']og:site_name["'][^>]*content=["']([^"']+)["']/i);
         const ogSiteName = ogSiteNameMatch ? this.cleanText(ogSiteNameMatch[1]) : '';
 
-        // Get hero text (prefer H1, fallback to title)
         const heroText = h1Text || title;
-
-        // Extract keywords from body text for category detection
         const bodyText = this.extractBodyText(html).toLowerCase();
         const keywords = this.extractKeywords(bodyText);
-
-        // Detect business name
         const detectedBusinessName = this.detectBusinessName(ogSiteName, title, heroText);
-
-        // Detect location
         const detectedLocation = this.detectLocation(bodyText);
 
         return {
@@ -103,12 +300,9 @@ export class WebsiteScraperClient implements IWebsiteScraperClient {
      * Extracts readable text from HTML body.
      */
     private extractBodyText(html: string): string {
-        // Remove script and style tags
         let text = html.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '');
         text = text.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '');
-        // Remove all HTML tags
         text = text.replace(/<[^>]+>/g, ' ');
-        // Clean up whitespace
         text = text.replace(/\s+/g, ' ').trim();
         return text;
     }
@@ -133,17 +327,11 @@ export class WebsiteScraperClient implements IWebsiteScraperClient {
     /**
      * Detects business name from various sources.
      */
-    private detectBusinessName(
-        ogSiteName: string,
-        title: string,
-        heroText: string
-    ): string | undefined {
-        // Prefer og:site_name
+    private detectBusinessName(ogSiteName: string, title: string, heroText: string): string | undefined {
         if (ogSiteName) {
             return ogSiteName;
         }
 
-        // Try to extract from title (often "Business Name | Tagline" or "Business Name - Location")
         if (title) {
             const parts = title.split(/[|\-–—]/);
             if (parts.length > 0) {
@@ -151,7 +339,6 @@ export class WebsiteScraperClient implements IWebsiteScraperClient {
             }
         }
 
-        // Fallback to hero text if short enough
         if (heroText && heroText.length < 50) {
             return heroText;
         }
@@ -163,7 +350,6 @@ export class WebsiteScraperClient implements IWebsiteScraperClient {
      * Detects location from text content.
      */
     private detectLocation(text: string): string | undefined {
-        // Berlin-specific districts
         const berlinDistricts = [
             'kreuzberg', 'neukölln', 'mitte', 'prenzlauer berg', 'friedrichshain',
             'charlottenburg', 'schöneberg', 'wedding', 'tempelhof', 'steglitz',
@@ -175,7 +361,6 @@ export class WebsiteScraperClient implements IWebsiteScraperClient {
             }
         }
 
-        // Generic "berlin" detection
         if (text.includes('berlin')) {
             return 'Berlin';
         }
