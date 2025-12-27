@@ -280,17 +280,26 @@ export class ShortstackVideoRenderer implements IVideoRenderer {
             }
         }
 
-        // Build tracks - only include music track if we have music clips
-        const tracks: { clips: ShotstackClip[] }[] = [
-            { clips: [captionClip] },    // Top: Subtitles
-            { clips: [voiceoverClip] },  // Middle: Voiceover audio
-            { clips: visualClips },      // Bottom: Visuals (Video or Images)
-        ];
+        // Build tracks
+        const tracks: { clips: ShotstackClip[] }[] = [];
+
+        // Track: Captions/Subtitles (top layer)
+        if (manifest.subtitlesUrl) {
+            tracks.push({ clips: [captionClip] });
+        }
+
+        // Track: Voiceover audio
+        tracks.push({ clips: [voiceoverClip] });
+
+        // Add visual track (Bottom: Visuals)
+        const visualTrack = { clips: visualClips };
 
         // Insert music track if available (between voiceover and images)
         if (musicClips.length > 0) {
-            tracks.splice(2, 0, { clips: musicClips });
+            tracks.push({ clips: musicClips }); // Music is usually below voiceover
         }
+
+        tracks.push(visualTrack);
 
         return {
             timeline: {
