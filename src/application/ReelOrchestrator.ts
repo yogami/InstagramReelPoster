@@ -25,6 +25,7 @@ import {
     PromoScriptPlan,
     PromoSceneContent,
     WebsitePromoInput,
+    ScrapedMedia,
 } from '../domain/entities/WebsitePromo';
 import { IWebsiteScraperClient } from '../domain/ports/IWebsiteScraperClient';
 import { getPromptTemplate, getMusicStyle, detectCategoryFromKeywords } from '../infrastructure/llm/CategoryPrompts';
@@ -1267,10 +1268,22 @@ export class ReelOrchestrator {
             await this.deps.jobManager.updateJob(jobId, { musicUrl, musicDurationSeconds, musicSource: musicResult.source });
         }
 
-        // Build segments and generate images
+        // Build segments and resolve media with prioritized sourcing
         const segments = this.buildSegments(segmentContent, voiceoverDuration);
         await this.updateJobStatus(jobId, 'generating_images', 'Creating visuals...');
-        const segmentsWithImages = await this.generateImages(segments, jobId);
+
+        // Resolve media for each scene (user > scraped > AI)
+        const scrapedMedia = promoScript?.compliance?.source === 'public-website'
+            ? (await this.deps.jobManager.getJob(jobId))?.websiteAnalysis?.scrapedMedia || []
+            : [];
+        const resolvedMedia = this.resolveMediaForScenes(
+            promoScript?.scenes || [],
+            [], // userMedia (not implemented in V1)
+            scrapedMedia
+        );
+
+        // Generate images only for scenes needing AI (gap fill)
+        const segmentsWithImages = await this.generateImagesWithPriority(segments, resolvedMedia, jobId);
         await this.deps.jobManager.updateJob(jobId, { segments: segmentsWithImages });
 
         // Generate subtitles (Disabled for promo reels per user request)
@@ -1279,6 +1292,76 @@ export class ReelOrchestrator {
         // await this.deps.jobManager.updateJob(jobId, { subtitlesUrl: subtitlesResult.subtitlesUrl });
 
         return { voiceoverUrl, voiceoverDuration, musicUrl, musicDurationSeconds, segmentsWithImages };
+    }
+
+    /**
+     * Generates images with priority sourcing.
+     * Uses pre-resolved media URLs when available, only generating AI images for gaps.
+     */
+    private async generateImagesWithPriority(
+        segments: Segment[],
+        resolvedMedia: (string | null)[],
+        jobId: string
+    ): Promise<Segment[]> {
+        console.log(`Generating images with priority sourcing for ${segments.length} segments...`);
+
+        const results: Segment[] = [];
+        for (let i = 0; i < segments.length; i++) {
+            const segment = segments[i];
+            const preResolvedUrl = resolvedMedia[i];
+
+            try {
+                let finalImageUrl = '';
+
+                if (preResolvedUrl) {
+                    // Use pre-resolved media (user-provided or scraped)
+                    finalImageUrl = preResolvedUrl;
+                    console.log(`[${jobId}] Segment ${i + 1}: Using pre-resolved media`);
+                } else {
+                    // Generate AI image (gap fill)
+                    await this.updateJobStatus(jobId, 'generating_images', `Creating visual ${i + 1} of ${segments.length} (AI)...`);
+                    if (this.deps.primaryImageClient) {
+                        try {
+                            const { imageUrl } = await this.deps.primaryImageClient.generateImage(segment.imagePrompt);
+                            finalImageUrl = imageUrl;
+                        } catch (primaryError) {
+                            console.warn(`Primary image client failed for segment ${i}, falling back:`, primaryError);
+                            const { imageUrl } = await this.deps.fallbackImageClient.generateImage(segment.imagePrompt);
+                            finalImageUrl = imageUrl;
+                        }
+                    } else {
+                        const { imageUrl } = await this.deps.fallbackImageClient.generateImage(segment.imagePrompt);
+                        finalImageUrl = imageUrl;
+                    }
+                }
+
+                // Upload to Cloudinary for permanent URLs (skip if already a cloud URL)
+                if (this.deps.storageClient && finalImageUrl && !finalImageUrl.includes('cloudinary.com')) {
+                    try {
+                        const uploadResult = await this.deps.storageClient.uploadImage(finalImageUrl, {
+                            folder: `instagram-reels/images/${jobId}`,
+                            publicId: `seg_${i}_${Date.now()}`
+                        });
+                        finalImageUrl = uploadResult.url;
+                    } catch (uploadError) {
+                        console.warn('Failed to upload image to Cloudinary, using original URL:', uploadError);
+                    }
+                }
+
+                results.push({ ...segment, imageUrl: finalImageUrl });
+            } catch (error) {
+                console.error(`Image generation failed for segment ${i}:`, error);
+                throw error;
+            }
+        }
+
+        // Wait for asset propagation
+        if (this.deps.storageClient) {
+            console.log('Waiting 2s for asset propagation...');
+            await new Promise(resolve => setTimeout(resolve, 2000));
+        }
+
+        return results;
     }
 
     /**
@@ -1329,6 +1412,60 @@ export class ReelOrchestrator {
         }
 
         throw error;
+    }
+
+    /**
+     * Resolves media assets for scenes using prioritized sourcing.
+     * Priority: user-provided > scraped website images > AI generation
+     * 
+     * @param scenes - The promo scenes needing images
+     * @param userMedia - Optional user-provided media URLs
+     * @param scrapedMedia - Images scraped from the website
+     * @returns Array of image URLs for each scene (null = needs AI generation)
+     */
+    resolveMediaForScenes(
+        scenes: PromoSceneContent[],
+        userMedia: string[] = [],
+        scrapedMedia: ScrapedMedia[] = []
+    ): (string | null)[] {
+        const resolvedMedia: (string | null)[] = [];
+        let userMediaIndex = 0;
+        let scrapedMediaIndex = 0;
+
+        for (let i = 0; i < scenes.length; i++) {
+            const scene = scenes[i];
+
+            // Priority 1: User-provided media
+            if (userMediaIndex < userMedia.length) {
+                resolvedMedia.push(userMedia[userMediaIndex]);
+                userMediaIndex++;
+                console.log(`[MediaResolver] Scene ${i + 1} (${scene.role}): Using user-provided media`);
+                continue;
+            }
+
+            // Priority 2: Scraped website images
+            if (scrapedMediaIndex < scrapedMedia.length) {
+                const scraped = scrapedMedia[scrapedMediaIndex];
+                resolvedMedia.push(scraped.url);
+                scrapedMediaIndex++;
+                console.log(`[MediaResolver] Scene ${i + 1} (${scene.role}): Using scraped image from ${scraped.sourcePage}`);
+                continue;
+            }
+
+            // Priority 3: AI generation (gap fill)
+            resolvedMedia.push(null);
+            console.log(`[MediaResolver] Scene ${i + 1} (${scene.role}): Will use AI generation (gap fill)`);
+        }
+
+        const stats = {
+            total: scenes.length,
+            userMedia: userMediaIndex,
+            scraped: scrapedMediaIndex - userMediaIndex > 0 ? scrapedMediaIndex - userMediaIndex : scrapedMediaIndex,
+            ai: resolvedMedia.filter(m => m === null).length,
+        };
+        console.log(`[MediaResolver] Summary: ${stats.userMedia} user, ${stats.scraped} scraped, ${stats.ai} AI-generated`);
+
+        return resolvedMedia;
     }
 
 }

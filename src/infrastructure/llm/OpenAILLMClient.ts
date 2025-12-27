@@ -266,7 +266,7 @@ Return JSON with format: { "category": "cafe|gym|shop|service|restaurant|studio"
     }
 
     /**
-     * Generates a promotional reel script from website content.
+     * Generates a promotional reel script from website content using a Truth-First cultural approach.
      */
     async generatePromoScript(
         analysis: WebsiteAnalysis,
@@ -276,54 +276,68 @@ Return JSON with format: { "category": "cafe|gym|shop|service|restaurant|studio"
         language: string
     ): Promise<PromoScriptPlan> {
         const langMap: Record<string, string> = {
-            'en': 'English',
-            'de': 'German'
+            'en': 'English (Expat/International Berlin style)',
+            'de': 'German (Local Berlin/Berliner Schnauze style)'
         };
         const targetLanguage = langMap[language] || 'English';
+
+        // Cultural Voice Definition
+        const culturalVoice = language === 'de'
+            ? `VOICE: "Berliner Schnauze" - Direct, honest, zero-fluff, slightly dry/witty, and professional but grounded. Avoid "hype" marketing. Be neighborly and straightforward.`
+            : `VOICE: "International Berlin" - Sophisticated, creative, edgy, high-standards, sharp but friendly. Avoid "American-style hype" or "fake energy". Focus on the "why" and authentic value.`;
 
         // Build Site DNA context for the prompt
         const siteDNA = analysis.siteDNA;
         const siteDNAContext = siteDNA ? `
-SITE DNA ANALYSIS (Use these insights to create higher-converting content):
-- Pain Score: ${siteDNA.painScore}/10 ${siteDNA.painScore >= 7 ? '(High pain awareness - lean into problem/solution framing)' : siteDNA.painScore >= 4 ? '(Moderate - balance problem/solution)' : '(Low - focus on benefits)'}
-- Trust Signals: ${siteDNA.trustSignals.length > 0 ? siteDNA.trustSignals.slice(0, 3).join(', ') : 'None found'}
+SITE DNA ANALYSIS:
+- Pain Score: ${siteDNA.painScore}/10 ${siteDNA.painScore >= 7 ? '(Customer has a deep wound - address it truthfully)' : '(Focus on the aspirational shift)'}
+- Trust Signals: ${siteDNA.trustSignals.length > 0 ? siteDNA.trustSignals.slice(0, 3).join(', ') : 'Rely on authentic voice'}
 - Urgency: ${siteDNA.urgency || 'None detected'}
-${analysis.testimonialsContent?.quotes?.length ? `- Top Testimonial: "${analysis.testimonialsContent.quotes[0]}"` : ''}
+${analysis.testimonialsContent?.quotes?.length ? `- Authentic Feedback: "${analysis.testimonialsContent.quotes[0]}"` : ''}
 ` : '';
 
-        const prompt = `Create a 17-second Instagram Reel promo script for this business.
+        const systemPrompt = `You are a high-end creative director designing non-cliché Instagram promos for Berlin-based businesses.
+        
+${culturalVoice}
+
+STYLE RULES:
+1. NO COOKIE-CUTTER HOOKS: Avoid "Struggling with X?" or "Are you tired of Y?".
+2. TRUTH-FIRST: Call out a reality or an industry lie that the business solves.
+3. NO HYPE: Avoid words like "unbelievable," "amazing," "one-of-a-kind," or "game changer."
+4. FOCUS ON THE "WHY": Why does this business exist in the neighborhood? What is the soul of the work?
+5. SHOW, DON'T SELL: Describe results and vibe over sales features.`;
+
+        const prompt = `Create a 17-second Instagram Reel promo script for "${businessName}".
         
 CRITICAL: The script (narration, caption, coreMessage) MUST be in ${targetLanguage}.
 
-Business: ${businessName}
-Category: ${category}
-Location: ${analysis.detectedLocation || 'Berlin'}
-Website Description: ${analysis.metaDescription}
-Hero Message: ${analysis.heroText}
+BUSINESS CONTEXT:
+- Category: ${category}
+- Location: ${analysis.detectedLocation || 'Berlin'}
+- Website Description: ${analysis.metaDescription}
+- Hero Message: ${analysis.heroText}
 ${siteDNAContext}
-Use this category-optimized template for structure:
-- Hook (4s): "${template.hook}"
-- Showcase (8s): "${template.showcase}"
-- CTA (5s): "${template.cta}"
-- Visual style: ${template.visuals}
 
-INSTRUCTIONS:
-${siteDNA && siteDNA.painScore >= 7 ? '- Start with a pain-point hook that resonates with the customer wound' : '- Start with a curiosity-driven hook'}
-${siteDNA && siteDNA.trustSignals.length > 0 ? '- Incorporate social proof in the showcase section' : ''}
-${siteDNA && siteDNA.urgency ? `- End with urgency: "${siteDNA.urgency}"` : '- End with a clear call-to-action'}
+INSPIRATION (Use these themes but REWRITE with the ${culturalVoice}):
+- Core Themes: ${template.showcase}
+- Desired Visual Sentiment: ${template.visuals}
 
-Generate 3 scenes following hook→showcase→CTA structure.
+STRUCTURE (17s Total):
+1. THE TRUTH HOOK (4s): Lead with a sharp, grounded perspective or a common local problem.
+2. THE SOUL (8s): Show the craftsmanship or the solved reality. Use the Site DNA.
+3. THE DIRECT CTA (5s): A clear, non-pushy invitation.
+
 Each scene needs:
-- duration: seconds for this scene
-- imagePrompt: Detailed image generation prompt (Must stay in English for the image generator)
-- narration: What the voiceover says (in ${targetLanguage}, conversational)
+- duration: seconds for this scene (Target 17s total)
+- imagePrompt: Detailed Midjourney-style prompt (English)
+- narration: Spoken text (in ${targetLanguage})
 - subtitle: Short text overlay (in ${targetLanguage})
 - role: "hook", "showcase", or "cta"
 
 Also generate:
-- coreMessage: One-line tagline (in ${targetLanguage})
-- musicStyle: Music mood that fits (in English)
-- caption: Instagram caption (in ${targetLanguage})
+- coreMessage: One-line tag (in ${targetLanguage})
+- musicStyle: Mood for the track (English)
+- caption: Instagram caption including 3 context-aware hashtags (in ${targetLanguage})
 
 Return JSON:
 {
@@ -337,7 +351,6 @@ Return JSON:
   "caption": "..."
 }`;
 
-        const systemPrompt = 'You are a viral Instagram Reels producer specializing in local business promos. Your content is engaging, punchy, and drives action. You understand consumer psychology and use pain points, trust signals, and urgency to create high-converting content.';
         const response = await this.openAIService.chatCompletion(prompt, systemPrompt, { jsonMode: true });
         const result = this.openAIService.parseJSON<{
             coreMessage: string;

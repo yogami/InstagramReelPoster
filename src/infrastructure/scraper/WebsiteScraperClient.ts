@@ -4,6 +4,7 @@ import {
     WebsiteAnalysis,
     PricingContent,
     TestimonialsContent,
+    ScrapedMedia,
 } from '../../domain/entities/WebsitePromo';
 
 /**
@@ -40,6 +41,9 @@ export class WebsiteScraperClient implements IWebsiteScraperClient {
 
             const html = response.data;
             const analysis = this.parseHtml(html, url);
+
+            // Extract images for prioritized sourcing
+            analysis.scrapedMedia = this.extractImages(html, url);
 
             if (options?.includeSubpages) {
                 await this.scrapeSubpages(url, analysis);
@@ -393,5 +397,110 @@ export class WebsiteScraperClient implements IWebsiteScraperClient {
         } catch {
             return false;
         }
+    }
+
+    /**
+     * Extracts images from HTML with quality filtering.
+     * Filters out icons, logos, and low-resolution images.
+     */
+    extractImages(html: string, sourceUrl: string): ScrapedMedia[] {
+        const images: ScrapedMedia[] = [];
+        const baseUrl = new URL(sourceUrl);
+
+        // Patterns to exclude (social icons, logos, tracking pixels)
+        const excludePatterns = [
+            /icon/i,
+            /logo/i,
+            /favicon/i,
+            /social/i,
+            /facebook|twitter|instagram|linkedin|youtube/i,
+            /sprite/i,
+            /pixel/i,
+            /tracking/i,
+            /badge/i,
+            /button/i,
+            /arrow/i,
+            /1x1/i,
+        ];
+
+        // Match img tags with src attribute
+        const imgPattern = /<img[^>]+src=["']([^"']+)["'][^>]*>/gi;
+        let match;
+
+        while ((match = imgPattern.exec(html)) !== null) {
+            const fullTag = match[0];
+            let src = match[1];
+
+            // Skip data URIs that are too small (likely icons)
+            if (src.startsWith('data:') && src.length < 1000) {
+                continue;
+            }
+
+            // Convert relative URLs to absolute
+            if (!src.startsWith('http') && !src.startsWith('data:')) {
+                try {
+                    src = new URL(src, baseUrl.origin).href;
+                } catch {
+                    continue;
+                }
+            }
+
+            // Check exclude patterns
+            const shouldExclude = excludePatterns.some(pattern => pattern.test(src));
+            if (shouldExclude) {
+                continue;
+            }
+
+            // Extract width/height if available
+            const widthMatch = fullTag.match(/width=["']?(\d+)/i);
+            const heightMatch = fullTag.match(/height=["']?(\d+)/i);
+            const altMatch = fullTag.match(/alt=["']([^"']+)["']/i);
+
+            const width = widthMatch ? parseInt(widthMatch[1], 10) : 0;
+            const height = heightMatch ? parseInt(heightMatch[1], 10) : 0;
+
+            // Skip if dimensions are known and too small (min 800x600)
+            if (width > 0 && height > 0 && (width < 800 || height < 600)) {
+                continue;
+            }
+
+            // Detect if this is a hero image (in header, first large image, or has hero-related class)
+            const isHero = /hero|banner|main|featured|header/i.test(fullTag);
+
+            images.push({
+                url: src,
+                width: width || 1920, // Default to HD if unknown
+                height: height || 1080,
+                altText: altMatch ? this.cleanText(altMatch[1]) : undefined,
+                sourcePage: sourceUrl,
+                isHero,
+            });
+        }
+
+        // Also extract og:image if present (usually high quality)
+        const ogImageMatch = html.match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i);
+        if (ogImageMatch) {
+            const ogImageUrl = ogImageMatch[1];
+            if (!images.some(img => img.url === ogImageUrl)) {
+                images.unshift({
+                    url: ogImageUrl,
+                    width: 1200, // OG images are typically 1200x630
+                    height: 630,
+                    altText: 'Open Graph Image',
+                    sourcePage: sourceUrl,
+                    isHero: true,
+                });
+            }
+        }
+
+        // Sort: hero images first, then by size (larger first)
+        images.sort((a, b) => {
+            if (a.isHero && !b.isHero) return -1;
+            if (!a.isHero && b.isHero) return 1;
+            return (b.width * b.height) - (a.width * a.height);
+        });
+
+        // Limit to top 10 images
+        return images.slice(0, 10);
     }
 }

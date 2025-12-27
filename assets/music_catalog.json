@@ -545,5 +545,98 @@
             "work",
             "flow-state"
         ]
+    },
+    {
+        "id": "ad-cafe-funkorama",
+        "title": "Funkorama",
+        "audioUrl": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Funkorama.mp3",
+        "durationSeconds": 150,
+        "tags": [
+            "cafe",
+            "upbeat",
+            "funk",
+            "lifestyle",
+            "advertisement",
+            "warm-acoustic-local"
+        ]
+    },
+    {
+        "id": "ad-gym-big-rock",
+        "title": "Big Rock",
+        "audioUrl": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Big%20Rock.mp3",
+        "durationSeconds": 140,
+        "tags": [
+            "gym",
+            "energetic-motivational",
+            "powerful",
+            "rock",
+            "advertisement",
+            "fitness"
+        ]
+    },
+    {
+        "id": "ad-shop-local-forecast",
+        "title": "Local Forecast",
+        "audioUrl": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Local%20Forecast.mp3",
+        "durationSeconds": 130,
+        "tags": [
+            "shop",
+            "upbeat-indie",
+            "quirky",
+            "retail",
+            "advertisement"
+        ]
+    },
+    {
+        "id": "ad-service-awesome-call",
+        "title": "Awesome Call",
+        "audioUrl": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Awesome%20Call.mp3",
+        "durationSeconds": 145,
+        "tags": [
+            "service",
+            "professional-ambient",
+            "corporate",
+            "positive",
+            "advertisement"
+        ]
+    },
+    {
+        "id": "ad-restaurant-sweeter-vermouth",
+        "title": "Sweeter Vermouth",
+        "audioUrl": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Sweeter%20Vermouth.mp3",
+        "durationSeconds": 160,
+        "tags": [
+            "restaurant",
+            "sophisticated-lounge",
+            "jazz",
+            "elegant",
+            "advertisement"
+        ]
+    },
+    {
+        "id": "ad-studio-electro-cabello",
+        "title": "Electro Cabello",
+        "audioUrl": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Electro%20Cabello.mp3",
+        "durationSeconds": 155,
+        "tags": [
+            "studio",
+            "creative-electronic",
+            "modern",
+            "tech",
+            "advertisement"
+        ]
+    },
+    {
+        "id": "ad-general-district-four",
+        "title": "District Four",
+        "audioUrl": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/District%20Four.mp3",
+        "durationSeconds": 210,
+        "tags": [
+            "professional",
+            "sleek",
+            "business",
+            "advertisement",
+            "service"
+        ]
     }
 ]

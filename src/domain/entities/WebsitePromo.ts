@@ -63,6 +63,25 @@ export interface TestimonialsContent {
 }
 
 /**
+ * Scraped media asset from the business website.
+ * Used for prioritized image sourcing (real images > AI generated).
+ */
+export interface ScrapedMedia {
+    /** Direct URL to the image */
+    url: string;
+    /** Image width in pixels */
+    width: number;
+    /** Image height in pixels */
+    height: number;
+    /** Alt text or caption if available */
+    altText?: string;
+    /** Source page where image was found */
+    sourcePage: string;
+    /** Whether this appears to be a hero/main image */
+    isHero: boolean;
+}
+
+/**
  * Input for creating a website promo reel job.
  */
 export interface WebsitePromoInput {
@@ -103,6 +122,8 @@ export interface WebsiteAnalysis {
     sourceUrl: string;
     /** Semantic Site DNA analysis */
     siteDNA?: SiteDNA;
+    /** Scraped media assets (images) from the website */
+    scrapedMedia?: ScrapedMedia[];
 }
 
 /**
