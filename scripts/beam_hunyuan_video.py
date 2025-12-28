@@ -62,6 +62,20 @@ def generate_video(
 
         print(f"[HunyuanVideo] Job {job_id}: Starting generation...")
         
+        # Command for HunyuanVideo official sample script
+        # We use fp8 for flow weights to fit into H100 and maintain speed
+        cmd = [
+            "python3", "sample_video.py",
+            "--prompt", prompt,
+            "--video-size", str(height), str(width),
+            "--video-length", "129", # Standard for ~5s clips
+            "--infer-steps", "30",
+            "--save-path", output_dir,
+            "--model-path", "/models/ckpts",
+            "--flow-weight-precision", "fp8",
+            "--text-states-precision", "fp16",
+        ]
+
         result = subprocess.run(
             cmd,
             capture_output=True,

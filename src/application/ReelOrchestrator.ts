@@ -158,15 +158,14 @@ export class ReelOrchestrator {
 
         try {
             // Website Promo Mode Branch
-            const refreshedJobForMode = await this.deps.jobManager.getJob(jobId);
-            const forceModeCheck = (refreshedJobForMode as any)?.forceMode;
-            if (forceModeCheck === 'website-promo' && job.websitePromoInput) {
-                console.log(`[${jobId}] Using WEBSITE PROMO pipeline...`);
+            const forceModeCheck = (job as any)?.forceMode || (job as any)?.websitePromoInput?.forceMode;
+            if (forceModeCheck === 'website-promo' || job.websitePromoInput) {
+                console.log(`[${jobId}] 🚀 Using WEBSITE PROMO pipeline (forceMode: ${forceModeCheck})`);
                 return await this.processWebsitePromoJob(jobId, job);
             }
 
             // STANDARD PIPELINE
-            console.log(`[${jobId}] Initializing standard pipeline execution...`);
+            console.log(`[${jobId}] 🚀 Initializing STANDARD pipeline execution...`);
 
             // 1. Construct Services
             const voiceoverService = new VoiceoverService(
@@ -569,7 +568,22 @@ export class ReelOrchestrator {
 
         await this.deps.jobManager.updateStatus(jobId, 'rendering', 'Rendering final video...');
         const renderResult = await this.deps.videoRenderer.render(manifest);
-        const finalVideoUrl = renderResult.videoUrl;
+        let finalVideoUrl = renderResult.videoUrl;
+
+        // Persist to Cloudinary if available
+        if (this.deps.storageClient && finalVideoUrl && !finalVideoUrl.includes('cloudinary')) {
+            try {
+                await this.deps.jobManager.updateStatus(jobId, 'uploading', 'Saving to permanent storage...');
+                const uploadResult = await this.deps.storageClient.uploadVideo(finalVideoUrl, {
+                    folder: 'instagram-reels/final-videos',
+                    publicId: `promo_${jobId}_${Date.now()}`,
+                    resourceType: 'video'
+                });
+                finalVideoUrl = uploadResult.url;
+            } catch (e) {
+                console.error('[Promo] Permanent upload failed, using transient URL:', e);
+            }
+        }
 
         const completedJob = completeJob(await this.deps.jobManager.getJob(jobId) as ReelJob, finalVideoUrl, manifest);
         await this.deps.jobManager.updateJob(jobId, { status: 'completed', finalVideoUrl, manifest });

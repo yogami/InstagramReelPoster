@@ -53,7 +53,17 @@ type TimelineAsset =
     | TimelineImageAsset
     | TimelineVideoAsset
     | TimelineAudioAsset
-    | TimelineCaptionAsset;
+    | TimelineCaptionAsset
+    | TimelineHtmlAsset;
+
+interface TimelineHtmlAsset {
+    type: 'html';
+    html: string;
+    css?: string;
+    width?: number;
+    height?: number;
+    background?: string;
+}
 
 interface TimelineVideoAsset {
     type: 'video';
@@ -327,6 +337,14 @@ export class TimelineVideoRenderer implements IVideoRenderer {
         // Track: Voiceover audio
         tracks.push({ clips: [voiceoverClip] });
 
+        // Track: Branding/Contact Info Overlay
+        if (manifest.branding) {
+            const brandingTrack = this.createBrandingTrack(manifest);
+            if (brandingTrack) {
+                tracks.push(brandingTrack);
+            }
+        }
+
         // Add visual track (Bottom: Visuals)
         const visualTrack = { clips: visualClips };
 
@@ -349,6 +367,90 @@ export class TimelineVideoRenderer implements IVideoRenderer {
                 fps: 30,
                 quality: 'high',
             },
+        };
+    }
+
+    /**
+     * Creates a track for branding/contact info overlay.
+     */
+    private createBrandingTrack(manifest: ReelManifest): TimelineTrack | null {
+        if (!manifest.branding) return null;
+
+        const b = manifest.branding;
+        const details: string[] = [];
+
+        // Prioritize address and hours, then phone/email
+        if (b.address) details.push(`📍 ${b.address}`);
+        if (b.hours) details.push(`🕒 ${b.hours}`);
+        if (b.phone) details.push(`📞 ${b.phone}`);
+        if (b.email && details.length < 3) details.push(`✉️ ${b.email}`);
+
+        if (details.length === 0) return null;
+
+        const html = `
+            <div class="contact-card">
+                <h1>${b.businessName}</h1>
+                ${details.map(d => `<p>${d}</p>`).join('')}
+            </div>
+        `;
+
+        const css = `
+            .contact-card {
+                font-family: 'Montserrat', sans-serif;
+                color: #FFFFFF;
+                background-color: rgba(0, 0, 0, 0.85);
+                padding: 40px;
+                border-radius: 20px;
+                text-align: center;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                width: 80%;
+                border: 2px solid rgba(255, 255, 255, 0.2);
+                box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            }
+            h1 {
+                font-size: 42px;
+                margin: 0 0 20px 0;
+                color: #FACC15; /* Yellow-400 */
+                text-transform: uppercase;
+                letter-spacing: 2px;
+                font-weight: 800;
+            }
+            p {
+                font-size: 28px;
+                margin: 8px 0;
+                font-weight: 500;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+            }
+        `;
+
+        // Show for the last 5 seconds (or max 1/3 of video if short)
+        const duration = Math.min(5, manifest.durationSeconds / 3);
+        const start = Math.max(0, manifest.durationSeconds - duration);
+
+        return {
+            clips: [{
+                asset: {
+                    type: 'html',
+                    html,
+                    css,
+                    width: 1080,
+                    height: 1920
+                },
+                start,
+                length: duration,
+                position: 'center',
+                transition: {
+                    in: 'slideUp',
+                    out: 'fade'
+                },
+                fit: 'contain',
+                scale: 0.9
+            }]
         };
     }
 

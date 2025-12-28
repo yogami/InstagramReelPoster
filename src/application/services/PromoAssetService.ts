@@ -74,6 +74,7 @@ export class PromoAssetService {
         const segmentsWithImages = await this.generateImagesWithPriority(segments, resolvedMedia, jobId);
         await this.deps.jobManager.updateJob(jobId, { segments: segmentsWithImages });
 
+        console.log(`[${jobId}] Promo assets prepared: ${segmentsWithImages.length} segments, ${voiceoverDuration.toFixed(1)}s voiceover`);
         return { voiceoverUrl, voiceoverDuration, musicUrl, musicDurationSeconds, segmentsWithImages };
     }
 

@@ -28,12 +28,14 @@ export class RenderStep implements PipelineStep {
             console.warn(`[${job.id}] No segments or video for rendering`);
         }
 
-        // Only pass segments if they actually have images (prevents crash in Animated mode)
-        const validSegments = segments?.every(s => s.imageUrl) ? segments : undefined;
+        // Ensure we have something to render
+        if (!segments && !context.animatedVideoUrls && !context.animatedVideoUrl) {
+            console.warn(`[${job.id}] No segments or video for rendering - manifest will likely fail`);
+        }
 
         const manifest = createReelManifest({
             durationSeconds: context.voiceoverDuration || job.targetDurationSeconds || 60,
-            segments: validSegments,
+            segments: segments, // Pass segments directly, createReelManifest handles validation
             animatedVideoUrl: context.animatedVideoUrl,
             animatedVideoUrls: context.animatedVideoUrls,
             voiceoverUrl: voiceoverUrl,

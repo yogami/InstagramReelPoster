@@ -326,6 +326,7 @@ STRUCTURE (17s Total):
 1. THE TRUTH HOOK (4s): Lead with a sharp, grounded perspective or a common local problem.
 2. THE SOUL (8s): Show the craftsmanship or the solved reality. Use the Site DNA.
 3. THE DIRECT CTA (5s): A clear, non-pushy invitation.
+   - VISUAL INSTRUCTION: The image prompt for this scene MUST describe a clean, uncluttered background (e.g., negative space, blurred background, or clean wall) suitable for overlaying contact info text.
 
 Each scene needs:
 - duration: seconds for this scene (Target 17s total)

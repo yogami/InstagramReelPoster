@@ -251,6 +251,49 @@ describe('TimelineVideoRenderer', () => {
             expect(logoTrack.clips[0].start).toBe(10); // 15s duration - 5s
             expect(logoTrack.clips[0].length).toBe(5);
         });
+        it('should include branding overlay when branding info is provided', async () => {
+            const renderer = new TimelineVideoRenderer(apiKey, baseUrl, 100, 5);
+            const manifest: ReelManifest = {
+                ...createTestManifest(),
+                branding: {
+                    businessName: 'My Cafe',
+                    address: 'Berlin Str 1',
+                    hours: '9-5',
+                    phone: '123456',
+                    logoUrl: '',
+                    email: ''
+                },
+            };
+
+            let capturedPayload: any;
+            nock(baseUrl)
+                .post('/render', (body) => {
+                    capturedPayload = body;
+                    return true;
+                })
+                .reply(200, { response: { id: 'render-branding' } });
+
+            nock(baseUrl)
+                .get('/render/render-branding')
+                .reply(200, { response: { status: 'done', url: 'https://test.com/video.mp4' } });
+
+            await renderer.render(manifest);
+
+            // Find the branding track (it holds an HTML asset)
+            const brandingTrack = capturedPayload.timeline.tracks.find((t: any) =>
+                t.clips[0].asset.type === 'html'
+            );
+
+            expect(brandingTrack).toBeDefined();
+            const clip = brandingTrack.clips[0];
+
+            expect(clip.asset.type).toBe('html');
+            expect(clip.asset.html).toContain('My Cafe');
+            expect(clip.asset.html).toContain('Berlin Str 1');
+            expect(clip.asset.html).toContain('9-5');
+            expect(clip.length).toBe(5); // Last 5 seconds of 15s video
+            expect(clip.start).toBe(10); // 15 - 5 = 10
+        });
     });
 
     describe('Rate limiting and retries', () => {
