@@ -123,6 +123,19 @@ describe('FluxImageClient', () => {
                 })
             );
         });
+
+        test('should NOT send quality parameter (Beam.cloud contract)', async () => {
+            const client = new FluxImageClient(apiKey, endpointUrl);
+
+            mockedAxios.post.mockResolvedValueOnce({
+                data: { image_base64: 'data:image/png;base64,test' }
+            });
+
+            await client.generateImage('Test prompt', { quality: 'hd' });
+
+            const calledPayload = mockedAxios.post.mock.calls[0][1] as Record<string, unknown>;
+            expect(calledPayload).not.toHaveProperty('quality');
+        });
     });
 
     describe('error handling', () => {

@@ -41,7 +41,6 @@ export class FluxImageClient implements IImageClient {
                 {
                     prompt: enhancedPrompt,
                     aspect_ratio: '9:16',
-                    quality: options?.quality || 'standard',
                 },
                 {
                     headers: {
