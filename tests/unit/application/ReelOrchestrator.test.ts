@@ -9,7 +9,10 @@ jest.mock('../../../src/config', () => ({
     getConfig: jest.fn(() => ({
         speakingRateWps: 1.66,
         makeWebhookUrl: 'https://hook.make.com/test',
-        fishAudioPromoVoiceId: 'promo-voice-123'
+        fishAudioPromoVoiceId: 'promo-voice-123',
+        featureFlags: {
+            personalCloneTrainingMode: false
+        }
     }))
 }));
 
@@ -44,7 +47,9 @@ describe('ReelOrchestrator', () => {
                     { commentary: 'Test 1', imagePrompt: 'Prompt 1', caption: 'Cap 1' },
                     { commentary: 'Test 2', imagePrompt: 'Prompt 2', caption: 'Cap 2' }
                 ]),
-                adjustCommentaryLength: jest.fn()
+                adjustCommentaryLength: jest.fn(),
+                detectReelMode: jest.fn().mockResolvedValue({ isAnimatedMode: false }),
+                detectContentMode: jest.fn().mockResolvedValue('direct-message')
             },
             ttsClient: {
                 synthesize: jest.fn().mockResolvedValue({
@@ -377,6 +382,89 @@ describe('ReelOrchestrator', () => {
             expect(manifest.durationSeconds).toBe(5);
 
             (orchestrator as any).finalizePromoJob = originalFinalize;
+        });
+    });
+
+    test('should use providedCommentary if present in job, skipping LLM generation', async () => {
+        const processFn = (orchestrator as any).processJob.bind(orchestrator);
+
+        const job: ReelJob = {
+            id: 'job-123',
+            status: 'pending',
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            sourceAudioUrl: 'http://test.com/audio.mp3',
+            voiceId: 'voice-123',
+            targetDurationRange: { min: 10, max: 90 }
+        };
+        const jobWithCommentary = { ...job, providedCommentary: 'User provided text override.' };
+        mockJobManager.getJob.mockResolvedValue(jobWithCommentary);
+
+        // Mock internal helpers
+        (orchestrator as any).updateJobStatus = jest.fn();
+        (orchestrator as any).adjustProvidedCommentaryForDuration = jest.fn().mockReturnValue('Adjusted text');
+        (orchestrator as any).synthesizeWithAdjustment = jest.fn().mockResolvedValue({ voiceoverUrl: 'vo.mp3', voiceoverDuration: 10 });
+        (orchestrator as any).buildSegments = jest.fn().mockReturnValue([]);
+
+        // Execute processJob
+        // We need to mock the entire chain or at least ensuring LLM isn't called
+        // But processJob is huge. Instead of full processJob test here which requires mocking 100 lines,
+        // let's verify logic via a smaller unit test on the check itself or trust the characterization test.
+        // Actually, we can test just the segment generation part if we extracted it, but we haven't yet.
+        // Let's rely on the method isolation.
+
+        // ALTERNATIVE: Test just the logic flow by mocking dependencies rigidly
+        // If providedCommentary is set, generateSegmentContent should NOT be called.
+
+        mockDeps.llmClient.planReel.mockResolvedValue({ targetDurationSeconds: 15, segmentCount: 1 });
+
+        await processFn('job-123');
+
+        expect(mockDeps.llmClient.generateSegmentContent).not.toHaveBeenCalled();
+        expect((orchestrator as any).adjustProvidedCommentaryForDuration).toHaveBeenCalledWith('User provided text override.', expect.any(Number));
+    });
+
+
+    describe('adjustProvidedCommentaryForDuration', () => {
+        const targetDuration = 60; // 60 seconds
+        // Speaking rate 1.66 wps * 60s * 0.95 = ~94 words limit
+
+        test('should return text as-is if within limit', () => {
+            const adjustFn = (orchestrator as any).adjustProvidedCommentaryForDuration.bind(orchestrator);
+            const shortText = 'This is a short commentary that definitely fits.';
+
+            const result = adjustFn(shortText, targetDuration);
+            expect(result).toBe(shortText);
+        });
+
+        test('should truncate text at sentence boundary when over limit', () => {
+            const adjustFn = (orchestrator as any).adjustProvidedCommentaryForDuration.bind(orchestrator);
+
+            // Create text that exceeds 94 words
+            const sentence1 = 'This is the first sentence that should be kept because it is important. ';
+            const sentence2 = 'This is the second sentence that is also kept. ';
+            // Create filler carefully to ensure reproducible length
+            const filler = Array(100).fill('word').join(' ');
+            const longText = sentence1 + sentence2 + filler + ' End.';
+
+            const result = adjustFn(longText, targetDuration);
+
+            // Should be truncated, but not longer than limit
+            expect(result.length).toBeLessThan(longText.length);
+            // Should end with a sentence key (., !, ?) or ellipsis
+            const endsWithPunctuation = /[.!?]$/.test(result);
+            const endsWithEllipsis = result.endsWith('...');
+            expect(endsWithPunctuation || endsWithEllipsis).toBe(true);
+        });
+
+        test('should add ellipsis if no sentence boundary found in usable range', () => {
+            const adjustFn = (orchestrator as any).adjustProvidedCommentaryForDuration.bind(orchestrator);
+
+            // Text with no punctuation
+            const longText = Array(150).fill('word').join(' ');
+
+            const result = adjustFn(longText, targetDuration);
+            expect(result.endsWith('...')).toBe(true);
         });
     });
 });
