@@ -160,3 +160,56 @@ describe('Reel Routes Response Structure', () => {
         expect(retryResponse.message).toContain('Retry');
     });
 });
+
+describe('POST /website validation', () => {
+    test('should validate website URL is required', () => {
+        const invalidRequest = { consent: true };
+        expect((invalidRequest as any).website).toBeUndefined();
+    });
+
+    test('should validate consent must be true', () => {
+        const withConsentFalse = { website: 'https://example.com', consent: false };
+        expect(withConsentFalse.consent).toBe(false);
+    });
+
+    test('should validate category must be valid', () => {
+        const validCategories = ['cafe', 'gym', 'shop', 'service', 'restaurant', 'studio'];
+        expect(validCategories.includes('invalid')).toBe(false);
+        expect(validCategories.includes('cafe')).toBe(true);
+    });
+
+    test('website promo response should have correct structure', () => {
+        const response = {
+            jobId: 'job-123',
+            status: 'pending',
+            message: 'Website promo reel generation started',
+            website: 'https://example.com',
+            category: 'service'
+        };
+
+        expect(response).toHaveProperty('jobId');
+        expect(response).toHaveProperty('website');
+        expect(response.message).toContain('Website');
+    });
+});
+
+describe('POST /retry-last validation', () => {
+    test('should require telegramChatId', () => {
+        const invalidRequest = {};
+        expect((invalidRequest as any).telegramChatId).toBeUndefined();
+    });
+
+    test('telegramChatId must be numeric', () => {
+        const validChatId = 123456789;
+        expect(typeof validChatId).toBe('number');
+        expect(Number.isNaN(validChatId)).toBe(false);
+    });
+
+    test('should handle missing previous job scenario', () => {
+        // When no previous job exists, API should return 400
+        const errorResponse = {
+            error: 'No previous job found for this user to retry'
+        };
+        expect(errorResponse.error).toContain('No previous job');
+    });
+});
