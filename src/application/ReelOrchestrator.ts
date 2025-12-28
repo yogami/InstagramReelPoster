@@ -993,91 +993,96 @@ export class ReelOrchestrator {
      */
     private async notifyCallback(job: ReelJob): Promise<void> {
         if (!job.callbackUrl) return;
-
-        // CRITICAL: Only send callback if we have a valid video URL
-        // Make.com validation rejects empty strings as "missing values"
-        if (job.status === 'completed' && !job.finalVideoUrl) {
-            console.warn(`[${job.id}] Skipping callback - job completed but no video URL available`);
-            return;
-        }
+        if (!this.shouldSendCallback(job)) return;
 
         try {
             console.log(`[${job.id}] Notifying callback: ${job.callbackUrl}`);
-
-            // Make.com requires x-make-apikey header
-            const headers: Record<string, string> = {
-                'Content-Type': 'application/json',
-                'x-make-apikey': '4LyPD8E3TVRmh_F'
-            };
-
-            // Generate a caption:
-            // 1. Try global mainCaption (Primary)
-            // 2. Try FIRST segment's "caption" field (Fallback 1)
-            // 3. Fallback to Source Transcript (Topic based)
-            // 4. Last resort: Commentary summary
-            let caption = 'New reel ready!';
-            if (job.mainCaption) {
-                caption = job.mainCaption;
-            } else if (job.segments && job.segments.length > 0 && job.segments[0].caption) {
-                caption = job.segments[0].caption;
-            } else if (job.transcript) {
-                console.warn(`[${job.id}] ⚠️ Missing main caption, falling back to transcript summary.`);
-                caption = job.transcript.substring(0, 150) + '...';
-            } else if (job.fullCommentary) {
-                console.warn(`[${job.id}] ⚠️ Missing caption, falling back to commentary.`);
-                caption = job.fullCommentary.substring(0, 150) + '...';
-            }
-
-            // Build payload - only include video_url if we have a valid URL
-            // CRITICAL: Combine caption body WITH hashtags for Instagram
-            const hashtagString = job.hashtags ? job.hashtags.join(' ') : '';
-            const fullCaption = job.captionBody
-                ? `${job.captionBody}\n\n${hashtagString}`.trim()
-                : `${caption}\n\n${hashtagString}`.trim();
-
-            const payload: any = {
-                jobId: job.id,
-                status: job.status,
-                caption: fullCaption, // COMBINED: caption body + hashtags for Instagram
-                hashtags: hashtagString, // Separate field for reference
-                captionBody: job.captionBody, // Just the body for reference
-                originalHashtags: job.hashtags, // Array for reference
-            };
-
-            // Add video URL only if present (Make.com validates this field)
-            if (job.finalVideoUrl) {
-                payload.video_url = job.finalVideoUrl;
-                payload.url = job.finalVideoUrl; // Alias for flexibility
-                payload.videoUrl = job.finalVideoUrl; // Alias for camelCase consumers
-            }
-
-            // Add error only if present
-            if (job.error) {
-                payload.error = job.error;
-            }
-
-            // Add metadata
-            payload.metadata = {
-                duration: job.voiceoverDurationSeconds,
-                createdAt: job.createdAt,
-                completedAt: job.updatedAt,
-                mainCaption: job.mainCaption,
-                hook: job.hookPlan?.chosenHook,
-                // Parable mode metadata
-                contentMode: job.contentMode,
-                parableTheme: job.parableIntent?.coreTheme,
-                parableCulture: job.parableScriptPlan?.sourceChoice?.culture,
-            };
+            const payload = this.buildCallbackPayload(job);
+            const headers = this.getCallbackHeaders();
 
             console.log(`[${job.id}] Sending callback payload:`, JSON.stringify(payload, null, 2));
-
             await axios.post(job.callbackUrl, payload, { headers });
-
             console.log(`[${job.id}] Callback notification sent successfully`);
         } catch (error) {
             console.error(`[${job.id}] Failed to notify callback:`, error);
-            // We don't throw here to avoid failing the job processing just because the callback failed
         }
+    }
+
+    /** Determines if callback should be sent based on job state. */
+    private shouldSendCallback(job: ReelJob): boolean {
+        if (job.status === 'completed' && !job.finalVideoUrl) {
+            console.warn(`[${job.id}] Skipping callback - job completed but no video URL available`);
+            return false;
+        }
+        return true;
+    }
+
+    /** Builds the callback headers for Make.com. */
+    private getCallbackHeaders(): Record<string, string> {
+        return {
+            'Content-Type': 'application/json',
+            'x-make-apikey': '4LyPD8E3TVRmh_F'
+        };
+    }
+
+    /** Resolves the caption using fallback chain: mainCaption → segment → transcript → commentary. */
+    private resolveCaption(job: ReelJob): string {
+        if (job.mainCaption) return job.mainCaption;
+        if (job.segments?.length && job.segments[0].caption) return job.segments[0].caption;
+        if (job.transcript) {
+            console.warn(`[${job.id}] ⚠️ Missing main caption, falling back to transcript summary.`);
+            return job.transcript.substring(0, 150) + '...';
+        }
+        if (job.fullCommentary) {
+            console.warn(`[${job.id}] ⚠️ Missing caption, falling back to commentary.`);
+            return job.fullCommentary.substring(0, 150) + '...';
+        }
+        return 'New reel ready!';
+    }
+
+    /** Builds the full callback payload for webhook. */
+    private buildCallbackPayload(job: ReelJob): Record<string, any> {
+        const caption = this.resolveCaption(job);
+        const hashtagString = job.hashtags ? job.hashtags.join(' ') : '';
+        const fullCaption = job.captionBody
+            ? `${job.captionBody}\n\n${hashtagString}`.trim()
+            : `${caption}\n\n${hashtagString}`.trim();
+
+        const payload: Record<string, any> = {
+            jobId: job.id,
+            status: job.status,
+            caption: fullCaption,
+            hashtags: hashtagString,
+            captionBody: job.captionBody,
+            originalHashtags: job.hashtags,
+            metadata: this.buildCallbackMetadata(job),
+        };
+
+        if (job.finalVideoUrl) {
+            payload.video_url = job.finalVideoUrl;
+            payload.url = job.finalVideoUrl;
+            payload.videoUrl = job.finalVideoUrl;
+        }
+
+        if (job.error) {
+            payload.error = job.error;
+        }
+
+        return payload;
+    }
+
+    /** Builds metadata for callback payload. */
+    private buildCallbackMetadata(job: ReelJob): Record<string, any> {
+        return {
+            duration: job.voiceoverDurationSeconds,
+            createdAt: job.createdAt,
+            completedAt: job.updatedAt,
+            mainCaption: job.mainCaption,
+            hook: job.hookPlan?.chosenHook,
+            contentMode: job.contentMode,
+            parableTheme: job.parableIntent?.coreTheme,
+            parableCulture: job.parableScriptPlan?.sourceChoice?.culture,
+        };
     }
 
     /**
