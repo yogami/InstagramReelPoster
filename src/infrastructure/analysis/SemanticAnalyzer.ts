@@ -111,7 +111,7 @@ export class SemanticAnalyzer {
 
         const textToSearch = this.getAllText(analysis);
 
-        const ratingPattern = /(\d+(?:\.\d+)?)\s*(?:out\s*of\s*)?[\/]?\s*5\s*(stars?)?/gi;
+        const ratingPattern = new RegExp('(\\d+(?:\\.\\d+)?)\\s*(?:out\\s*of\\s*)?[/]?\\s*5\\s*(stars?)?', 'gi');
         const clientPattern = /(\d+\+?)\s*(clients?|customers?|users?|satisfied|happy)/gi;
         const pressPattern = /(featured\s+in|as\s+seen\s+on)\s+(\w+)/gi;
 

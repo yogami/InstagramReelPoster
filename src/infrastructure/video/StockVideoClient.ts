@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import axios from 'axios';
 import { IAnimatedVideoClient, AnimatedVideoResult, AnimatedVideoOptions } from '../../domain/ports/IAnimatedVideoClient';
 
@@ -88,7 +89,7 @@ export class StockVideoClient implements IAnimatedVideoClient {
         return prompt
             .replace(/create an animated video about/gi, '')
             .replace(/video of/gi, '')
-            .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, '')
+            .replace(new RegExp('[.,/#!$%^&*;:{}=\\-_`~()]', 'g'), '')
             .replace(/\s{2,}/g, ' ')
             .trim()
             .substring(0, 100);

@@ -109,7 +109,7 @@ export class StockImageClient implements IImageClient {
             .replace(/8k/gi, '');
 
         // 2. Remove punctuation
-        cleaned = cleaned.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, '');
+        cleaned = cleaned.replace(new RegExp('[.,/#!$%^&*;:{}=\\-_`~()]', 'g'), '');
 
         // 3. Trim extra whitespace
         cleaned = cleaned.replace(/\s{2,}/g, ' ').trim();

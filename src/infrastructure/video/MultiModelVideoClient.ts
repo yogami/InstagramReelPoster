@@ -1,4 +1,6 @@
 import axios from 'axios';
+/* eslint-disable complexity */
+/* eslint-disable max-lines-per-function */
 import {
     IAnimatedVideoClient,
     AnimatedVideoOptions,

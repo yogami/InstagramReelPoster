@@ -10,8 +10,9 @@ WRITING GUIDELINES:
 1. NO FLUFF: Avoid introductory filler ("In this video," "So," "Hey guys"). Start with the punch.
 2. CONSTRUCTIVE CAUSTICITY: Be sharp, but the goal is always deeper self-awareness, not just being mean.
 3. GROUNDED SPIRITUALITY: Use terms like "shadow work," "projection," "bypass," and "ego mechanics." Avoid "love and light" or generic wellness clichés.
-4. MICRO-DOSE INSIGHT: Every sentence must earned its place. If it doesn't challenge or reveal, cut it.
-5. CULTURAL FUSION: Subtly weave in Vedantic or Zen concepts without being "yoga-teacher-y."
+4. MICRO-DOSE INSIGHT: Every sentence must earn its place. If it doesn't challenge or reveal, cut it.
+5. GRAMMATICAL PRECISION: Use proper articles (The, A). Avoid "headlinese" or dropping "The" before subjects (e.g., say "The sage" not "Sage").
+6. CULTURAL FUSION: Subtly weave in Vedantic or Zen concepts without being "yoga-teacher-y."
 
 IMAGE STYLE:
 - Aesthetic: Muted, cinematic, grounded, slightly dark but clear.
@@ -129,7 +130,7 @@ If you return fewer than {{segmentCount}} items, the video will BREAK.
 === STRUCTURE ===
 1. Segment 1 (Hook): Stop the scroll. Immediate tension.
 2. Middle Segments (2 to {{segmentCount}}-1): Unpack the behavior/truth using simple analogies.
-3. Final Segment ({{segmentCount}}): The mirror/implication. "Sound familiar?"
+3. Final Segment ({{segmentCount}}): The mirror/implication. "Does this sound familiar to you?" 
 
 === RESPONSE FORMAT ===
 Respond ONLY with a valid JSON array containing EXACTLY {{segmentCount}} objects:
@@ -159,9 +160,11 @@ Generate ONLY the commentary for Segment {{currentIndex}}.
 === NARRATION RULES (CRITICAL) ===
 1. NATURAL SPEECH: Write as if a real person is speaking to a friend. 
 2. COMPLETE SENTENCES: Every segment MUST end with a period, question mark, or exclamation mark. NO UNFINISHED FRAGMENTS.
-3. NO POETRY: Avoid line breaks, rhyming, or "poetic" stanzas. This is NARRATION, not a poem.
-4. FLOW: Connect logically to the previous segments. If you are starting a new thought, finish it within this segment.
-5. NO ELLIPSES: Do not end with "..." unless it's a deliberate dramatic pause (rare).
+3. GRAMMAR: Use full articles (The, A). Do NOT drop "The" before subjects (e.g., say "The sage" not "Sage").
+4. NO POETRY: Avoid line breaks, rhyming, or "poetic" stanzas. This is NARRATION, not a poem.
+5. FLOW: Connect logically to the previous segments. If you are starting a new thought, finish it within this segment.
+6. NO ELLIPSES: Do not end with "..." unless it's a deliberate dramatic pause (rare).
+7. WRITE FOR THE EAR: If it's a question, write a full question (e.g., "Does this sound familiar to you?") to help the TTS intonation.
 
 Respond with a SINGLE JSON object:
 { "commentary": "Your natural, complete sentence narration here." }`;
@@ -232,6 +235,7 @@ CRITICAL: The first sentence alone must make viewer stop scrolling.
 - Promise a specific revelation
 - Create immediate cognitive dissonance
 - NO buildup - start with the twist
+- GRAMMAR: Use full articles. Say "The sage," not "Sage."
 
 2. SETUP (10-14 seconds): Show who they are and their HIDDEN tension.
 - What they do on the surface
@@ -250,35 +254,35 @@ CRITICAL: The first sentence alone must make viewer stop scrolling.
    - A crisis that strips the mask
    - The moment they can't hide anymore
 
-4. MORAL (8-10 seconds): Contemporary insight that MIRRORS THE VIEWER.
+4. PAYOFF (8-10 seconds): Contemporary insight that MIRRORS THE VIEWER.
 - Don't lecture. Implicate.
-- Make it uncomfortable: "Sound familiar?"
+- ENDING: DO NOT always end with a question. Sometimes a stark, final statement is more powerful.
+- If asking a question, make it sound like one: "Does this sound familiar to you?" instead of just "Sounds familiar?"
 - Sharp, caustic, psychologically aware
 - The viewer should feel seen, not preached to
 
 === VOICEOVER TONALITY ===
 - Sound like a CALM NARRATOR DESCRIBING A DISASTER IN SLOW MOTION
-- Emotionally loaded but NOT shouty
 - Controlled intensity, not preaching
-- Think: documentary narrator revealing something uncomfortable
+- Write for the EAR: If a sentence is a question, ensure it's written as a full question to help the TTS intonation.
 
 === LANGUAGE & NARRATION RULES ===
 - Use 5th-8th grade vocabulary.
 - COMPLETE SENTENCES ONLY. NO fragments, no poetic stanzas, no line breaks.
-- Write for the EAR: Ensure it sounds natural when spoken aloud.
-- The simpler the language, the sharper the impact. Avoid flowery metaphors.
+- ABSOLUTELY NO dropping of articles (The, A, An). "The sage" is mandatory.
+- Avoid flowery metaphors. The simpler the language, the sharper the impact.
 
 === VISUAL MOOD RULES ===
 Image prompts must encode emotional beats through color and composition:
 - HOOK: Neutral palette, establishing shot
 - SETUP: Warm but muted tones, surface appearance
 - TURN (Confrontation/Betrayal): DARKER palette, shadows, tension in composition
-- MORAL (Realization): BRIGHTER palette, light breaking through, clarity
+- PAYOFF (Realization): BRIGHTER palette, light breaking through, clarity
 
 Additional visual rules:
 - SIMPLE, SYMBOLIC scenes (monk in courtyard, warrior at campfire, gossip circle)
-- Minimal motion, clean composition
-- NO complex effects or busy visuals
+- CHARACTER CONTEXT: In imagePrompts, do NOT just use the noun (e.g., "sage"). Use descriptive terms like "An old wise man in ancient robes," "A battle-worn oriental warrior," or "A Buddhist monk." 
+- AVOID AMBIGUITY: "Sage" can be interpreted as a plant. Always specify "The sage (wise man)."
 - Style: "2D cel-shaded, hand-drawn feeling, Studio Ghibli simplicity"
 
 === CHARACTER REQUIREMENTS ===
@@ -309,7 +313,7 @@ Respond with JSON:
       "role": "hook",
       "narration": "First sentence MUST grab in 1-3 seconds...",
       "textOnScreen": "...",
-      "imagePrompt": "2D cel-shaded, hand-drawn, [symbolic establishing shot], NEUTRAL palette",
+      "imagePrompt": "2D cel-shaded, hand-drawn, [visual description of a wise old man/character], [symbolic establishing shot], NEUTRAL palette",
       "approxDurationSeconds": 8-10
     }
   ]
@@ -339,8 +343,9 @@ ARCHETYPE: {{archetype}}
 
 3. FINAL LINE (Viewer mirror + CTA):
    Make the viewer feel implicated, then give clear action:
-- "Sound familiar?"
-- "Save this for the next time you catch yourself doing this."
+- "Does this sound familiar?" (Use full question for clarity)
+- "Save this if you recognize this pattern."
+- AVOID overusing questions as endings.
 
 === HASHTAG STRATEGY (10-12 total) ===
 #shadowwork #selfinquiry #egodeath #spiritualpsychology #projection #spirituality #mindfulness #reels #wisdom #growth #ChallengingView #parables #spiritualstorytelling

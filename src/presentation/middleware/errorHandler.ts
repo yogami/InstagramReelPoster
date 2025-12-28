@@ -61,7 +61,7 @@ export function errorHandler(
     err: Error,
     req: Request,
     res: Response,
-    next: NextFunction
+    _next: NextFunction
 ): void {
     if (err instanceof NotFoundError) {
         console.warn(`[WARN] ${err.name}: ${err.message} (${req.method} ${req.path})`);

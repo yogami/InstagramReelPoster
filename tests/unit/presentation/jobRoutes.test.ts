@@ -1,225 +1,134 @@
-import { Request, Response, Router } from 'express';
+
+import request from 'supertest';
+import express from 'express';
+import bodyParser from 'body-parser';
 import { createJobRoutes } from '../../../src/presentation/routes/jobRoutes';
-import axios from 'axios';
 import { JobManager } from '../../../src/application/JobManager';
 import { ReelJob } from '../../../src/domain/entities/ReelJob';
-import { NotFoundError } from '../../../src/presentation/middleware/errorHandler';
-
-// Mock express Router
-const mockRouter = {
-    get: jest.fn().mockReturnThis(),
-    post: jest.fn().mockReturnThis()
-};
-
-jest.mock('express', () => ({
-    Router: jest.fn(() => mockRouter),
-    Request: {},
-    Response: {}
-}));
+import axios from 'axios';
+import { errorHandler } from '../../../src/presentation/middleware/errorHandler';
 
 jest.mock('axios');
+const mockedAxios = axios as jest.Mocked<typeof axios>;
 
-describe('createJobRoutes', () => {
+describe('JobRoutes', () => {
+    let app: express.Express;
     let mockJobManager: jest.Mocked<JobManager>;
-    let routeHandlers: Map<string, Function>;
 
     beforeEach(() => {
         jest.clearAllMocks();
-        routeHandlers = new Map();
 
         mockJobManager = {
             getJob: jest.fn(),
             getAllJobs: jest.fn(),
+            // unused in routes but required by interface
             createJob: jest.fn(),
-            updateJob: jest.fn()
+            updateJob: jest.fn(),
+            updateStatus: jest.fn(),
+            failJob: jest.fn(),
         } as any;
 
-        // Capture route handlers when registered
-        mockRouter.get.mockImplementation((path: string, handler: Function) => {
-            routeHandlers.set(`GET ${path}`, handler);
-            return mockRouter;
-        });
-        mockRouter.post.mockImplementation((path: string, handler: Function) => {
-            routeHandlers.set(`POST ${path}`, handler);
-            return mockRouter;
-        });
-    });
-
-    describe('route registration', () => {
-        test('should register GET /jobs/:jobId route', () => {
-            createJobRoutes(mockJobManager);
-            expect(mockRouter.get).toHaveBeenCalledWith('/jobs/:jobId', expect.any(Function));
-        });
-
-        test('should register GET /jobs route', () => {
-            createJobRoutes(mockJobManager);
-            expect(mockRouter.get).toHaveBeenCalledWith('/jobs', expect.any(Function));
-        });
-
-        test('should register POST /test-webhook route', () => {
-            createJobRoutes(mockJobManager);
-            expect(mockRouter.post).toHaveBeenCalledWith('/test-webhook', expect.any(Function));
-        });
-
-        test('should return a router instance', () => {
-            const router = createJobRoutes(mockJobManager);
-            expect(router).toBeDefined();
-        });
+        app = express();
+        app.use(bodyParser.json());
+        app.use(createJobRoutes(mockJobManager));
+        app.use(errorHandler); // Register error handler
     });
 
     describe('GET /jobs/:jobId', () => {
-        beforeEach(() => {
-            // Register routes before each test to capture handlers
-            createJobRoutes(mockJobManager);
-        });
-
-        test('should return job data for existing job', async () => {
-            const mockJob: Partial<ReelJob> = {
-                id: 'test-job-123',
-                status: 'completed',
-                currentStep: undefined,
-                createdAt: new Date('2024-01-01'),
-                updatedAt: new Date('2024-01-01'),
-                finalVideoUrl: 'http://video.mp4',
-                voiceoverDurationSeconds: 10,
-                segments: [],
-                targetDurationSeconds: 15
-            };
-
-            mockJobManager.getJob.mockResolvedValue(mockJob as ReelJob);
-
-            const req = { params: { jobId: 'test-job-123' } } as unknown as Request;
-            const res = { json: jest.fn() } as unknown as Response;
-            const next = jest.fn();
-
-            const handler = routeHandlers.get('GET /jobs/:jobId');
-            if (!handler) throw new Error('Handler not found');
-            await handler(req, res, next);
-
-            expect(mockJobManager.getJob).toHaveBeenCalledWith('test-job-123');
-            expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
-                jobId: 'test-job-123',
-                status: 'completed',
-                finalVideoUrl: 'http://video.mp4'
-            }));
-        });
-
-        test('should throw NotFoundError if job not found', async () => {
+        test('should return 404 if job not found', async () => {
             mockJobManager.getJob.mockResolvedValue(null);
 
-            const req = { params: { jobId: 'non-existent' } } as unknown as Request;
-            const res = { json: jest.fn() } as unknown as Response;
-            const next = jest.fn();
+            const res = await request(app).get('/jobs/missing-id');
+            expect(res.status).toBe(404);
+            expect(res.body.error.message).toContain('Job not found');
+        });
 
-            const handler = routeHandlers.get('GET /jobs/:jobId');
-            if (!handler) throw new Error('Handler not found');
-            await handler(req, res, next);
-            expect(next).toHaveBeenCalledWith(expect.any(NotFoundError));
-            expect(next.mock.calls[0][0].message).toContain('Job not found: non-existent');
+        test('should return job details for completed job', async () => {
+            const job: ReelJob = {
+                id: 'job-123',
+                status: 'completed',
+                createdAt: new Date(),
+                updatedAt: new Date(),
+                voiceoverDurationSeconds: 10,
+                finalVideoUrl: 'http://vid.mp4',
+                manifest: {},
+                segments: []
+            } as any;
+            mockJobManager.getJob.mockResolvedValue(job);
+
+            const res = await request(app).get('/jobs/job-123');
+            expect(res.status).toBe(200);
+            expect(res.body.status).toBe('completed');
+            expect(res.body.finalVideoUrl).toBe('http://vid.mp4');
+        });
+
+        test('should return job details for failed job', async () => {
+            const job: ReelJob = {
+                id: 'job-err',
+                status: 'failed',
+                error: 'Something broke',
+                createdAt: new Date(),
+                updatedAt: new Date()
+            } as any;
+            mockJobManager.getJob.mockResolvedValue(job);
+
+            const res = await request(app).get('/jobs/job-err');
+            expect(res.status).toBe(200);
+            expect(res.body.status).toBe('failed');
+            expect(res.body.error).toBe('Something broke');
         });
     });
 
     describe('GET /jobs', () => {
-        beforeEach(() => {
-            createJobRoutes(mockJobManager);
-        });
-
-        test('should list all jobs summary', async () => {
-            const mockJobs: Partial<ReelJob>[] = [
-                {
-                    id: 'job-1',
-                    status: 'completed',
-                    createdAt: new Date('2024-01-01'),
-                    updatedAt: new Date('2024-01-02'),
-                    finalVideoUrl: 'http://video.mp4'
-                },
-                {
-                    id: 'job-2',
-                    status: 'processing' as any, // Cast to any to avoid strict enum check in test
-                    currentStep: 'generating_images',
-                    createdAt: new Date('2024-01-03'),
-                    updatedAt: new Date('2024-01-03'),
-                    finalVideoUrl: undefined
-                }
+        test('should return list of job summaries', async () => {
+            const jobs: ReelJob[] = [
+                { id: 'j1', status: 'completed', createdAt: new Date(), updatedAt: new Date(), finalVideoUrl: 'url' } as any,
+                { id: 'j2', status: 'pending', createdAt: new Date(), updatedAt: new Date() } as any
             ];
+            mockJobManager.getAllJobs.mockResolvedValue(jobs);
 
-            mockJobManager.getAllJobs.mockResolvedValue(mockJobs as unknown as ReelJob[]);
-
-            const req = {} as Request;
-            const res = { json: jest.fn() } as unknown as Response;
-            const next = jest.fn();
-
-            const handler = routeHandlers.get('GET /jobs');
-            if (!handler) throw new Error('Handler not found');
-            await handler(req, res, next);
-
-            expect(mockJobManager.getAllJobs).toHaveBeenCalled();
-            expect(res.json).toHaveBeenCalledWith({
-                total: 2,
-                jobs: expect.arrayContaining([
-                    expect.objectContaining({ jobId: 'job-1', status: 'completed', hasVideo: true }),
-                    expect.objectContaining({ jobId: 'job-2', status: 'processing', hasVideo: false })
-                ])
-            });
+            const res = await request(app).get('/jobs');
+            expect(res.status).toBe(200);
+            expect(res.body.total).toBe(2);
+            expect(res.body.jobs[0].jobId).toBe('j1');
+            expect(res.body.jobs[0].hasVideo).toBe(true);
+            expect(res.body.jobs[1].hasVideo).toBe(false);
         });
     });
 
     describe('POST /test-webhook', () => {
-        beforeEach(() => {
-            createJobRoutes(mockJobManager);
-        });
-
-        test('should send test webhook and return success', async () => {
-            (axios.post as jest.Mock).mockResolvedValue({ status: 200, data: { success: true } });
-
-            const req = { body: { webhookUrl: 'http://webhook.site/123' } } as unknown as Request;
-            const res = { json: jest.fn(), status: jest.fn().mockReturnThis() } as unknown as Response;
-            const next = jest.fn();
-
-            const handler = routeHandlers.get('POST /test-webhook');
-            if (!handler) throw new Error('Handler not found');
-            await handler(req, res, next);
-
-            expect(axios.post).toHaveBeenCalledWith(
-                'http://webhook.site/123',
-                expect.objectContaining({ jobId: 'test_job_123', status: 'completed' }),
-                expect.any(Object)
-            );
-            expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
-                success: true,
-                message: 'Test webhook sent successfully'
-            }));
-        });
-
         test('should return 400 if webhookUrl missing', async () => {
-            const req = { body: {} } as unknown as Request;
-            const res = { json: jest.fn(), status: jest.fn().mockReturnThis() } as unknown as Response;
-            const next = jest.fn();
-
-            const handler = routeHandlers.get('POST /test-webhook');
-            if (!handler) throw new Error('Handler not found');
-            await handler(req, res, next);
-
-            expect(res.status).toHaveBeenCalledWith(400);
-            expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ error: expect.stringContaining('Missing webhookUrl') }));
+            const res = await request(app).post('/test-webhook').send({});
+            expect(res.status).toBe(400);
+            expect(res.body.error).toContain('Missing webhookUrl');
         });
 
-        test('should return 500 if axios request fails', async () => {
-            (axios.post as jest.Mock).mockRejectedValue(new Error('Network error'));
+        test('should call axios and return success', async () => {
+            mockedAxios.post.mockResolvedValue({ status: 200, data: { ok: true } });
 
-            const req = { body: { webhookUrl: 'http://fail.com' } } as unknown as Request;
-            const res = { json: jest.fn(), status: jest.fn().mockReturnThis() } as unknown as Response;
-            const next = jest.fn();
+            const res = await request(app)
+                .post('/test-webhook')
+                .send({ webhookUrl: 'http://hook.com' });
 
-            const handler = routeHandlers.get('POST /test-webhook');
-            if (!handler) throw new Error('Handler not found');
-            await handler(req, res, next);
+            expect(res.status).toBe(200);
+            expect(mockedAxios.post).toHaveBeenCalledWith(
+                'http://hook.com',
+                expect.any(Object),
+                expect.objectContaining({ headers: expect.any(Object) })
+            );
+            expect(res.body.success).toBe(true);
+        });
 
-            expect(res.status).toHaveBeenCalledWith(500);
-            expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
-                success: false,
-                error: 'Network error'
-            }));
+        test('should handle axios errors', async () => {
+            mockedAxios.post.mockRejectedValue(new Error('Network Error'));
+
+            const res = await request(app)
+                .post('/test-webhook')
+                .send({ webhookUrl: 'http://hook.com' });
+
+            expect(res.status).toBe(500);
+            expect(res.body.success).toBe(false);
+            expect(res.body.error).toBe('Network Error');
         });
     });
 });

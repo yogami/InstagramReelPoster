@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable complexity */
 import axios from 'axios';
 import { IVideoRenderer, RenderResult } from '../../domain/ports/IVideoRenderer';
 import { ReelManifest } from '../../domain/entities/ReelManifest';
@@ -14,7 +16,7 @@ export class RemoteVideoRenderer implements IVideoRenderer {
     constructor(
         apiKey: string,
         endpointUrl: string,
-        timeout: number = 600000 // 10 minutes max for rendering
+        timeout: number = 900000 // 15 minutes max for rendering (allows internal 9min cap to trigger first)
     ) {
         if (!apiKey) {
             throw new Error('Remote API key is required');

@@ -245,8 +245,8 @@ function createAnimatedVideoClient(config: Config) {
 
         // Both available: Hunyuan -> Mochi -> Mock
         if (hunyuanUrl && mochiUrl) {
-            const hunyuan = new HunyuanVideoClient(config.fluxApiKey, hunyuanUrl, 600000);
-            const mochi = new MochiVideoClient(config.fluxApiKey, mochiUrl, 600000);
+            const hunyuan = new HunyuanVideoClient(config.fluxApiKey, hunyuanUrl, 900000);
+            const mochi = new MochiVideoClient(config.fluxApiKey, mochiUrl, 900000);
             const mochiFallback = new FallbackVideoClient(mochi, mock, 'Mochi', 'Mock');
             console.log('✅ Video generation: Hunyuan (primary) → Mochi (fallback) → Mock (safety)');
             return new FallbackVideoClient(hunyuan, mochiFallback, 'Hunyuan', 'Mochi-Mock');
@@ -254,14 +254,14 @@ function createAnimatedVideoClient(config: Config) {
 
         // Only Hunyuan: Hunyuan -> Mock
         if (hunyuanUrl) {
-            const hunyuan = new HunyuanVideoClient(config.fluxApiKey, hunyuanUrl, 600000);
+            const hunyuan = new HunyuanVideoClient(config.fluxApiKey, hunyuanUrl, 900000);
             console.log('✅ Video generation: Hunyuan (primary) → Mock (fallback)');
             return new FallbackVideoClient(hunyuan, mock, 'Hunyuan', 'Mock');
         }
 
         // Only Mochi: Mochi -> Mock
         if (mochiUrl) {
-            const mochi = new MochiVideoClient(config.fluxApiKey, mochiUrl, 600000);
+            const mochi = new MochiVideoClient(config.fluxApiKey, mochiUrl, 900000);
             console.log('✅ Video generation: Mochi (primary) → Mock (fallback)');
             return new FallbackVideoClient(mochi, mock, 'Mochi', 'Mock');
         }

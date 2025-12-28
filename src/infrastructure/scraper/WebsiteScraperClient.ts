@@ -569,7 +569,7 @@ export class WebsiteScraperClient implements IWebsiteScraperClient {
         for (const pattern of logoPatterns) {
             const match = html.match(pattern);
             if (match) {
-                let src = match[1];
+                const src = match[1];
                 try {
                     return new URL(src, sourceUrl).href;
                 } catch {

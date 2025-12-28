@@ -56,9 +56,8 @@ export class MusicSelector {
     private buildQuery(tags: string[], targetDurationSeconds: number): MusicSearchQuery {
         return {
             tags,
-            minDurationSeconds: targetDurationSeconds * 0.7,
-            maxDurationSeconds: targetDurationSeconds * 1.5,
-            limit: 10,
+            minDurationSeconds: 10, // At least 10s
+            limit: 20,
         };
     }
 

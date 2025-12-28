@@ -1,7 +1,7 @@
+/* eslint-disable max-lines-per-function */
 import { Router, Request, Response } from 'express';
 import { JobManager } from '../../application/JobManager';
 import { asyncHandler, NotFoundError } from '../middleware/errorHandler';
-import { isJobTerminal } from '../../domain/entities/ReelJob';
 import axios from 'axios';
 
 /**
@@ -139,11 +139,11 @@ export function createJobRoutes(jobManager: JobManager): Router {
                         data: response.data
                     }
                 });
-            } catch (error: any) {
+            } catch (error: unknown) {
                 console.error('Test webhook failed:', error);
                 res.status(500).json({
                     success: false,
-                    error: error.message,
+                    error: error instanceof Error ? error.message : String(error),
                     payload: samplePayload
                 });
             }

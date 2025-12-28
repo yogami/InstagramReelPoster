@@ -1,98 +1,163 @@
-/**
- * FFmpegVideoRenderer unit tests
- * 
- * Note: Full integration testing of FFmpeg requires a real FFmpeg binary.
- * These tests focus on the constructor and path handling logic.
- * The actual rendering is tested in integration tests.
- */
-
-import fs from 'fs';
-import os from 'os';
-import path from 'path';
-
-// Mock fluent-ffmpeg BEFORE importing FFmpegVideoRenderer
-jest.mock('fluent-ffmpeg', () => {
-    return jest.fn().mockReturnValue({
-        input: jest.fn().mockReturnThis(),
-        inputOptions: jest.fn().mockReturnThis(),
-        complexFilter: jest.fn().mockReturnThis(),
-        outputOptions: jest.fn().mockReturnThis(),
-        save: jest.fn().mockReturnThis(),
-        on: jest.fn().mockReturnThis()
-    });
-});
-
-jest.mock('fs');
-jest.mock('os');
 
 import { FFmpegVideoRenderer } from '../../../src/infrastructure/video/FFmpegVideoRenderer';
 import { MediaStorageClient } from '../../../src/infrastructure/storage/MediaStorageClient';
+import { ReelManifest } from '../../../src/domain/entities/ReelManifest';
+import ffmpeg from 'fluent-ffmpeg';
+import axios from 'axios';
+import fs from 'fs';
+import { EventEmitter } from 'events';
 
-const mockedFs = fs as jest.Mocked<typeof fs>;
-const mockedOs = os as jest.Mocked<typeof os>;
+// Mocks
+jest.mock('fluent-ffmpeg');
+jest.mock('axios');
+jest.mock('fs');
+jest.mock('os', () => ({
+    tmpdir: () => '/tmp',
+    platform: () => 'darwin',
+    type: () => 'Darwin'
+}));
+jest.mock('path', () => ({
+    join: (...args: string[]) => args.join('/'),
+    basename: (p: string) => p.split('/').pop() || ''
+}));
 
 describe('FFmpegVideoRenderer', () => {
-    let mockMediaClient: jest.Mocked<MediaStorageClient>;
+    let renderer: FFmpegVideoRenderer;
+    let mockCloudinaryClient: jest.Mocked<MediaStorageClient>;
+    let mockFfmpegCommand: any;
 
     beforeEach(() => {
         jest.clearAllMocks();
 
-        // Mock os.tmpdir
-        mockedOs.tmpdir.mockReturnValue('/tmp');
-
-        // Mock fs.existsSync and mkdirSync
-        mockedFs.existsSync.mockReturnValue(false);
-        mockedFs.mkdirSync.mockImplementation(() => undefined as any);
-
-        // Mock Media client
-        mockMediaClient = {
-            uploadFromUrl: jest.fn().mockResolvedValue({ url: 'https://cloudinary.com/video.mp4' })
+        mockCloudinaryClient = {
+            uploadFromUrl: jest.fn().mockResolvedValue({ url: 'http://cloud.com/video.mp4' })
         } as any;
+
+        // Mock FFmpeg builder pattern
+        mockFfmpegCommand = {
+            input: jest.fn().mockReturnThis(),
+            inputOptions: jest.fn().mockReturnThis(),
+            complexFilter: jest.fn().mockReturnThis(),
+            outputOptions: jest.fn().mockReturnThis(),
+            save: jest.fn().mockReturnThis(),
+            on: jest.fn().mockImplementation((event, callback) => {
+                if (event === 'end') {
+                    // Store callback to trigger manually if needed, or invoke immediately for success path
+                    // For async testing, we might want to delay invocation or expose a trigger
+                    process.nextTick(callback);
+                }
+                return mockFfmpegCommand;
+            })
+        };
+        (ffmpeg as unknown as jest.Mock).mockReturnValue(mockFfmpegCommand);
+
+        // Mock FS
+        (fs.existsSync as jest.Mock).mockReturnValue(false);
+        (fs.mkdirSync as jest.Mock).mockImplementation(() => { });
+        (fs.rmSync as jest.Mock).mockImplementation(() => { });
+        (fs.writeFileSync as jest.Mock).mockImplementation(() => { });
+
+        // Mock Write Stream
+        const mockStream = new EventEmitter();
+        (mockStream as any).pipe = jest.fn();
+        (fs.createWriteStream as jest.Mock).mockReturnValue(mockStream);
+
+        // Mock Axios (Download)
+        const mockResponseStream = new EventEmitter();
+        (mockResponseStream as any).pipe = jest.fn();
+        process.nextTick(() => {
+            mockResponseStream.emit('data', 'chunk');
+            mockResponseStream.emit('end');
+            mockStream.emit('finish'); // Trigger write stream finish when download ends
+        });
+
+        (axios as unknown as jest.Mock).mockResolvedValue({
+            data: mockResponseStream
+        });
+
+        renderer = new FFmpegVideoRenderer(mockCloudinaryClient);
     });
 
-    describe('constructor', () => {
-        test('should create renderer with cloudinary client', () => {
-            const renderer = new FFmpegVideoRenderer(mockMediaClient);
-            expect(renderer).toBeInstanceOf(FFmpegVideoRenderer);
-        });
+    const manifest: ReelManifest = {
+        voiceoverUrl: 'http://tts.com/vo.mp3',
+        durationSeconds: 10,
+        segments: [
+            { index: 0, start: 0, end: 5, imageUrl: 'http://img.com/1.png' } as any,
+            { index: 1, start: 5, end: 10, imageUrl: 'http://img.com/2.png' } as any
+        ],
+        subtitlesUrl: 'http://sub.com/sub.srt',
+        musicUrl: 'http://music.com/song.mp3',
+        musicDurationSeconds: 10
+    };
 
-        test('should set temp directory path', () => {
-            const renderer = new FFmpegVideoRenderer(mockMediaClient);
-            expect((renderer as any).tempDir).toBe(path.join('/tmp', 'reel-poster-renders'));
-        });
+    test('should render video with music and images', async () => {
+        const result = await renderer.render(manifest);
 
-        test('should create temp directory if it does not exist', () => {
-            mockedFs.existsSync.mockReturnValue(false);
+        expect(result.videoUrl).toBe('http://cloud.com/video.mp4');
+        expect(mockCloudinaryClient.uploadFromUrl).toHaveBeenCalled();
 
-            new FFmpegVideoRenderer(mockMediaClient);
-
-            expect(mockedFs.mkdirSync).toHaveBeenCalledWith(
-                expect.stringContaining('reel-poster-renders'),
-                { recursive: true }
-            );
-        });
-
-        test('should not create temp directory if it exists', () => {
-            mockedFs.existsSync.mockReturnValue(true);
-
-            new FFmpegVideoRenderer(mockMediaClient);
-
-            expect(mockedFs.mkdirSync).not.toHaveBeenCalled();
-        });
-
-        test('should store cloudinary client reference', () => {
-            const renderer = new FFmpegVideoRenderer(mockMediaClient);
-            expect((renderer as any).cloudinaryClient).toBe(mockMediaClient);
-        });
+        // Check FFmpeg inputs (VO + Music + 2 Images)
+        expect(mockFfmpegCommand.input).toHaveBeenCalledTimes(4);
     });
 
-    describe('temp directory handling', () => {
-        test('should use os.tmpdir for base path', () => {
-            mockedOs.tmpdir.mockReturnValue('/custom/tmp');
+    test('should render video without music', async () => {
+        const noMusicManifest = { ...manifest, musicUrl: undefined };
+        await renderer.render(noMusicManifest);
 
-            const renderer = new FFmpegVideoRenderer(mockMediaClient);
+        // Inputs: VO + 2 Images (No music)
+        expect(mockFfmpegCommand.input).toHaveBeenCalledTimes(3);
+    });
 
-            expect((renderer as any).tempDir).toBe(path.join('/custom/tmp', 'reel-poster-renders'));
+    test('should cleanup temp files on success', async () => {
+        await renderer.render(manifest);
+        expect(fs.rmSync).toHaveBeenCalledWith(expect.stringContaining('/tmp/reel-poster-renders'), expect.anything());
+    });
+
+    test('should cleanup temp files on error', async () => {
+        mockCloudinaryClient.uploadFromUrl.mockRejectedValue(new Error('Upload failed'));
+
+        await expect(renderer.render(manifest)).rejects.toThrow('Upload failed');
+        expect(fs.rmSync).toHaveBeenCalled();
+    });
+
+    test('should handle download errors', async () => {
+        (axios as unknown as jest.Mock).mockRejectedValue(new Error('Download failed'));
+
+        await expect(renderer.render(manifest)).rejects.toThrow('Download failed');
+        // Ensure cleanup still runs
+        expect(fs.rmSync).toHaveBeenCalled();
+    });
+
+    test('should handle FFmpeg errors', async () => {
+        // Override mock to trigger error instead of end
+        mockFfmpegCommand.on.mockImplementation((event: string, cb: any) => {
+            if (event === 'error') {
+                process.nextTick(() => cb(new Error('FFmpeg failed')));
+            }
+            return mockFfmpegCommand;
         });
+
+        await expect(renderer.render(manifest)).rejects.toThrow('FFmpeg error: FFmpeg failed');
+    });
+
+    test('should accept base64 data URLs for subtitles', async () => {
+        const base64Manifest = {
+            ...manifest,
+            subtitlesUrl: 'data:application/x-subrip;base64,VEVTVAo='
+        };
+
+        await renderer.render(base64Manifest);
+
+        // Should call writeFileSync for base64
+        expect(fs.writeFileSync).toHaveBeenCalled();
+        // Should not call axios for subtitles
+        // Original manifest had 3 URLs (VO, Music, Img1, Img2) -> 4 calls
+        // Base64 sub replaces one URL download? No, subtitles are part of assets.
+        // Manifest: VO (http), Music (http), Sub (data), Seg1 (http), Seg2 (http).
+        // Downloads: VO, Music, Seg1, Seg2 (4 http calls)
+        // Subtitles handled via writeFileSync.
+
+        const calls = (axios as unknown as jest.Mock).mock.calls;
+        expect(calls.length).toBe(4);
     });
 });

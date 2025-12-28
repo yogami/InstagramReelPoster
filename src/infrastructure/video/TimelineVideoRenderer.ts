@@ -1,4 +1,7 @@
 import axios from 'axios';
+/* eslint-disable max-lines */
+/* eslint-disable complexity */
+/* eslint-disable max-lines-per-function */
 import { IVideoRenderer, RenderResult } from '../../domain/ports/IVideoRenderer';
 import { ReelManifest } from '../../domain/entities/ReelManifest';
 

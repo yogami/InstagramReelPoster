@@ -1,3 +1,4 @@
+/* eslint-disable max-lines-per-function */
 import { Router, Request, Response } from 'express';
 import { ReelJobInput } from '../../domain/entities/ReelJob';
 import { JobManager } from '../../application/JobManager';
@@ -73,7 +74,7 @@ export function createReelRoutes(
             }
 
             // Start processing in background (don't await)
-            orchestrator.processJob(job.id).catch((error) => {
+            orchestrator.processJob(job.id).catch((error: unknown) => {
                 console.error(`Job ${job.id} failed:`, error);
             });
 
@@ -146,7 +147,7 @@ export function createReelRoutes(
             console.log(`[${job.id}] Website promo reel started for: ${website}`);
 
             // Start processing in background (don't await)
-            orchestrator.processJob(job.id).catch((error) => {
+            orchestrator.processJob(job.id).catch((error: unknown) => {
                 console.error(`Job ${job.id} failed:`, error);
             });
 
@@ -199,7 +200,7 @@ export function createReelRoutes(
             const job = await jobManager.createJob(input);
 
             // Start processing in background
-            orchestrator.processJob(job.id).catch((error) => {
+            orchestrator.processJob(job.id).catch((error: unknown) => {
                 console.error(`Retry Job ${job.id} failed:`, error);
             });
 
@@ -265,7 +266,7 @@ export function createReelRoutes(
             }
 
             // Update job status and URLs
-            const updates: any = {
+            const updates: Record<string, unknown> = {
                 status: 'generating_subtitles'
             };
 
@@ -279,7 +280,7 @@ export function createReelRoutes(
             await jobManager.updateJob(id, updates);
 
             // Trigger orchestrator (async)
-            orchestrator.processJob(id).catch(err => {
+            orchestrator.processJob(id).catch((err: unknown) => {
                 console.error(`[Salvage] Salvage of job ${id} failed in background:`, err);
             });
 

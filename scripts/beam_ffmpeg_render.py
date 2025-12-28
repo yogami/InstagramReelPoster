@@ -146,10 +146,15 @@ def render_video(
         )
         
         print(f"[FFmpeg] Executing command...")
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=540) # 9 min internal timeout
+        except subprocess.TimeoutExpired as te:
+            print(f"[FFmpeg] CRITICAL: FFmpeg stalled for 9 minutes.")
+            if te.stderr: print(f"Last Stderr: {te.stderr[-1000:]}")
+            raise Exception("FFmpeg timed out rendering (9 minute cap reached)")
         
         if result.returncode != 0:
-            print(f"[FFmpeg] ERROR: {result.stderr[-2000:]}")
+            print(f"[FFmpeg] ERROR (Code {result.returncode}): {result.stderr[-2000:]}")
             raise Exception(f"FFmpeg failed")
         
         cloudinary_url = os.environ.get("CLOUDINARY_URL")
@@ -301,7 +306,7 @@ def build_ffmpeg_command(
     cmd.extend(['-filter_complex', ';'.join(filter_complex)])
     cmd.extend(['-map', f'[{v_tag}]', '-map', f'[{a_tag}]'])
     cmd.extend(['-t', str(total_duration)])
-    cmd.extend(['-c:v', 'libx264', '-c:a', 'aac', '-b:a', '192k', '-ac', '2', '-pix_fmt', 'yuv420p', '-movflags', '+faststart'])
+    cmd.extend(['-c:v', 'libx264', '-preset', 'veryfast', '-c:a', 'aac', '-b:a', '192k', '-ac', '2', '-pix_fmt', 'yuv420p', '-movflags', '+faststart'])
     cmd.append(output_path)
     return cmd
 

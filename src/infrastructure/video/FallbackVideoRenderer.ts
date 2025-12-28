@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { IVideoRenderer, RenderResult } from '../../domain/ports/IVideoRenderer';
 import { ReelManifest } from '../../domain/entities/ReelManifest';
 

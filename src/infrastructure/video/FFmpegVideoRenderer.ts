@@ -114,7 +114,7 @@ export class FFmpegVideoRenderer implements IVideoRenderer {
     private async downloadFile(url: string, dest: string): Promise<void> {
         // Handle data URLs (base64) specifically for subtitles
         if (url.startsWith('data:')) {
-            const matches = url.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+            const matches = url.match(new RegExp('^data:([A-Za-z-+/]+);base64,(.+)$'));
             if (matches && matches.length === 3) {
                 const buffer = Buffer.from(matches[2], 'base64');
                 fs.writeFileSync(dest, buffer);
@@ -213,7 +213,7 @@ export class FFmpegVideoRenderer implements IVideoRenderer {
             }
 
             // Burn subtitles into video
-            const subsFilter = `subtitles=${assets.subtitlesPath}:force_style='FontName=Arial,FontSize=24,PrimaryColour=&H00FFFFFF,BackColour=&H80000000,BorderStyle=3,Outline=1,Shadow=0,MarginV=60'`;
+            const subsFilter = `subtitles=${assets.subtitlesPath}:force_style='Fontname=Roboto,FontSize=24,PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,BorderStyle=1,Outline=1,Shadow=0,MarginV=60'`;
             complexFilter.push(`[vbase]${subsFilter}[vburned]`);
 
             // Mix Audio

@@ -1,215 +1,166 @@
+
+import request from 'supertest';
+import express from 'express';
+import bodyParser from 'body-parser';
 import { createReelRoutes } from '../../../src/presentation/routes/reelRoutes';
 import { JobManager } from '../../../src/application/JobManager';
 import { ReelOrchestrator } from '../../../src/application/ReelOrchestrator';
 import { IGrowthInsightsService } from '../../../src/domain/ports/IGrowthInsightsService';
+import { errorHandler } from '../../../src/presentation/middleware/errorHandler';
 
-// Mock express Router
-const mockRouter = {
-    get: jest.fn().mockReturnThis(),
-    post: jest.fn().mockReturnThis()
-};
-
-jest.mock('express', () => ({
-    Router: jest.fn(() => mockRouter),
-    Request: {},
-    Response: {}
-}));
-
+// Mock Config
 jest.mock('../../../src/config', () => ({
     getConfig: jest.fn(() => ({
-        makeWebhookUrl: 'https://hook.make.com/test'
+        makeWebhookUrl: 'http://make.com/default'
     }))
 }));
 
-describe('createReelRoutes', () => {
+describe('ReelRoutes', () => {
+    let app: express.Express;
     let mockJobManager: jest.Mocked<JobManager>;
     let mockOrchestrator: jest.Mocked<ReelOrchestrator>;
-    let mockGrowthInsightsService: jest.Mocked<IGrowthInsightsService>;
-    let routeHandlers: Map<string, Function>;
+    let mockGrowthService: jest.Mocked<IGrowthInsightsService>;
 
     beforeEach(() => {
         jest.clearAllMocks();
-        routeHandlers = new Map();
 
         mockJobManager = {
-            getJob: jest.fn(),
-            getAllJobs: jest.fn(),
             createJob: jest.fn(),
+            getLastJobForUser: jest.fn(),
+            getJob: jest.fn(),
             updateJob: jest.fn(),
-            getLastJobForUser: jest.fn()
+            // ... other methods as required
         } as any;
 
         mockOrchestrator = {
-            processJob: jest.fn()
+            processJob: jest.fn().mockResolvedValue(undefined),
         } as any;
 
-        mockGrowthInsightsService = {
+        mockGrowthService = {
             recordAnalytics: jest.fn(),
-            getAnalyticsForReel: jest.fn(),
-            getAggregatedInsights: jest.fn()
         } as any;
 
-        // Capture route handlers when registered
-        mockRouter.get.mockImplementation((path: string, handler: Function) => {
-            routeHandlers.set(`GET ${path}`, handler);
-            return mockRouter;
+        app = express();
+        app.use(bodyParser.json());
+        app.use('/', createReelRoutes(mockJobManager, mockOrchestrator, mockGrowthService));
+        app.use(errorHandler);
+    });
+
+    describe('POST /process-reel', () => {
+        test('should validate input (missing sourceAudioUrl)', async () => {
+            const res = await request(app).post('/process-reel').send({});
+            expect(res.status).toBe(400);
+            expect(res.body.error.message).toContain('sourceAudioUrl is required');
         });
-        mockRouter.post.mockImplementation((path: string, handler: Function) => {
-            routeHandlers.set(`POST ${path}`, handler);
-            return mockRouter;
+
+        test('should validate input (invalid duration)', async () => {
+            const res = await request(app).post('/process-reel').send({
+                sourceAudioUrl: 'http://audio.mp3',
+                targetDurationRange: { min: 60, max: 30 } // Invalid
+            });
+            expect(res.status).toBe(400);
+            expect(res.body.error.message).toContain('min cannot be greater than max');
+        });
+
+        test('should start job successfully', async () => {
+            const mockJob = { id: 'job-123', status: 'pending' };
+            mockJobManager.createJob.mockResolvedValue(mockJob as any);
+
+            const res = await request(app).post('/process-reel').send({
+                sourceAudioUrl: 'http://test.com/audio.mp3',
+                forceMode: 'direct'
+            });
+
+            expect(res.status).toBe(202);
+            expect(res.body.jobId).toBe('job-123');
+            expect(res.body.contentMode).toBe('direct');
+
+            expect(mockJobManager.createJob).toHaveBeenCalledWith(expect.objectContaining({
+                sourceAudioUrl: 'http://test.com/audio.mp3',
+                forceMode: 'direct'
+            }));
+
+            // Check Orchestrator call (async)
+            expect(mockOrchestrator.processJob).toHaveBeenCalledWith('job-123');
         });
     });
 
-    describe('route registration', () => {
-        test('should register POST /process-reel route', () => {
-            createReelRoutes(mockJobManager, mockOrchestrator, mockGrowthInsightsService);
-            expect(mockRouter.post).toHaveBeenCalledWith('/process-reel', expect.any(Function));
+    describe('POST /website', () => {
+        test('should require consent', async () => {
+            const res = await request(app).post('/website').send({
+                website: 'http://test.com'
+            });
+            expect(res.status).toBe(400);
+            expect(res.body.error.message).toContain('consent must be true');
         });
 
-        test('should register POST /retry-last route', () => {
-            createReelRoutes(mockJobManager, mockOrchestrator, mockGrowthInsightsService);
-            expect(mockRouter.post).toHaveBeenCalledWith('/retry-last', expect.any(Function));
+        test('should validate category', async () => {
+            const res = await request(app).post('/website').send({
+                website: 'http://test.com',
+                consent: true,
+                category: 'invalid-cat'
+            });
+            expect(res.status).toBe(400);
+            expect(res.body.error.message).toContain('category must be one of');
         });
 
-        test('should return a router instance', () => {
-            const router = createReelRoutes(mockJobManager, mockOrchestrator, mockGrowthInsightsService);
-            expect(router).toBeDefined();
+        test('should start website promo job', async () => {
+            const mockJob = { id: 'promo-123', status: 'pending' };
+            mockJobManager.createJob.mockResolvedValue(mockJob as any);
+
+            const res = await request(app).post('/website').send({
+                website: 'http://cafe.com',
+                businessName: 'My Cafe',
+                category: 'cafe',
+                consent: true,
+                media: ['http://img1.png']
+            });
+
+            expect(res.status).toBe(202);
+            expect(res.body.jobId).toBe('promo-123');
+
+            expect(mockJobManager.createJob).toHaveBeenCalledWith(expect.objectContaining({
+                websitePromoInput: expect.objectContaining({
+                    websiteUrl: 'http://cafe.com',
+                    providedMedia: ['http://img1.png']
+                })
+            }));
+
+            expect(mockOrchestrator.processJob).toHaveBeenCalledWith('promo-123');
         });
     });
-});
 
-describe('Reel Routes Request Validation', () => {
-    describe('POST /process-reel validation', () => {
-        test('valid request body should pass validation', () => {
-            const validRequest = {
-                sourceAudioUrl: 'https://example.com/audio.mp3',
-                targetDurationRange: { min: 30, max: 90 },
-                moodOverrides: { mood: 'peaceful' },
-                callbackUrl: 'https://hook.make.com/callback'
+    describe('POST /retry-last', () => {
+        test('should fail if no previous job', async () => {
+            mockJobManager.getLastJobForUser.mockResolvedValue(null);
+
+            const res = await request(app).post('/retry-last').send({ telegramChatId: 123 });
+            expect(res.status).toBe(400);
+            expect(res.body.error.message).toContain('No previous job found');
+        });
+
+        test('should retry last job', async () => {
+            const lastJob = {
+                id: 'old-1',
+                sourceAudioUrl: 'http://old.mp3',
+                telegramChatId: 123
             };
+            const newJob = { id: 'new-1', status: 'pending' };
 
-            expect(validRequest.sourceAudioUrl).toBeDefined();
-            expect(typeof validRequest.sourceAudioUrl).toBe('string');
-            expect(new URL(validRequest.sourceAudioUrl)).toBeDefined();
+            mockJobManager.getLastJobForUser.mockResolvedValue(lastJob as any);
+            mockJobManager.createJob.mockResolvedValue(newJob as any);
+
+            const res = await request(app).post('/retry-last').send({ telegramChatId: 123 });
+
+            expect(res.status).toBe(202);
+            expect(res.body.jobId).toBe('new-1');
+            expect(res.body.originalJobId).toBe('old-1');
+
+            expect(mockJobManager.createJob).toHaveBeenCalledWith(expect.objectContaining({
+                sourceAudioUrl: 'http://old.mp3',
+                telegramChatId: 123
+            }));
+            expect(mockOrchestrator.processJob).toHaveBeenCalledWith('new-1');
         });
-
-        test('should require sourceAudioUrl', () => {
-            const invalidRequest = {
-                targetDurationRange: { min: 30, max: 90 }
-            };
-
-            expect((invalidRequest as any).sourceAudioUrl).toBeUndefined();
-        });
-
-        test('targetDurationRange should have valid min/max', () => {
-            const validRange = { min: 30, max: 90 };
-            expect(validRange.min).toBeLessThanOrEqual(validRange.max);
-            expect(typeof validRange.min).toBe('number');
-            expect(typeof validRange.max).toBe('number');
-        });
-
-        test('invalid min > max should fail validation', () => {
-            const invalidRange = { min: 100, max: 50 };
-            expect(invalidRange.min).toBeGreaterThan(invalidRange.max);
-        });
-    });
-
-    describe('POST /retry-last validation', () => {
-        test('valid telegramChatId should pass validation', () => {
-            const validRequest = {
-                telegramChatId: 123456789
-            };
-
-            expect(Number(validRequest.telegramChatId)).not.toBeNaN();
-        });
-
-        test('string telegramChatId should be convertible to number', () => {
-            const stringChatId = '123456789';
-            expect(Number(stringChatId)).toBe(123456789);
-        });
-
-        test('invalid non-numeric telegramChatId should fail', () => {
-            const invalidChatId = 'not-a-number';
-            expect(Number(invalidChatId)).toBeNaN();
-        });
-    });
-});
-
-describe('Reel Routes Response Structure', () => {
-    test('process-reel success response should have correct structure', () => {
-        const successResponse = {
-            jobId: 'job-abc-123',
-            status: 'pending',
-            message: 'Reel processing started'
-        };
-
-        expect(successResponse).toHaveProperty('jobId');
-        expect(successResponse).toHaveProperty('status');
-        expect(successResponse).toHaveProperty('message');
-    });
-
-    test('retry-last success response should include originalJobId', () => {
-        const retryResponse = {
-            jobId: 'job-new-456',
-            status: 'pending',
-            message: 'Retry processing started',
-            originalJobId: 'job-old-123'
-        };
-
-        expect(retryResponse).toHaveProperty('originalJobId');
-        expect(retryResponse.message).toContain('Retry');
-    });
-});
-
-describe('POST /website validation', () => {
-    test('should validate website URL is required', () => {
-        const invalidRequest = { consent: true };
-        expect((invalidRequest as any).website).toBeUndefined();
-    });
-
-    test('should validate consent must be true', () => {
-        const withConsentFalse = { website: 'https://example.com', consent: false };
-        expect(withConsentFalse.consent).toBe(false);
-    });
-
-    test('should validate category must be valid', () => {
-        const validCategories = ['cafe', 'gym', 'shop', 'service', 'restaurant', 'studio'];
-        expect(validCategories.includes('invalid')).toBe(false);
-        expect(validCategories.includes('cafe')).toBe(true);
-    });
-
-    test('website promo response should have correct structure', () => {
-        const response = {
-            jobId: 'job-123',
-            status: 'pending',
-            message: 'Website promo reel generation started',
-            website: 'https://example.com',
-            category: 'service'
-        };
-
-        expect(response).toHaveProperty('jobId');
-        expect(response).toHaveProperty('website');
-        expect(response.message).toContain('Website');
-    });
-});
-
-describe('POST /retry-last validation', () => {
-    test('should require telegramChatId', () => {
-        const invalidRequest = {};
-        expect((invalidRequest as any).telegramChatId).toBeUndefined();
-    });
-
-    test('telegramChatId must be numeric', () => {
-        const validChatId = 123456789;
-        expect(typeof validChatId).toBe('number');
-        expect(Number.isNaN(validChatId)).toBe(false);
-    });
-
-    test('should handle missing previous job scenario', () => {
-        // When no previous job exists, API should return 400
-        const errorResponse = {
-            error: 'No previous job found for this user to retry'
-        };
-        expect(errorResponse.error).toContain('No previous job');
     });
 });

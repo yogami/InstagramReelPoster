@@ -1,0 +1,301 @@
+import { Segment } from '../../domain/entities/Segment';
+import { JobManager } from '../JobManager';
+import { ITtsClient } from '../../domain/ports/ITtsClient';
+import { IImageClient } from '../../domain/ports/IImageClient';
+import { MediaStorageClient } from '../../infrastructure/storage/MediaStorageClient';
+import { MusicSelector } from '../MusicSelector';
+import { ReelJob } from '../../domain/entities/ReelJob';
+import { SegmentContent } from '../../domain/ports/ILlmClient';
+import { PromoScriptPlan, PromoSceneContent, ScrapedMedia, BusinessCategory } from '../../domain/entities/WebsitePromo';
+import { getMusicStyle } from '../../infrastructure/llm/CategoryPrompts';
+import { getConfig } from '../../config';
+import { calculateSpeedAdjustment, calculateSegmentTimings } from '../../domain/services/DurationCalculator';
+import { createSegment } from '../../domain/entities/Segment';
+
+export interface PreparePromoAssetsOptions {
+    jobId: string;
+    job: ReelJob;
+    segmentContent: SegmentContent[];
+    fullCommentary: string;
+    targetDuration: number;
+    category: BusinessCategory;
+    promoScript: PromoScriptPlan;
+    voiceId?: string;
+}
+
+export interface PromoAssetServiceDependencies {
+    jobManager: JobManager;
+    ttsClient: ITtsClient;
+    fallbackTtsClient?: ITtsClient;
+    primaryImageClient?: IImageClient;
+    fallbackImageClient: IImageClient;
+    storageClient?: MediaStorageClient;
+    musicSelector: MusicSelector;
+}
+
+export class PromoAssetService {
+    constructor(private readonly deps: PromoAssetServiceDependencies) { }
+
+    async preparePromoAssets(options: PreparePromoAssetsOptions) {
+        const { jobId, job, segmentContent, fullCommentary, targetDuration, category, promoScript, voiceId } = options;
+
+        // Synthesize voiceover
+        await this.updateJobStatus(jobId, 'synthesizing_voiceover', 'Creating voiceover...');
+        const { voiceoverUrl, voiceoverDuration } = await this.synthesizeWithAdjustment(fullCommentary, targetDuration, voiceId);
+        await this.deps.jobManager.updateJob(jobId, { voiceoverUrl, voiceoverDurationSeconds: voiceoverDuration, fullCommentary });
+
+        // Select music
+        await this.updateJobStatus(jobId, 'selecting_music', 'Selecting background music...');
+        const musicStyle = getMusicStyle(category);
+        const musicContext = promoScript ? `Business: ${promoScript.businessName}, Category: ${category}, Tone: ${promoScript.musicStyle}` : `${category} promo`;
+        const musicResult = await this.deps.musicSelector.selectMusic([musicStyle], voiceoverDuration, musicContext);
+        const musicUrl = musicResult?.track?.audioUrl;
+        const musicDurationSeconds = musicResult?.track?.durationSeconds;
+        if (musicUrl) {
+            await this.deps.jobManager.updateJob(jobId, { musicUrl, musicDurationSeconds, musicSource: musicResult.source });
+        }
+
+        // Build segments and resolve media with prioritized sourcing
+        const segments = this.buildSegments(segmentContent, voiceoverDuration);
+        await this.updateJobStatus(jobId, 'generating_images', 'Creating visuals...');
+
+        // Resolve media for each scene (user > scraped > AI)
+        const scrapedMedia = promoScript?.compliance?.source === 'public-website'
+            ? (await this.deps.jobManager.getJob(jobId))?.websiteAnalysis?.scrapedMedia || []
+            : [];
+        const userProvidedMedia = job.websitePromoInput?.providedMedia || [];
+        const resolvedMedia = this.resolveMediaForScenes(
+            promoScript?.scenes || [],
+            userProvidedMedia,
+            scrapedMedia
+        );
+
+        // Generate images only for scenes needing AI (gap fill)
+        const segmentsWithImages = await this.generateImagesWithPriority(segments, resolvedMedia, jobId);
+        await this.deps.jobManager.updateJob(jobId, { segments: segmentsWithImages });
+
+        return { voiceoverUrl, voiceoverDuration, musicUrl, musicDurationSeconds, segmentsWithImages };
+    }
+
+    private async updateJobStatus(jobId: string, status: ReelJob['status'], step: string): Promise<void> {
+        console.log(`[${jobId}] ${status}: ${step}`);
+        await this.deps.jobManager.updateStatus(jobId, status, step);
+    }
+
+    /**
+     * Synthesizes voiceover with optional speed adjustment.
+     */
+    private async synthesizeWithAdjustment(
+        text: string,
+        targetDuration: number,
+        voiceId?: string
+    ): Promise<{ voiceoverUrl: string; voiceoverDuration: number; speed: number }> {
+        // First pass at normal speed
+        let result: any;
+        let speed = 1.0;
+
+        try {
+            console.log(`[TTS] Attempting synthesis with primary client (Fish Audio)...${voiceId ? ` (Voice: ${voiceId})` : ''}`);
+            result = await this.deps.ttsClient.synthesize(text, { voiceId });
+        } catch (error: any) {
+            console.error('[TTS] ❌ Primary TTS (Fish Audio) failed. Falling back to Gpt.');
+            console.error(`[TTS] Error Details: ${error.message}`);
+            if (error.response) {
+                console.error(`[TTS] Status: ${error.response.status}`);
+                console.error(`[TTS] Data: ${JSON.stringify(error.response.data)}`);
+            }
+
+            if (this.deps.fallbackTtsClient) {
+                console.warn('[TTS] ⚠️ Using fallback TTS client...');
+                result = await this.deps.fallbackTtsClient.synthesize(text, { voiceId });
+            } else {
+                throw error;
+            }
+        }
+
+        // Check if we need speed adjustment (Strict: 95-100% of target)
+        const deviation = (result.durationSeconds - targetDuration) / targetDuration;
+        const absDiff = Math.abs(result.durationSeconds - targetDuration);
+
+        // Adjust if deviation > 0 (too long) or deviation < -0.05 (too short, <95%)
+        // OR if absolute difference is more than 0.5s for short reels
+        if (deviation > 0 || deviation < -0.04 || absDiff > 0.5) {
+            speed = calculateSpeedAdjustment(result.durationSeconds, targetDuration);
+            if (speed !== 1.0) {
+                try {
+                    console.log(`[TTS] Applying speed adjustment (${speed.toFixed(2)}x) to hit target ${targetDuration}s (current: ${result.durationSeconds.toFixed(2)}s)...`);
+                    result = await this.deps.ttsClient.synthesize(text, { speed, pitch: 0.9, voiceId });
+                } catch (error: any) {
+                    console.warn('[TTS] ⚠️ Primary TTS speed adjustment failed:', error.message);
+
+                    if (this.deps.fallbackTtsClient) {
+                        console.log('[TTS] Trying fallback client for speed adjustment with pitch 0.9...');
+                        result = await this.deps.fallbackTtsClient.synthesize(text, { speed, pitch: 0.9 });
+                    } else {
+                        console.warn('[TTS] No fallback available for adjustment, returning original.');
+                    }
+                }
+            }
+        }
+
+        // CRITICAL: Upload to Cloudinary if TTS returned a data URL
+        let voiceoverUrl = result.audioUrl;
+        if (voiceoverUrl.startsWith('data:') && this.deps.storageClient) {
+            console.log('[Voiceover] Uploading base64 audio to Cloudinary...');
+            try {
+                const uploadResult = await this.deps.storageClient.uploadAudio(voiceoverUrl, {
+                    folder: 'instagram-reels/voiceovers',
+                    publicId: `voiceover_${Date.now()}`
+                });
+                voiceoverUrl = uploadResult.url;
+                console.log('[Voiceover] Uploaded successfully:', voiceoverUrl);
+            } catch (uploadError) {
+                console.error('[Voiceover] Cloudinary upload failed, using data URL (may cause API issues):', uploadError);
+            }
+        }
+
+        return {
+            voiceoverUrl,
+            voiceoverDuration: result.durationSeconds,
+            speed,
+        };
+    }
+
+    /**
+     * Builds segments with proper timing.
+     */
+    private buildSegments(content: SegmentContent[], totalDuration: number): Segment[] {
+        const segmentDuration = totalDuration / content.length;
+        const timings = calculateSegmentTimings(Array(content.length).fill(segmentDuration));
+
+        return content.map((c, index) =>
+            createSegment({
+                index,
+                startSeconds: timings[index].start,
+                endSeconds: timings[index].end,
+                commentary: c.commentary,
+                imagePrompt: c.imagePrompt,
+                caption: c.caption,
+            })
+        );
+    }
+
+    /**
+     * Resolves media assets for scenes using prioritized sourcing.
+     * Priority: user-provided > scraped website images > AI generation
+     */
+    private resolveMediaForScenes(
+        scenes: PromoSceneContent[],
+        userMedia: string[] = [],
+        scrapedMedia: ScrapedMedia[] = []
+    ): (string | null)[] {
+        const resolvedMedia: (string | null)[] = [];
+        let userMediaIndex = 0;
+        let scrapedMediaIndex = 0;
+
+        for (let i = 0; i < scenes.length; i++) {
+            const scene = scenes[i];
+
+            // Priority 1: User-provided media
+            if (userMediaIndex < userMedia.length) {
+                resolvedMedia.push(userMedia[userMediaIndex]);
+                userMediaIndex++;
+                console.log(`[MediaResolver] Scene ${i + 1} (${scene.role}): Using user-provided media`);
+                continue;
+            }
+
+            // Priority 2: Scraped website images
+            if (scrapedMediaIndex < scrapedMedia.length) {
+                const scraped = scrapedMedia[scrapedMediaIndex];
+                resolvedMedia.push(scraped.url);
+                scrapedMediaIndex++;
+                console.log(`[MediaResolver] Scene ${i + 1} (${scene.role}): Using scraped image from ${scraped.sourcePage}`);
+                continue;
+            }
+
+            // Priority 3: AI generation (gap fill)
+            resolvedMedia.push(null);
+            console.log(`[MediaResolver] Scene ${i + 1} (${scene.role}): Will use AI generation (gap fill)`);
+        }
+
+        const stats = {
+            total: scenes.length,
+            userMedia: userMediaIndex,
+            scraped: scrapedMediaIndex - userMediaIndex > 0 ? scrapedMediaIndex - userMediaIndex : scrapedMediaIndex,
+            ai: resolvedMedia.filter(m => m === null).length,
+        };
+        console.log(`[MediaResolver] Summary: ${stats.userMedia} user, ${stats.scraped} scraped, ${stats.ai} AI-generated`);
+
+        return resolvedMedia;
+    }
+
+    /**
+     * Generates images with priority sourcing.
+     * Uses pre-resolved media URLs when available, only generating AI images for gaps.
+     */
+    private async generateImagesWithPriority(
+        segments: Segment[],
+        resolvedMedia: (string | null)[],
+        jobId: string
+    ): Promise<Segment[]> {
+        console.log(`Generating images with priority sourcing for ${segments.length} segments...`);
+
+        const results: Segment[] = [];
+        for (let i = 0; i < segments.length; i++) {
+            const segment = segments[i];
+            const preResolvedUrl = resolvedMedia[i];
+
+            try {
+                let finalImageUrl = '';
+
+                if (preResolvedUrl) {
+                    // Use pre-resolved media (user-provided or scraped)
+                    finalImageUrl = preResolvedUrl;
+                    console.log(`[${jobId}] Segment ${i + 1}: Using pre-resolved media`);
+                } else {
+                    // Generate AI image (gap fill)
+                    await this.updateJobStatus(jobId, 'generating_images', `Creating visual ${i + 1} of ${segments.length} (AI)...`);
+                    if (this.deps.primaryImageClient) {
+                        try {
+                            const { imageUrl } = await this.deps.primaryImageClient.generateImage(segment.imagePrompt);
+                            finalImageUrl = imageUrl;
+                        } catch (primaryError) {
+                            console.warn(`Primary image client failed for segment ${i}, falling back:`, primaryError);
+                            const { imageUrl } = await this.deps.fallbackImageClient.generateImage(segment.imagePrompt);
+                            finalImageUrl = imageUrl;
+                        }
+                    } else {
+                        const { imageUrl } = await this.deps.fallbackImageClient.generateImage(segment.imagePrompt);
+                        finalImageUrl = imageUrl;
+                    }
+                }
+
+                // Upload to Cloudinary for permanent URLs (skip if already a cloud URL)
+                if (this.deps.storageClient && finalImageUrl && !finalImageUrl.includes('cloudinary.com')) {
+                    try {
+                        const uploadResult = await this.deps.storageClient.uploadImage(finalImageUrl, {
+                            folder: `instagram-reels/images/${jobId}`,
+                            publicId: `seg_${i}_${Date.now()}`
+                        });
+                        finalImageUrl = uploadResult.url;
+                    } catch (uploadError) {
+                        console.warn('Failed to upload image to Cloudinary, using original URL:', uploadError);
+                    }
+                }
+
+                results.push({ ...segment, imageUrl: finalImageUrl });
+            } catch (error) {
+                console.error(`Image generation failed for segment ${i}:`, error);
+                throw error;
+            }
+        }
+
+        // Wait for asset propagation
+        if (this.deps.storageClient) {
+            console.log('Waiting 2s for asset propagation...');
+            await new Promise(resolve => setTimeout(resolve, 2000));
+        }
+
+        return results;
+    }
+}

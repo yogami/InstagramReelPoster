@@ -72,7 +72,7 @@ export class WhisperTranscriptionClient implements ITranscriptionClient {
 
                 // Try system ffmpeg (standard locations)
                 const ffmpegPaths = ['ffmpeg', '/opt/homebrew/bin/ffmpeg', '/usr/local/bin/ffmpeg'];
-                let ffmpegPath = 'ffmpeg'; // default
+                const ffmpegPath = 'ffmpeg'; // default
 
                 // We'll just run 'ffmpeg' and hope it's in path, or use our verified path
                 const cmd = `/opt/homebrew/bin/ffmpeg -i "${inputPath}" -vn -ar 16000 -ac 1 -b:a 64k "${outputPath}" -y`;

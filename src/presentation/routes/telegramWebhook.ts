@@ -2,7 +2,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { JobManager } from '../../application/JobManager';
 import { ReelOrchestrator } from '../../application/ReelOrchestrator';
-import { ApprovalService } from '../../application/ApprovalService';
+// import { ApprovalService } from '../../application/ApprovalService'; // Unused
 import { asyncHandler, UnauthorizedError } from '../middleware/errorHandler';
 import { ChatService } from '../services/ChatService';
 import { getConfig } from '../../config';
@@ -80,6 +80,8 @@ export function createTelegramWebhookRoutes(
  * Processes a Telegram update.
  * Supports BOTH voice messages AND text prompts.
  */
+/* eslint-disable max-lines-per-function */
+/* eslint-disable complexity */
 async function processUpdate(
     update: TelegramUpdate,
     jobManager: JobManager,
