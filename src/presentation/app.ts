@@ -14,7 +14,7 @@ import { KieMusicGeneratorClient } from '../infrastructure/music/KieMusicGenerat
 import { OpenRouterImageClient } from '../infrastructure/images/OpenRouterImageClient';
 import { BeamcloudImageClient } from '../infrastructure/images/BeamcloudImageClient';
 import { FallbackImageClient } from '../infrastructure/images/FallbackImageClient';
-import { OpenAIImageClient } from '../infrastructure/images/OpenAIImageClient';
+// OpenAIImageClient available but not currently used
 import { PixabayImageClient } from '../infrastructure/images/PixabayImageClient';
 import { OpenAISubtitlesClient } from '../infrastructure/subtitles/OpenAISubtitlesClient';
 import { ShortstackVideoRenderer } from '../infrastructure/video/ShortstackVideoRenderer';
@@ -74,7 +74,7 @@ export function createApp(config: Config): Application {
     });
 
     // Create dependencies
-    const { jobManager, orchestrator, growthInsightsService, cloudinaryClient } = createDependencies(config);
+    const { jobManager, orchestrator, growthInsightsService } = createDependencies(config);
 
     // Auto-resume interrupted jobs
     import('../application/ResumeService').then(({ ResumeService }) => {

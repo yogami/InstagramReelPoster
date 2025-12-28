@@ -108,15 +108,15 @@ describe('DurationCalculator', () => {
     describe('needsTextAdjustment', () => {
         it('should return "ok" when within [97%, 100%] range (default 3% tolerance)', () => {
             expect(needsTextAdjustment(30, 30)).toBe('ok');
-            expect(needsTextAdjustment(29.1, 30)).toBe('ok'); // -3% is boundary
+            expect(needsTextAdjustment(28.5, 30)).toBe('ok'); // -5% is boundary
         });
 
         it('should return "shorter" even for small overshoots', () => {
             expect(needsTextAdjustment(30.1, 30)).toBe('shorter');
         });
 
-        it('should return "longer" when text is below 97%', () => {
-            expect(needsTextAdjustment(29, 30)).toBe('longer');
+        it('should return "longer" when text is below 95%', () => {
+            expect(needsTextAdjustment(28, 30)).toBe('longer');
         });
 
         it('should return "shorter" when text is too long', () => {

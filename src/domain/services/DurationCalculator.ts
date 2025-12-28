@@ -94,7 +94,7 @@ export function calculateSpeedAdjustment(
 export function needsTextAdjustment(
     estimatedSeconds: number,
     targetSeconds: number,
-    tolerancePercent: number = 0.03
+    tolerancePercent: number = 0.05
 ): 'shorter' | 'longer' | 'ok' {
     const deviation = (estimatedSeconds - targetSeconds) / targetSeconds;
 

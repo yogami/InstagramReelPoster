@@ -230,7 +230,6 @@ export class ReelOrchestrator {
             }
 
             // Step 2: Plan reel (branched by content mode)
-            let targetDurationSeconds = job.targetDurationSeconds;
             await this.updateJobStatus(jobId, 'planning', 'Planning reel structure...');
 
             console.log(`[${jobId}] Planning reel with range: ${job.targetDurationRange.min}s - ${job.targetDurationRange.max}s`);
@@ -391,7 +390,7 @@ export class ReelOrchestrator {
                 // Step 4: Synthesize voiceover
                 await this.updateJobStatus(jobId, 'synthesizing_voiceover', 'Creating voiceover...');
                 const fullCommentary = segmentContent.map((s) => s.commentary).join(' ');
-                const { voiceoverUrl, voiceoverDuration, speed } = await this.synthesizeWithAdjustment(
+                const { voiceoverUrl, voiceoverDuration } = await this.synthesizeWithAdjustment(
                     fullCommentary,
                     plan.targetDurationSeconds,
                     job.voiceId
@@ -815,7 +814,7 @@ export class ReelOrchestrator {
 
             if (this.deps.fallbackTTSClient) {
                 console.warn('[TTS] ⚠️ Using fallback TTS client...');
-                result = await this.deps.fallbackTTSClient.synthesize(text);
+                result = await this.deps.fallbackTTSClient.synthesize(text, { voiceId });
             } else {
                 throw error;
             }
@@ -1431,7 +1430,7 @@ export class ReelOrchestrator {
         const errorMessage = error instanceof Error ? error.message : String(error);
         console.error(`[${jobId}] Website promo job failed:`, error);
 
-        const failedJob = failJob(job, errorMessage); // Use failJob to get the updated job object
+        failJob(job, errorMessage); // Update job state to failed
         await this.deps.jobManager.updateJob(jobId, { status: 'failed', error: errorMessage });
 
         if (job.telegramChatId && this.deps.notificationClient) {

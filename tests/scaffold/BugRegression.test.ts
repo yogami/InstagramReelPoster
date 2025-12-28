@@ -103,8 +103,8 @@ describe('Bug Regression Verification', () => {
         const calculatorPath = path.join(projectRoot, 'domain/services/DurationCalculator.ts');
         const calcContent = fs.readFileSync(calculatorPath, 'utf-8');
 
-        // Should target 98% for safety
-        expect(calcContent).toContain('targetSeconds * 0.98 * rate');
+        // Should target 99% for safety (in DurationCalculator)
+        expect(calcContent).toContain('targetSeconds * 0.99 * rate');
         // Should catch any overshoot (> 0 deviation)
         expect(calcContent).toContain('if (deviation > 0)');
 

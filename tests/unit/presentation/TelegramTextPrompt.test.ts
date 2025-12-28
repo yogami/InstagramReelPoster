@@ -44,7 +44,7 @@ describe('Telegram Text Prompt Support', () => {
             };
 
             expect(() => createReelJob(uuidv4(), input, defaultDurationRange))
-                .toThrow('ReelJob requires either sourceAudioUrl or transcript');
+                .toThrow('ReelJob requires either sourceAudioUrl, transcript, or websitePromoInput');
         });
 
         it('should reject empty transcript', () => {
@@ -54,7 +54,7 @@ describe('Telegram Text Prompt Support', () => {
             };
 
             expect(() => createReelJob(uuidv4(), input, defaultDurationRange))
-                .toThrow('ReelJob requires either sourceAudioUrl or transcript');
+                .toThrow('ReelJob requires either sourceAudioUrl, transcript, or websitePromoInput');
         });
 
         it('should trim transcript whitespace', () => {

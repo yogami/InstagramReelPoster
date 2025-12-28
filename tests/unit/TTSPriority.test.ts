@@ -44,7 +44,7 @@ describe('TTS Priority Logic (Unit)', () => {
         const result = await orchestrator.synthesizeWithAdjustment('test text', 10);
 
         // Assert
-        expect(mockPrimaryTTS.synthesize).toHaveBeenCalledWith('test text');
+        expect(mockPrimaryTTS.synthesize).toHaveBeenCalledWith('test text', { voiceId: undefined });
         expect(mockFallbackTTS.synthesize).not.toHaveBeenCalled();
         expect(result.voiceoverUrl).toBe('primary_url');
     });
@@ -61,8 +61,8 @@ describe('TTS Priority Logic (Unit)', () => {
         const result = await orchestrator.synthesizeWithAdjustment('test text', 10);
 
         // Assert
-        expect(mockPrimaryTTS.synthesize).toHaveBeenCalledWith('test text');
-        expect(mockFallbackTTS.synthesize).toHaveBeenCalledWith('test text');
+        expect(mockPrimaryTTS.synthesize).toHaveBeenCalledWith('test text', { voiceId: undefined });
+        expect(mockFallbackTTS.synthesize).toHaveBeenCalledWith('test text', { voiceId: undefined });
         expect(result.voiceoverUrl).toBe('fallback_url');
     });
 

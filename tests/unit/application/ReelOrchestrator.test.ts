@@ -349,6 +349,7 @@ describe('ReelOrchestrator', () => {
                 expect.anything(),
                 expect.anything(),
                 expect.anything(),
+                'service',
                 promoScript,
                 'custom-voice-999'
             );
@@ -363,9 +364,25 @@ describe('ReelOrchestrator', () => {
                 expect.anything(),
                 expect.anything(),
                 expect.anything(),
+                'service',
                 promoScript,
                 'promo-voice-123'
             );
+        });
+        test('should pass musicUrl and other assets to the manifest', async () => {
+            // Un-mock finalizePromoJob for this test to see the manifest
+            const originalFinalize = (orchestrator as any).finalizePromoJob;
+            (orchestrator as any).finalizePromoJob = jest.fn().mockImplementation((id, j, manifest) => {
+                return manifest; // Return manifest for verification
+            });
+
+            const manifest = await (orchestrator as any).renderPromoReel('job-promo', job, promoScript, 'service', 'Test Biz');
+
+            expect(manifest.musicUrl).toBe('music-url');
+            expect(manifest.voiceoverUrl).toBe('vo-url');
+            expect(manifest.durationSeconds).toBe(5);
+
+            (orchestrator as any).finalizePromoJob = originalFinalize;
         });
     });
 });
