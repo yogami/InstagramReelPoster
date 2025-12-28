@@ -218,8 +218,9 @@ export function loadConfig(): Config {
         beamcloudEnabled: getEnvVarBoolean('BEAMCLOUD_ENABLED', false),
 
         // Beam.cloud (Primary Video Generation - preferred over Kie.ai due to cost/credits)
-        beamcloudVideoEndpointUrl: getEnvVar('BEAMCLOUD_VIDEO_ENDPOINT_URL', ''),
-        beamcloudVideoEnabled: getEnvVarBoolean('BEAMCLOUD_VIDEO_ENABLED', true), // Default to true - Beam.cloud is primary
+        // Falls back to Hunyuan endpoint if VIDEO endpoint not configured
+        beamcloudVideoEndpointUrl: getEnvVar('BEAMCLOUD_VIDEO_ENDPOINT_URL', '') || getEnvVar('BEAMCLOUD_HUNYUAN_ENDPOINT_URL', ''),
+        beamcloudVideoEnabled: getEnvVarBoolean('BEAMCLOUD_VIDEO_ENABLED', true) || getEnvVarBoolean('BEAMCLOUD_HUNYUAN_ENABLED', false), // Default true
 
         // Beam.cloud (FFmpeg Video Rendering)
         beamcloudRenderEndpointUrl: getEnvVar('BEAMCLOUD_RENDER_ENDPOINT_URL', ''),
