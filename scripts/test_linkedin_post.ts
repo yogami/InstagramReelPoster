@@ -1,4 +1,4 @@
-import { MakeLinkedInPosterService } from '../src/infrastructure/linkedin/MakeLinkedInPosterService';
+import { WebhookLinkedInPosterService } from '../src/infrastructure/linkedin/WebhookLinkedInPosterService';
 import { LinkedInPostPayload } from '../src/domain/ports/ILinkedInPosterService';
 
 async function testLinkedInPost() {
@@ -8,7 +8,7 @@ async function testLinkedInPost() {
     console.log('🚀 Starting LinkedIn Test Post...');
     console.log(`URL: ${webhookUrl}`);
 
-    const posterService = new MakeLinkedInPosterService(webhookUrl, apiKey);
+    const posterService = new WebhookLinkedInPosterService(webhookUrl, apiKey);
 
     const testPayload: LinkedInPostPayload = {
         type: 'ARTICLE',

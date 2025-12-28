@@ -1,2 +1,2 @@
-export * from './OpenAILLMClient';
-export * from './LocalLLMClient';
+export * from './GptLlmClient';
+export * from './LocalLlmClient';

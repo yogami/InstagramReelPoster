@@ -1,20 +1,20 @@
 import { getConfig } from '../src/config';
 import { JobManager } from '../src/application/JobManager';
 import { ReelOrchestrator, OrchestratorDependencies } from '../src/application/ReelOrchestrator';
-import { CloudinaryStorageClient } from '../src/infrastructure/storage/CloudinaryStorageClient';
-import { OpenAILLMClient } from '../src/infrastructure/llm/OpenAILLMClient';
-import { OpenAITranscriptionClient } from '../src/infrastructure/transcription/OpenAITranscriptionClient';
-import { FishAudioTTSClient } from '../src/infrastructure/tts/FishAudioTTSClient';
-import { OpenAITTSClient } from '../src/infrastructure/tts/OpenAITTSClient';
-import { OpenAISubtitlesClient } from '../src/infrastructure/subtitles/OpenAISubtitlesClient';
+import { MediaStorageClient } from '../src/infrastructure/storage/MediaStorageClient';
+import { GptLlmClient } from '../src/infrastructure/llm/GptLlmClient';
+import { WhisperTranscriptionClient } from '../src/infrastructure/transcription/WhisperTranscriptionClient';
+import { CloningTtsClient } from '../src/infrastructure/tts/CloningTtsClient';
+import { StandardTtsClient } from '../src/infrastructure/tts/StandardTtsClient';
+import { WhisperSubtitlesClient } from '../src/infrastructure/subtitles/WhisperSubtitlesClient';
 import { FFmpegVideoRenderer } from '../src/infrastructure/video/FFmpegVideoRenderer';
-import { ShortstackVideoRenderer } from '../src/infrastructure/video/ShortstackVideoRenderer';
+import { TimelineVideoRenderer } from '../src/infrastructure/video/TimelineVideoRenderer';
 import { MusicSelector } from '../src/application/MusicSelector';
 import { InMemoryMusicCatalogClient } from '../src/infrastructure/music/InMemoryMusicCatalogClient';
-import { KieMusicGeneratorClient } from '../src/infrastructure/music/KieMusicGeneratorClient';
-import { OpenRouterImageClient } from '../src/infrastructure/images/OpenRouterImageClient';
-import { PixabayImageClient } from '../src/infrastructure/images/PixabayImageClient';
-import { KieVideoClient } from '../src/infrastructure/video/KieVideoClient';
+import { SegmentMusicClient } from '../src/infrastructure/music/SegmentMusicClient';
+import { MultiModelImageClient } from '../src/infrastructure/images/MultiModelImageClient';
+import { StockImageClient } from '../src/infrastructure/images/StockImageClient';
+import { MultiModelVideoClient } from '../src/infrastructure/video/MultiModelVideoClient';
 import { HookAndStructureService } from '../src/application/HookAndStructureService';
 import { CaptionService } from '../src/application/CaptionService';
 import { GrowthInsightsService } from '../src/application/GrowthInsightsService';
@@ -43,25 +43,25 @@ async function salvage() {
 
     // Setup dependencies (mirrored from app.ts)
     const cloudinaryClient = config.cloudinaryCloudName && config.cloudinaryApiKey
-        ? new CloudinaryStorageClient(config.cloudinaryCloudName, config.cloudinaryApiKey, config.cloudinaryApiSecret)
+        ? new MediaStorageClient(config.cloudinaryCloudName, config.cloudinaryApiKey, config.cloudinaryApiSecret)
         : null;
 
-    const transcriptionClient = new OpenAITranscriptionClient(config.openaiApiKey);
-    const llmClient = new OpenAILLMClient(config.openaiApiKey, config.openaiModel);
-    const ttsClient = new FishAudioTTSClient(config.fishAudioApiKey, config.fishAudioVoiceId, config.fishAudioBaseUrl);
-    const fallbackTTSClient = new OpenAITTSClient(config.openaiApiKey);
+    const transcriptionClient = new WhisperTranscriptionClient(config.openaiApiKey);
+    const llmClient = new GptLlmClient(config.openaiApiKey, config.openaiModel);
+    const ttsClient = new CloningTtsClient(config.fishAudioApiKey, config.fishAudioVoiceId, config.fishAudioBaseUrl);
+    const fallbackTtsClient = new StandardTtsClient(config.openaiApiKey);
 
-    const imageClient = new OpenRouterImageClient(config.openrouterApiKey, config.openrouterModel, config.openrouterBaseUrl);
-    const fallbackImageClient = config.pixabayApiKey ? new PixabayImageClient(config.pixabayApiKey) : imageClient;
+    const imageClient = new MultiModelImageClient(config.openrouterApiKey, config.openrouterModel, config.openrouterBaseUrl);
+    const fallbackImageClient = config.pixabayApiKey ? new StockImageClient(config.pixabayApiKey) : imageClient;
 
-    const subtitlesClient = new OpenAISubtitlesClient(config.openaiApiKey, cloudinaryClient!);
+    const subtitlesClient = new WhisperSubtitlesClient(config.openaiApiKey, cloudinaryClient!);
 
     let videoRenderer = config.videoRenderer === 'ffmpeg' && cloudinaryClient
         ? new FFmpegVideoRenderer(cloudinaryClient)
-        : new ShortstackVideoRenderer(config.shotstackApiKey, config.shotstackBaseUrl);
+        : new TimelineVideoRenderer(config.shotstackApiKey, config.shotstackBaseUrl);
 
     const internalMusicCatalog = new InMemoryMusicCatalogClient(config.internalMusicCatalogPath);
-    const musicGenerator = config.kieApiKey ? new KieMusicGeneratorClient(config.kieApiKey, config.kieApiBaseUrl) : null;
+    const musicGenerator = config.kieApiKey ? new SegmentMusicClient(config.kieApiKey, config.kieApiBaseUrl) : null;
     const musicSelector = new MusicSelector(internalMusicCatalog, null, musicGenerator);
 
     const jobManager = new JobManager(config.minReelSeconds, config.maxReelSeconds, config.redisUrl);
@@ -69,14 +69,14 @@ async function salvage() {
     const captionService = new CaptionService(llmClient);
     const growthInsightsService = new GrowthInsightsService();
     const animatedVideoClient = config.kieApiKey
-        ? new KieVideoClient(config.kieApiKey, config.kieVideoBaseUrl, config.kieVideoModel)
+        ? new MultiModelVideoClient(config.kieApiKey, config.kieVideoBaseUrl, config.kieVideoModel)
         : new MockAnimatedVideoClient() as any;
 
     const deps: OrchestratorDependencies = {
         transcriptionClient,
         llmClient,
         ttsClient,
-        fallbackTTSClient,
+        fallbackTtsClient,
         primaryImageClient: imageClient,
         fallbackImageClient: fallbackImageClient,
         subtitlesClient,

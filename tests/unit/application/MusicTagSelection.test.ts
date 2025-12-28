@@ -6,7 +6,7 @@
  * the appropriate music tags for different content types.
  */
 
-import { OpenAILLMClient } from '../../../src/infrastructure/llm/OpenAILLMClient';
+import { GptLlmClient } from '../../../src/infrastructure/llm/GptLlmClient';
 
 // Test data: Expected music tags for different content types
 const TEST_CASES = [

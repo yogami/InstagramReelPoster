@@ -4,14 +4,14 @@
  */
 
 import { PipelineStep, JobContext } from '../PipelineInfrastructure';
-import { ILLMClient } from '../../../domain/ports/ILLMClient';
+import { ILlmClient } from '../../../domain/ports/ILlmClient';
 import { JobManager } from '../../JobManager';
 
 export class IntentDetectionStep implements PipelineStep {
     readonly name = 'IntentDetection';
 
     constructor(
-        private readonly llmClient: ILLMClient,
+        private readonly llmClient: ILlmClient,
         private readonly jobManager: JobManager
     ) { }
 
@@ -20,7 +20,8 @@ export class IntentDetectionStep implements PipelineStep {
     }
 
     async execute(context: JobContext): Promise<JobContext> {
-        const result = await this.llmClient.detectReelMode(context.transcript!);
+        const combinedText = `${context.job.description || ''}\n${context.transcript || ''}`.trim();
+        const result = await this.llmClient.detectReelMode(combinedText);
 
         console.log(`[${context.jobId}] Reel Mode: ${result.isAnimatedMode ? 'ANIMATED VIDEO' : 'IMAGES'}`);
 

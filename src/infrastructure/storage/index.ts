@@ -1,1 +1,1 @@
-export * from './CloudinaryStorageClient';
+export * from './MediaStorageClient';

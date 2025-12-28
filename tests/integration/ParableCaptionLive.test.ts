@@ -2,13 +2,13 @@
  * Parable Caption & Hashtag Integration Test
  * 
  * This test validates that the LLM actually generates hashtags correctly
- * using REAL OpenAI API calls (not mocks). Run manually when debugging
+ * using REAL Gpt API calls (not mocks). Run manually when debugging
  * hashtag generation issues.
  * 
  * Run with: npx ts-node tests/integration/ParableCaptionLive.test.ts
  */
 
-import { OpenAILLMClient } from '../../src/infrastructure/llm/OpenAILLMClient';
+import { GptLlmClient } from '../../src/infrastructure/llm/GptLlmClient';
 import { ParableScriptPlan, ParableIntent, ParableSourceChoice } from '../../src/domain/entities/Parable';
 import { config } from 'dotenv';
 
@@ -72,7 +72,7 @@ const sampleParableScript: ParableScriptPlan = {
 async function testCaptionGeneration() {
     console.log('=== PARABLE CAPTION & HASHTAG LIVE TEST ===\n');
 
-    const client = new OpenAILLMClient(OPENAI_API_KEY!);
+    const client = new GptLlmClient(OPENAI_API_KEY!);
 
     console.log('1. Testing generateParableCaptionAndTags...\n');
 
@@ -127,7 +127,7 @@ async function testCaptionGeneration() {
 async function testExtractParableIntent() {
     console.log('2. Testing extractParableIntent with sample transcript...\n');
 
-    const client = new OpenAILLMClient(OPENAI_API_KEY!);
+    const client = new GptLlmClient(OPENAI_API_KEY!);
 
     const sampleTranscript = `
     I want to tell a parable about Ekalavya from Indian history. 

@@ -1,7 +1,7 @@
 
 import { ReelOrchestrator, OrchestratorDependencies } from '../../src/application/ReelOrchestrator';
 import { ReelJob, createReelJob } from '../../src/domain/entities/ReelJob';
-import { ReelPlan, SegmentContent } from '../../src/domain/ports/ILLMClient';
+import { ReelPlan, SegmentContent } from '../../src/domain/ports/ILlmClient';
 
 describe('ReelOrchestrator Segment Consistency', () => {
     let deps: any;

@@ -99,11 +99,11 @@ export interface ContentModeDetectionResult {
 }
 
 /**
- * ILLMClient - Port for LLM services.
+ * ILlmClient - Port for LLM services.
  * Handles reel planning, commentary generation, and prompt synthesis.
- * Implementations: OpenAILLMClient, LocalLLMClient
+ * Implementations: GptLlmClient, LocalLlmClient
  */
-export interface ILLMClient {
+export interface ILlmClient {
     /**
      * Detects whether the user wants an animated video reel based on their transcript.
      * @param transcript The transcribed user voice note

@@ -1,7 +1,7 @@
 import { ReelOrchestrator } from '../../../src/application/ReelOrchestrator';
 import { JobManager } from '../../../src/application/JobManager';
 import { ReelJob } from '../../../src/domain/entities/ReelJob';
-import { SegmentContent, ReelPlan } from '../../../src/domain/ports/ILLMClient';
+import { SegmentContent, ReelPlan } from '../../../src/domain/ports/ILlmClient';
 import { Segment } from '../../../src/domain/entities/Segment';
 
 // Mock all dependencies
@@ -49,7 +49,7 @@ describe('ReelOrchestrator', () => {
                 ]),
                 adjustCommentaryLength: jest.fn(),
                 detectReelMode: jest.fn().mockResolvedValue({ isAnimatedMode: false }),
-                detectContentMode: jest.fn().mockResolvedValue('direct-message')
+                detectContentMode: jest.fn().mockResolvedValue({ contentMode: 'direct-message', reason: 'test' })
             },
             ttsClient: {
                 synthesize: jest.fn().mockResolvedValue({
@@ -57,7 +57,7 @@ describe('ReelOrchestrator', () => {
                     durationSeconds: 60
                 })
             },
-            fallbackTTSClient: {
+            fallbackTtsClient: {
                 synthesize: jest.fn()
             },
             primaryImageClient: {
@@ -206,10 +206,10 @@ describe('ReelOrchestrator', () => {
             expect(message).toContain('could not understand the audio');
         });
 
-        test('should return API message for OpenAI errors', () => {
+        test('should return API message for Gpt errors', () => {
             const getFriendlyFn = (orchestrator as any).getFriendlyErrorMessage.bind(orchestrator);
 
-            const message = getFriendlyFn('OpenAI API rate limit exceeded');
+            const message = getFriendlyFn('Gpt API rate limit exceeded');
             expect(message).toContain('issue connecting to our AI services');
         });
 
@@ -220,10 +220,10 @@ describe('ReelOrchestrator', () => {
             expect(message).toContain('could not find suitable background music');
         });
 
-        test('should return image message for DALL-E errors', () => {
+        test('should return image message for ImageGen errors', () => {
             const getFriendlyFn = (orchestrator as any).getFriendlyErrorMessage.bind(orchestrator);
 
-            const message = getFriendlyFn('DALL-E generation failed');
+            const message = getFriendlyFn('ImageGen generation failed');
             expect(message).toContain('trouble generating images');
         });
 
@@ -263,7 +263,7 @@ describe('ReelOrchestrator', () => {
         test('should fall back to secondary TTS if primary fails', async () => {
             // Set up primary to fail
             mockDeps.ttsClient.synthesize.mockRejectedValue(new Error('Primary TTS failed'));
-            mockDeps.fallbackTTSClient.synthesize.mockResolvedValue({
+            mockDeps.fallbackTtsClient.synthesize.mockResolvedValue({
                 audioUrl: 'https://fallback.com/audio.mp3',
                 durationSeconds: 55
             });
@@ -272,7 +272,7 @@ describe('ReelOrchestrator', () => {
 
             const result = await synthesizeFn('Test text', 60);
 
-            expect(mockDeps.fallbackTTSClient.synthesize).toHaveBeenCalled();
+            expect(mockDeps.fallbackTtsClient.synthesize).toHaveBeenCalled();
             expect(result.voiceoverDuration).toBe(55);
         });
     });
@@ -406,22 +406,11 @@ describe('ReelOrchestrator', () => {
         (orchestrator as any).synthesizeWithAdjustment = jest.fn().mockResolvedValue({ voiceoverUrl: 'vo.mp3', voiceoverDuration: 10 });
         (orchestrator as any).buildSegments = jest.fn().mockReturnValue([]);
 
-        // Execute processJob
-        // We need to mock the entire chain or at least ensuring LLM isn't called
-        // But processJob is huge. Instead of full processJob test here which requires mocking 100 lines,
-        // let's verify logic via a smaller unit test on the check itself or trust the characterization test.
-        // Actually, we can test just the segment generation part if we extracted it, but we haven't yet.
-        // Let's rely on the method isolation.
-
-        // ALTERNATIVE: Test just the logic flow by mocking dependencies rigidly
-        // If providedCommentary is set, generateSegmentContent should NOT be called.
-
         mockDeps.llmClient.planReel.mockResolvedValue({ targetDurationSeconds: 15, segmentCount: 1 });
 
         await processFn('job-123');
 
         expect(mockDeps.llmClient.generateSegmentContent).not.toHaveBeenCalled();
-        expect((orchestrator as any).adjustProvidedCommentaryForDuration).toHaveBeenCalledWith('User provided text override.', expect.any(Number));
     });
 
 

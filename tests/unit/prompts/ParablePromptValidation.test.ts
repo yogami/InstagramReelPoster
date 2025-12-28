@@ -2,7 +2,7 @@
  * Parable Prompt Validation Tests
  * 
  * These tests validate that parable LLM prompts meet acceptance criteria
- * WITHOUT calling the actual OpenAI API. They verify:
+ * WITHOUT calling the actual Gpt API. They verify:
  * 1. Output structure matches expected types
  * 2. Character names are preserved
  * 3. Duration targets are met

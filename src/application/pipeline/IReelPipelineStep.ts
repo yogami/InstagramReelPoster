@@ -8,7 +8,7 @@
 
 import { ReelJob } from '../../domain/entities/ReelJob';
 import { Segment } from '../../domain/entities/Segment';
-import { ReelPlan, SegmentContent } from '../../domain/ports/ILLMClient';
+import { ReelPlan, SegmentContent } from '../../domain/ports/ILlmClient';
 import { ReelManifest } from '../../domain/entities/ReelManifest';
 
 /**

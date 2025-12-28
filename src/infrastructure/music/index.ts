@@ -1,2 +1,2 @@
 export * from './InMemoryMusicCatalogClient';
-export * from './KieMusicGeneratorClient';
+export * from './SegmentMusicClient';

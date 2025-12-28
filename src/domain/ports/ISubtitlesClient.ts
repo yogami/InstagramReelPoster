@@ -12,7 +12,7 @@ export interface SubtitlesResult {
 
 /**
  * ISubtitlesClient - Port for subtitle generation services.
- * Implementations: OpenAISubtitlesClient
+ * Implementations: WhisperSubtitlesClient
  */
 export interface ISubtitlesClient {
     /**

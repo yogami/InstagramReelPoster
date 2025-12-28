@@ -4,11 +4,11 @@ import { JobManager } from '../../application/JobManager';
 import { ReelOrchestrator } from '../../application/ReelOrchestrator';
 import { ApprovalService } from '../../application/ApprovalService';
 import { asyncHandler, UnauthorizedError } from '../middleware/errorHandler';
-import { TelegramService } from '../services/TelegramService';
+import { ChatService } from '../services/ChatService';
 import { getConfig } from '../../config';
 import { isLinkedInRequest, extractRawNote, createLinkedInDraft, LinkedInDraft, assemblePostContent } from '../../domain/entities/LinkedInDraft';
-import { OpenAILinkedInDraftService } from '../../infrastructure/linkedin/OpenAILinkedInDraftService';
-import { MakeLinkedInPosterService } from '../../infrastructure/linkedin/MakeLinkedInPosterService';
+import { GptLinkedInDraftService } from '../../infrastructure/linkedin/GptLinkedInDraftService';
+import { WebhookLinkedInPosterService } from '../../infrastructure/linkedin/WebhookLinkedInPosterService';
 
 /**
  * In-memory storage for pending LinkedIn drafts awaiting "post" command.
@@ -47,7 +47,7 @@ export function createTelegramWebhookRoutes(
 ): Router {
     const router = Router();
     const config = getConfig();
-    const telegramService = new TelegramService(config.telegramBotToken);
+    const telegramService = new ChatService(config.telegramBotToken);
 
     /**
      * POST /telegram-webhook
@@ -84,7 +84,7 @@ async function processUpdate(
     update: TelegramUpdate,
     jobManager: JobManager,
     orchestrator: ReelOrchestrator,
-    telegramService: TelegramService,
+    telegramService: ChatService,
     makeWebhookUrl: string
 ): Promise<void> {
     const message = update.message;
@@ -107,12 +107,10 @@ async function processUpdate(
             console.log(`[Telegram] Resolved file URL: ${sourceAudioUrl}`);
 
             // 2. Create and start job with audio
-            const moodOverrides = message.caption ? [message.caption] : undefined;
-
             const job = await jobManager.createJob({
                 sourceAudioUrl,
                 targetDurationRange: { min: 10, max: 90 },
-                moodOverrides,
+                description: message.caption, // Instructions from the user
                 callbackUrl: makeWebhookUrl,
                 telegramChatId: chatId,
             });
@@ -201,7 +199,7 @@ async function processUpdate(
 
                 await telegramService.sendMessage(chatId, '📤 *Publishing to LinkedIn...*');
 
-                const posterService = new MakeLinkedInPosterService(config.linkedinWebhookUrl, config.linkedinWebhookApiKey);
+                const posterService = new WebhookLinkedInPosterService(config.linkedinWebhookUrl, config.linkedinWebhookApiKey);
                 const content = assemblePostContent(pendingDraft);
 
                 const result = await posterService.postToLinkedIn({
@@ -248,7 +246,7 @@ async function processUpdate(
                 await telegramService.sendMessage(chatId, '📝 *Generating LinkedIn draft...*\n\nAnalyzing your thoughts...');
 
                 const config = getConfig();
-                const linkedInService = new OpenAILinkedInDraftService(config.openaiApiKey, config.openaiModel);
+                const linkedInService = new GptLinkedInDraftService(config.openaiApiKey, config.openaiModel);
                 const draftContent = await linkedInService.generateDraftContent(rawNote);
 
                 // Create full draft entity

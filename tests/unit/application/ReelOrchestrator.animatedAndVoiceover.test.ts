@@ -51,7 +51,7 @@ describe('ReelOrchestrator - Animated Video Generation', () => {
             expect(mockDeps.animatedVideoClient).toBeDefined();
         });
 
-        it('should persist each beat video to Cloudinary', async () => {
+        it('should persist each beat video to Media', async () => {
             mockDeps.animatedVideoClient = {
                 generateAnimatedVideo: jest.fn().mockResolvedValue({ videoUrl: 'https://kie.ai/video.mp4' })
             };
@@ -130,7 +130,7 @@ describe('ReelOrchestrator - Voiceover Synthesis', () => {
 
         it('should fall back to fallback TTS when primary fails', async () => {
             mockDeps.ttsClient.synthesize = jest.fn().mockRejectedValue(new Error('Primary TTS failed'));
-            mockDeps.fallbackTTSClient.synthesize = jest.fn().mockResolvedValue({
+            mockDeps.fallbackTtsClient.synthesize = jest.fn().mockResolvedValue({
                 audioUrl: 'https://xtts.example.com/voice.mp3',
                 durationSeconds: 30
             });
@@ -139,7 +139,7 @@ describe('ReelOrchestrator - Voiceover Synthesis', () => {
 
             const result = await (orchestrator as any).synthesizeWithAdjustment('Test text', 30);
 
-            expect(mockDeps.fallbackTTSClient.synthesize).toHaveBeenCalled();
+            expect(mockDeps.fallbackTtsClient.synthesize).toHaveBeenCalled();
             expect(result.voiceoverUrl).toBe('https://xtts.example.com/voice.mp3');
         });
 
@@ -208,7 +208,7 @@ describe('ReelOrchestrator - Finalize Job', () => {
             expect(mockDeps.videoRenderer.render).toBeDefined();
         });
 
-        it('should upload final video to Cloudinary', async () => {
+        it('should upload final video to Media', async () => {
             mockDeps.videoRenderer.render = jest.fn().mockResolvedValue({
                 videoUrl: 'https://creatomate.com/video.mp4'
             });
@@ -260,7 +260,7 @@ function createMockDeps(mockJobManager: any) {
         ttsClient: {
             synthesize: jest.fn().mockResolvedValue({ audioUrl: 'https://fish.audio/voice.mp3', durationSeconds: 30 })
         },
-        fallbackTTSClient: {
+        fallbackTtsClient: {
             synthesize: jest.fn().mockResolvedValue({ audioUrl: 'https://xtts.example.com/voice.mp3', durationSeconds: 30 })
         },
         primaryImageClient: { generateImage: jest.fn().mockResolvedValue({ imageUrl: 'https://example.com/image.png' }) },

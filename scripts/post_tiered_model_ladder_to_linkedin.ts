@@ -5,7 +5,7 @@
  * via Make.com webhook for Berlin AI Labs marketing.
  */
 
-import { MakeLinkedInPosterService } from '../src/infrastructure/linkedin/MakeLinkedInPosterService';
+import { WebhookLinkedInPosterService } from '../src/infrastructure/linkedin/WebhookLinkedInPosterService';
 import { LinkedInPostPayload } from '../src/domain/ports/ILinkedInPosterService';
 
 async function postLadderBlogToLinkedIn() {
@@ -15,7 +15,7 @@ async function postLadderBlogToLinkedIn() {
 
     console.log('🚀 Posting "Tiered Model Ladder" blog announcement to LinkedIn...');
 
-    const posterService = new MakeLinkedInPosterService(webhookUrl, apiKey);
+    const posterService = new WebhookLinkedInPosterService(webhookUrl, apiKey);
 
     const blogUrl = 'https://berlinailabs.de/blog/tiered-model-ladder.html';
 

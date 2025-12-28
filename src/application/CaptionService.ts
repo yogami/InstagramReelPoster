@@ -1,6 +1,6 @@
 import { ICaptionService } from '../domain/ports/ICaptionService';
 import { CaptionAndTags } from '../domain/entities/Growth';
-import { ILLMClient } from '../domain/ports/ILLMClient';
+import { ILlmClient } from '../domain/ports/ILlmClient';
 
 /**
  * Options for caption generation.
@@ -16,7 +16,7 @@ export interface CaptionOptions {
  * Service for generating viral captions and hashtags.
  */
 export class CaptionService implements ICaptionService {
-    constructor(private readonly llmClient: ILLMClient) { }
+    constructor(private readonly llmClient: ILlmClient) { }
 
     /**
      * Generates caption and hashtags based on the final script and summary.

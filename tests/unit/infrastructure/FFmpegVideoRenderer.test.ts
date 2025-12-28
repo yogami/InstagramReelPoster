@@ -26,13 +26,13 @@ jest.mock('fs');
 jest.mock('os');
 
 import { FFmpegVideoRenderer } from '../../../src/infrastructure/video/FFmpegVideoRenderer';
-import { CloudinaryStorageClient } from '../../../src/infrastructure/storage/CloudinaryStorageClient';
+import { MediaStorageClient } from '../../../src/infrastructure/storage/MediaStorageClient';
 
 const mockedFs = fs as jest.Mocked<typeof fs>;
 const mockedOs = os as jest.Mocked<typeof os>;
 
 describe('FFmpegVideoRenderer', () => {
-    let mockCloudinaryClient: jest.Mocked<CloudinaryStorageClient>;
+    let mockMediaClient: jest.Mocked<MediaStorageClient>;
 
     beforeEach(() => {
         jest.clearAllMocks();
@@ -44,27 +44,27 @@ describe('FFmpegVideoRenderer', () => {
         mockedFs.existsSync.mockReturnValue(false);
         mockedFs.mkdirSync.mockImplementation(() => undefined as any);
 
-        // Mock Cloudinary client
-        mockCloudinaryClient = {
+        // Mock Media client
+        mockMediaClient = {
             uploadFromUrl: jest.fn().mockResolvedValue({ url: 'https://cloudinary.com/video.mp4' })
         } as any;
     });
 
     describe('constructor', () => {
         test('should create renderer with cloudinary client', () => {
-            const renderer = new FFmpegVideoRenderer(mockCloudinaryClient);
+            const renderer = new FFmpegVideoRenderer(mockMediaClient);
             expect(renderer).toBeInstanceOf(FFmpegVideoRenderer);
         });
 
         test('should set temp directory path', () => {
-            const renderer = new FFmpegVideoRenderer(mockCloudinaryClient);
+            const renderer = new FFmpegVideoRenderer(mockMediaClient);
             expect((renderer as any).tempDir).toBe(path.join('/tmp', 'reel-poster-renders'));
         });
 
         test('should create temp directory if it does not exist', () => {
             mockedFs.existsSync.mockReturnValue(false);
 
-            new FFmpegVideoRenderer(mockCloudinaryClient);
+            new FFmpegVideoRenderer(mockMediaClient);
 
             expect(mockedFs.mkdirSync).toHaveBeenCalledWith(
                 expect.stringContaining('reel-poster-renders'),
@@ -75,14 +75,14 @@ describe('FFmpegVideoRenderer', () => {
         test('should not create temp directory if it exists', () => {
             mockedFs.existsSync.mockReturnValue(true);
 
-            new FFmpegVideoRenderer(mockCloudinaryClient);
+            new FFmpegVideoRenderer(mockMediaClient);
 
             expect(mockedFs.mkdirSync).not.toHaveBeenCalled();
         });
 
         test('should store cloudinary client reference', () => {
-            const renderer = new FFmpegVideoRenderer(mockCloudinaryClient);
-            expect((renderer as any).cloudinaryClient).toBe(mockCloudinaryClient);
+            const renderer = new FFmpegVideoRenderer(mockMediaClient);
+            expect((renderer as any).cloudinaryClient).toBe(mockMediaClient);
         });
     });
 
@@ -90,7 +90,7 @@ describe('FFmpegVideoRenderer', () => {
         test('should use os.tmpdir for base path', () => {
             mockedOs.tmpdir.mockReturnValue('/custom/tmp');
 
-            const renderer = new FFmpegVideoRenderer(mockCloudinaryClient);
+            const renderer = new FFmpegVideoRenderer(mockMediaClient);
 
             expect((renderer as any).tempDir).toBe(path.join('/custom/tmp', 'reel-poster-renders'));
         });

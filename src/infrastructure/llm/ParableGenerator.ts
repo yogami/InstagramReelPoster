@@ -1,6 +1,6 @@
 import {
     ContentModeDetectionResult,
-} from '../../domain/ports/ILLMClient';
+} from '../../domain/ports/ILlmClient';
 import {
     ParableIntent,
     ParableSourceChoice,
@@ -10,7 +10,7 @@ import {
 } from '../../domain/entities/Parable';
 import { CaptionAndTags } from '../../domain/entities/Growth';
 import { getConfig } from '../../config';
-import { OpenAIService } from './OpenAIService';
+import { GptService } from './GptService';
 import {
     PARABLE_SCRIPT_PROMPT,
     PARABLE_CAPTION_PROMPT,
@@ -20,9 +20,9 @@ import {
  * Handles generation of parable-style content for reels.
  */
 export class ParableGenerator {
-    private readonly openAI: OpenAIService;
+    private readonly openAI: GptService;
 
-    constructor(openAI: OpenAIService) {
+    constructor(openAI: GptService) {
         this.openAI = openAI;
     }
 

@@ -1,5 +1,5 @@
 import { JobManager } from '../src/application/JobManager';
-import { KieVideoClient } from '../src/infrastructure/video/KieVideoClient';
+import { MultiModelVideoClient } from '../src/infrastructure/video/MultiModelVideoClient';
 import { getConfig } from '../src/config';
 import * as dotenv from 'dotenv';
 import path from 'path';
@@ -24,7 +24,7 @@ async function rescueJob(jobId: string, taskId: string) {
     console.log(`Found job ${jobId}. Status: ${job.status}`);
     console.log(`Attempting to fetch video URL for Kie.ai Task: ${taskId}...`);
 
-    const videoClient = new KieVideoClient(
+    const videoClient = new MultiModelVideoClient(
         config.kieApiKey,
         config.kieVideoBaseUrl,
         config.kieVideoModel

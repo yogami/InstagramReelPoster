@@ -13,7 +13,7 @@ export interface MusicSelectionResult {
  * MusicSelector implements the fallback chain for music selection:
  * 1. External catalog API (if configured)
  * 2. Internal JSON catalog (multi-pass relaxation)
- * 3. AI music generation (Kie.ai/Suno)
+ * 3. AI music generation (VideoGen/Suno)
  * 4. Hardcoded backup safety track
  */
 export class MusicSelector {

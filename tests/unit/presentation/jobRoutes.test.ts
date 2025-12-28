@@ -3,6 +3,7 @@ import { createJobRoutes } from '../../../src/presentation/routes/jobRoutes';
 import axios from 'axios';
 import { JobManager } from '../../../src/application/JobManager';
 import { ReelJob } from '../../../src/domain/entities/ReelJob';
+import { NotFoundError } from '../../../src/presentation/middleware/errorHandler';
 
 // Mock express Router
 const mockRouter = {
@@ -112,7 +113,9 @@ describe('createJobRoutes', () => {
 
             const handler = routeHandlers.get('GET /jobs/:jobId');
             if (!handler) throw new Error('Handler not found');
-            await expect(handler(req, res, next)).rejects.toThrow('Job not found: non-existent');
+            await handler(req, res, next);
+            expect(next).toHaveBeenCalledWith(expect.any(NotFoundError));
+            expect(next.mock.calls[0][0].message).toContain('Job not found: non-existent');
         });
     });
 

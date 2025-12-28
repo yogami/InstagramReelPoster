@@ -6,34 +6,35 @@ import { ReelOrchestrator, OrchestratorDependencies } from '../application/ReelO
 import { MusicSelector } from '../application/MusicSelector';
 
 // Infrastructure imports
-import { OpenAITranscriptionClient } from '../infrastructure/transcription/OpenAITranscriptionClient';
-import { OpenAILLMClient } from '../infrastructure/llm/OpenAILLMClient';
-import { FishAudioTTSClient } from '../infrastructure/tts/FishAudioTTSClient';
+import { WhisperTranscriptionClient } from '../infrastructure/transcription/WhisperTranscriptionClient';
+import { GptLlmClient } from '../infrastructure/llm/GptLlmClient';
+import { CloningTtsClient } from '../infrastructure/tts/CloningTtsClient';
 import { InMemoryMusicCatalogClient } from '../infrastructure/music/InMemoryMusicCatalogClient';
-import { KieMusicGeneratorClient } from '../infrastructure/music/KieMusicGeneratorClient';
-import { OpenRouterImageClient } from '../infrastructure/images/OpenRouterImageClient';
-import { BeamcloudImageClient } from '../infrastructure/images/BeamcloudImageClient';
+import { SegmentMusicClient } from '../infrastructure/music/SegmentMusicClient';
+import { MultiModelImageClient } from '../infrastructure/images/MultiModelImageClient';
+import { FluxImageClient } from '../infrastructure/images/FluxImageClient';
 import { FallbackImageClient } from '../infrastructure/images/FallbackImageClient';
-// OpenAIImageClient available but not currently used
-import { PixabayImageClient } from '../infrastructure/images/PixabayImageClient';
-import { OpenAISubtitlesClient } from '../infrastructure/subtitles/OpenAISubtitlesClient';
-import { ShortstackVideoRenderer } from '../infrastructure/video/ShortstackVideoRenderer';
+// DalleImageClient available but not currently used
+import { StockImageClient } from '../infrastructure/images/StockImageClient';
+import { WhisperSubtitlesClient } from '../infrastructure/subtitles/WhisperSubtitlesClient';
+import { TimelineVideoRenderer } from '../infrastructure/video/TimelineVideoRenderer';
 import { FFmpegVideoRenderer } from '../infrastructure/video/FFmpegVideoRenderer';
-import { KieVideoClient } from '../infrastructure/video/KieVideoClient';
-import { BeamcloudVideoClient } from '../infrastructure/video/BeamcloudVideoClient';
+import { MultiModelVideoClient } from '../infrastructure/video/MultiModelVideoClient';
+import { HunyuanVideoClient } from '../infrastructure/video/HunyuanVideoClient';
+import { MochiVideoClient } from '../infrastructure/video/MochiVideoClient';
 import { FallbackVideoClient } from '../infrastructure/video/FallbackVideoClient';
-import { BeamcloudVideoRenderer } from '../infrastructure/video/BeamcloudVideoRenderer';
+import { RemoteVideoRenderer } from '../infrastructure/video/RemoteVideoRenderer';
 import { FallbackVideoRenderer } from '../infrastructure/video/FallbackVideoRenderer';
-import { CloudinaryStorageClient } from '../infrastructure/storage/CloudinaryStorageClient';
+import { MediaStorageClient } from '../infrastructure/storage/MediaStorageClient';
 import { WebsiteScraperClient } from '../infrastructure/scraper/WebsiteScraperClient';
-import { TelegramService } from './services/TelegramService';
-import { TelegramNotificationClient } from '../infrastructure/notifications/TelegramNotificationClient';
+import { ChatService } from './services/ChatService';
+import { ChatNotificationClient } from '../infrastructure/notifications/ChatNotificationClient';
 import { IVideoRenderer } from '../domain/ports/IVideoRenderer';
 import { IImageClient } from '../domain/ports/IImageClient';
 
-import { OpenAITTSClient } from '../infrastructure/tts/OpenAITTSClient';
-import { XTTSTTSClient } from '../infrastructure/tts/XTTSTTSClient';
-import { LocalLLMClient } from '../infrastructure/llm/LocalLLMClient';
+import { StandardTtsClient } from '../infrastructure/tts/StandardTtsClient';
+import { XttsClient } from '../infrastructure/tts/XttsClient';
+import { LocalLlmClient } from '../infrastructure/llm/LocalLlmClient';
 import { MockAnimatedVideoClient } from '../infrastructure/video/MockAnimatedVideoClient';
 
 // Growth Layer Imports
@@ -101,15 +102,15 @@ function createDependencies(config: Config): {
     jobManager: JobManager;
     orchestrator: ReelOrchestrator;
     growthInsightsService: GrowthInsightsService;
-    cloudinaryClient: CloudinaryStorageClient | null;
+    cloudinaryClient: MediaStorageClient | null;
 } {
     const cloudinaryClient = createCloudinaryClient(config);
-    const llmClient = createLLMClient(config);
-    const ttsClient = createTTSClient(config);
-    const fallbackTTSClient = new OpenAITTSClient(config.openaiApiKey);
+    const llmClient = createLlmClient(config);
+    const ttsClient = createTtsClient(config);
+    const fallbackTtsClient = new StandardTtsClient(config.llmApiKey);
     const { primaryImageClient, fallbackImageClient } = createImageClients(config);
-    const transcriptionClient = new OpenAITranscriptionClient(config.openaiApiKey);
-    const subtitlesClient = new OpenAISubtitlesClient(config.openaiApiKey, cloudinaryClient!);
+    const transcriptionClient = new WhisperTranscriptionClient(config.llmApiKey);
+    const subtitlesClient = new WhisperSubtitlesClient(config.llmApiKey, cloudinaryClient!);
     const videoRenderer = createVideoRenderer(config, cloudinaryClient);
     const animatedVideoClient = createAnimatedVideoClient(config);
     const musicSelector = createMusicSelector(config);
@@ -137,7 +138,7 @@ function createDependencies(config: Config): {
         captionService,
         growthInsightsService,
         notificationClient,
-        fallbackTTSClient,
+        fallbackTtsClient,
         storageClient: cloudinaryClient || undefined,
         callbackToken: config.callbackToken,
         callbackHeader: config.callbackHeader,
@@ -152,10 +153,10 @@ function createDependencies(config: Config): {
 
 // --- Helper Functions ---
 
-function createCloudinaryClient(config: Config): CloudinaryStorageClient | null {
+function createCloudinaryClient(config: Config): MediaStorageClient | null {
     if (config.cloudinaryCloudName && config.cloudinaryApiKey) {
         console.log('✅ Cloudinary storage configured');
-        return new CloudinaryStorageClient(
+        return new MediaStorageClient(
             config.cloudinaryCloudName,
             config.cloudinaryApiKey,
             config.cloudinaryApiSecret
@@ -165,98 +166,126 @@ function createCloudinaryClient(config: Config): CloudinaryStorageClient | null 
     return null;
 }
 
-function createLLMClient(config: Config) {
+function createLlmClient(config: Config) {
     if (config.featureFlags.usePersonalCloneLLM) {
         console.log('🧠 Using Local LLM (Personal Clone mode)');
-        return new LocalLLMClient(
+        return new LocalLlmClient(
             config.personalClone.localLLMUrl,
             'llama3.2',
             config.personalClone.systemPrompt
         );
     }
-    return new OpenAILLMClient(config.openaiApiKey, config.openaiModel);
+    return new GptLlmClient(config.llmApiKey, config.llmModel);
 }
 
-function createTTSClient(config: Config) {
+function createTtsClient(config: Config) {
     if (config.featureFlags.usePersonalCloneTTS) {
         console.log('🎙️ Using XTTS Local TTS (Personal Clone mode)');
-        return new XTTSTTSClient(config.personalClone.xttsServerUrl);
+        return new XttsClient(config.personalClone.xttsServerUrl);
     }
-    return new FishAudioTTSClient(
-        config.fishAudioApiKey,
-        config.fishAudioVoiceId,
-        config.fishAudioBaseUrl
+    return new CloningTtsClient(
+        config.ttsCloningApiKey,
+        config.ttsCloningVoiceId,
+        config.ttsCloningBaseUrl
     );
 }
 
 function createImageClients(config: Config): { primaryImageClient: IImageClient; fallbackImageClient: IImageClient } {
-    if (!config.openrouterApiKey) {
-        throw new Error('OPENROUTER_API_KEY is required for image generation');
+    if (!config.multiModelImageApiKey) {
+        throw new Error('OPENROUTER_API_KEY (multiModelImageApiKey) is required for image generation');
     }
 
-    const openRouterClient = new OpenRouterImageClient(
-        config.openrouterApiKey,
-        config.openrouterModel,
-        config.openrouterBaseUrl
+    const multiModelImageClient = new MultiModelImageClient(
+        config.multiModelImageApiKey,
+        config.multiModelImageModel,
+        config.multiModelImageBaseUrl
     );
 
     let primaryImageClient: IImageClient;
-    if (config.beamcloudEnabled && config.beamcloudApiKey && config.beamcloudEndpointUrl) {
-        const beamClient = new BeamcloudImageClient(config.beamcloudApiKey, config.beamcloudEndpointUrl);
-        primaryImageClient = new FallbackImageClient(beamClient, openRouterClient, 'Beam.cloud FLUX1', 'OpenRouter');
-        console.log('✅ Image generation: Beam.cloud FLUX1 (primary) → OpenRouter (fallback)');
+    if (config.fluxEnabled && config.fluxApiKey && config.fluxEndpointUrl) {
+        const fluxClient = new FluxImageClient(config.fluxApiKey, config.fluxEndpointUrl);
+        primaryImageClient = new FallbackImageClient(fluxClient, multiModelImageClient, 'Flux', 'MultiModel');
+        console.log('✅ Image generation: Flux (primary) → MultiModel (fallback)');
     } else {
-        primaryImageClient = openRouterClient;
-        console.log('✅ Image generation: OpenRouter (primary)');
+        primaryImageClient = multiModelImageClient;
+        console.log('✅ Image generation: MultiModel (primary)');
     }
 
-    const fallbackImageClient = config.pixabayApiKey
-        ? new PixabayImageClient(config.pixabayApiKey)
+    const fallbackImageClient = config.stockApiKey
+        ? new StockImageClient(config.stockApiKey)
         : primaryImageClient;
 
     return { primaryImageClient, fallbackImageClient };
 }
 
-function createVideoRenderer(config: Config, cloudinaryClient: CloudinaryStorageClient | null): IVideoRenderer {
+function createVideoRenderer(config: Config, cloudinaryClient: MediaStorageClient | null): IVideoRenderer {
     if (config.videoRenderer === 'ffmpeg') {
         if (!cloudinaryClient) throw new Error('FFmpeg renderer requires Cloudinary configuration');
         console.log('🎬 Using FFmpeg Video Renderer (Local)');
         return new FFmpegVideoRenderer(cloudinaryClient);
     }
 
-    const shotstackRenderer = new ShortstackVideoRenderer(config.shotstackApiKey, config.shotstackBaseUrl);
-    if (config.beamcloudRenderEnabled && config.beamcloudApiKey && config.beamcloudRenderEndpointUrl) {
-        const beamRenderer = new BeamcloudVideoRenderer(config.beamcloudApiKey, config.beamcloudRenderEndpointUrl);
-        console.log('🎬 Video rendering: Beam.cloud FFmpeg (primary) → Shotstack (fallback)');
-        return new FallbackVideoRenderer(beamRenderer, shotstackRenderer, 'Beam.cloud FFmpeg', 'Shotstack');
+    const timelineRenderer = new TimelineVideoRenderer(config.timelineApiKey, config.timelineBaseUrl);
+    if (config.remoteRenderEnabled && config.fluxApiKey && config.remoteRenderEndpointUrl) {
+        const remoteRenderer = new RemoteVideoRenderer(config.fluxApiKey, config.remoteRenderEndpointUrl);
+        console.log('🎬 Video rendering: Remote (primary) → Timeline (fallback)');
+        return new FallbackVideoRenderer(remoteRenderer, timelineRenderer, 'Remote', 'Timeline');
     }
-    console.log('🎬 Video rendering: Shotstack (primary)');
-    return shotstackRenderer;
+    console.log('🎬 Video rendering: Timeline (primary)');
+    return timelineRenderer;
 }
 
 function createAnimatedVideoClient(config: Config) {
-    const kieVideoClient = config.kieApiKey
-        ? new KieVideoClient(config.kieApiKey, config.kieVideoBaseUrl, config.kieVideoModel)
-        : new MockAnimatedVideoClient();
+    const mock = new MockAnimatedVideoClient();
 
-    if (config.beamcloudVideoEnabled && config.beamcloudApiKey && config.beamcloudVideoEndpointUrl) {
-        const beamVideoClient = new BeamcloudVideoClient(config.beamcloudApiKey, config.beamcloudVideoEndpointUrl);
-        console.log('✅ Video generation: Beam.cloud Hunyuan (primary) → Kie.ai (fallback)');
-        return new FallbackVideoClient(beamVideoClient, kieVideoClient, 'Beam.cloud Hunyuan', 'Kie.ai');
+    // Prioritize Remote Video (Hunyuan/Mochi on Beam.cloud)
+    if (config.remoteVideoEnabled && config.fluxApiKey) {
+        const hunyuanUrl = config.remoteVideoEndpointUrl;
+        const mochiUrl = config.remoteMochiEndpointUrl;
+
+        // Both available: Hunyuan -> Mochi -> Mock
+        if (hunyuanUrl && mochiUrl) {
+            const hunyuan = new HunyuanVideoClient(config.fluxApiKey, hunyuanUrl, 600000);
+            const mochi = new MochiVideoClient(config.fluxApiKey, mochiUrl, 600000);
+            const mochiFallback = new FallbackVideoClient(mochi, mock, 'Mochi', 'Mock');
+            console.log('✅ Video generation: Hunyuan (primary) → Mochi (fallback) → Mock (safety)');
+            return new FallbackVideoClient(hunyuan, mochiFallback, 'Hunyuan', 'Mochi-Mock');
+        }
+
+        // Only Hunyuan: Hunyuan -> Mock
+        if (hunyuanUrl) {
+            const hunyuan = new HunyuanVideoClient(config.fluxApiKey, hunyuanUrl, 600000);
+            console.log('✅ Video generation: Hunyuan (primary) → Mock (fallback)');
+            return new FallbackVideoClient(hunyuan, mock, 'Hunyuan', 'Mock');
+        }
+
+        // Only Mochi: Mochi -> Mock
+        if (mochiUrl) {
+            const mochi = new MochiVideoClient(config.fluxApiKey, mochiUrl, 600000);
+            console.log('✅ Video generation: Mochi (primary) → Mock (fallback)');
+            return new FallbackVideoClient(mochi, mock, 'Mochi', 'Mock');
+        }
     }
-    console.log('✅ Video generation: Kie.ai (primary)');
-    return kieVideoClient;
+
+    // If Remote is disabled or missing endpoints, use MultiModel if available, else Mock
+    if (config.multiModelApiKey) {
+        console.log('✅ Video generation: MultiModel (primary)');
+        return new MultiModelVideoClient(config.multiModelApiKey, config.multiModelVideoBaseUrl, config.multiModelVideoModel);
+    }
+
+    console.log('✅ Video generation: Mock (primary)');
+    return mock;
 }
 
 function createMusicSelector(config: Config) {
     const internalMusicCatalog = new InMemoryMusicCatalogClient(config.internalMusicCatalogPath);
-    const musicGenerator = config.kieApiKey
-        ? new KieMusicGeneratorClient(config.kieApiKey, config.kieApiBaseUrl)
+    const musicGenerator = config.multiModelApiKey
+        ? new SegmentMusicClient(config.multiModelApiKey, config.multiModelMusicBaseUrl)
         : null;
     return new MusicSelector(internalMusicCatalog, null, musicGenerator);
 }
 
 function createNotificationClient(config: Config) {
-    const telegramService = config.telegramBotToken ? new TelegramService(config.telegramBotToken) : null;
-    return telegramService ? new TelegramNotificationClient(telegramService) : undefined;
+    const telegramService = config.telegramBotToken ? new ChatService(config.telegramBotToken) : null;
+    return telegramService ? new ChatNotificationClient(telegramService) : undefined;
 }

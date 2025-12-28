@@ -1,0 +1,93 @@
+import axios from 'axios';
+import { ITranscriptionClient } from '../../domain/ports/ITranscriptionClient';
+
+/**
+ * Remote-based transcription client using Gemini.
+ * Gemini models are excellent at transcribing long audio and video files.
+ */
+export class RemoteTranscriptionClient implements ITranscriptionClient {
+    private readonly apiKey: string;
+    private readonly baseUrl: string;
+    private readonly model: string;
+
+    constructor(
+        apiKey: string,
+        model: string = 'google/gemini-2.0-flash-001',
+        baseUrl: string = 'https://openrouter.ai/api/v1'
+    ) {
+        if (!apiKey) {
+            throw new Error('Remote API key is required');
+        }
+        this.apiKey = apiKey;
+        this.model = model;
+        this.baseUrl = baseUrl;
+    }
+
+    /**
+     * Transcribes audio/video from a URL using Gemini via Remote.
+     */
+    async transcribe(audioUrl: string): Promise<string> {
+        if (!audioUrl) {
+            throw new Error('Audio URL is required');
+        }
+
+        try {
+            console.log(`[Remote] Transcribing source (${this.model}): ${audioUrl}`);
+
+            const response = await axios.post(
+                `${this.baseUrl}/chat/completions`,
+                {
+                    model: this.model,
+                    messages: [
+                        {
+                            role: 'user',
+                            content: [
+                                {
+                                    type: 'text',
+                                    text: 'Transcribe this audio/video file exactly. Provide ONLY the transcription text, no preamble or extra words.'
+                                },
+                                {
+                                    type: 'image_url', // Standard multimodal field on Remote
+                                    image_url: {
+                                        url: audioUrl
+                                    }
+                                }
+                            ]
+                        }
+                    ],
+                },
+                {
+                    headers: {
+                        Authorization: `Bearer ${this.apiKey}`,
+                        'Content-Type': 'application/json',
+                        'HTTP-Referer': 'https://github.com/yogami/InstagramReelPoster', // Recommended for Remote
+                        'X-Title': 'Instagram Reel Poster',
+                    },
+                    timeout: 60000, // Give it time to process
+                }
+            );
+
+            if (!response.data || !response.data.choices || !response.data.choices[0]) {
+                console.error('[Remote] Unexpected response format:', JSON.stringify(response.data, null, 2));
+                throw new Error('Remote returned an invalid response structure');
+            }
+
+            const content = response.data.choices[0].message?.content;
+            if (!content) {
+                console.warn('[Remote] Received empty content from model');
+                throw new Error('Remote model returned empty transcription');
+            }
+
+            console.log(`[Remote] Transcription successful (${content.length} chars)`);
+            return content.trim();
+        } catch (error: any) {
+            if (axios.isAxiosError(error) && error.response) {
+                console.error('[Remote] API Error:', JSON.stringify(error.response.data, null, 2));
+                const message = error.response.data?.error?.message || error.message;
+                throw new Error(`Transcription failed via Remote: ${message}`);
+            }
+            console.error('[Remote] Unexpected error:', error);
+            throw error;
+        }
+    }
+}

@@ -228,7 +228,7 @@ function createMockDeps(mockJobManager: any) {
         ttsClient: {
             synthesize: jest.fn().mockResolvedValue({ audioUrl: 'https://tts.example.com/audio.mp3', durationSeconds: 30 })
         },
-        fallbackTTSClient: { synthesize: jest.fn() },
+        fallbackTtsClient: { synthesize: jest.fn() },
         primaryImageClient: { generateImage: jest.fn().mockResolvedValue({ imageUrl: 'https://example.com/image.png' }) },
         fallbackImageClient: { generateImage: jest.fn().mockResolvedValue({ imageUrl: 'https://fallback.example.com/image.png' }) },
         subtitlesClient: { generateSubtitles: jest.fn().mockResolvedValue({ subtitlesUrl: 'https://subtitles.example.com/subs.vtt' }) },

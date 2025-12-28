@@ -1,5 +1,5 @@
 import { loadConfig } from '../src/config';
-import { OpenAILLMClient } from '../src/infrastructure/llm/OpenAILLMClient';
+import { GptLlmClient } from '../src/infrastructure/llm/GptLlmClient';
 import { WebsiteScraperClient } from '../src/infrastructure/scraper/WebsiteScraperClient';
 import { SemanticAnalyzer } from '../src/infrastructure/analysis/SemanticAnalyzer';
 import { InMemoryMusicCatalogClient } from '../src/infrastructure/music/InMemoryMusicCatalogClient';
@@ -31,7 +31,7 @@ async function verifyPromoPlan(url: string) {
 
     // 2. Category Detection
     console.log('\n--- Step 2: Category Detection ---');
-    const llmClient = new OpenAILLMClient(config.openaiApiKey, config.openaiModel);
+    const llmClient = new GptLlmClient(config.openaiApiKey, config.openaiModel);
     const category = await llmClient.detectBusinessCategory(analysis);
     console.log(`✅ Detected Category: ${category}`);
 

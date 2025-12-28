@@ -1,5 +1,5 @@
-import { ITTSClient } from '../../domain/ports/ITTSClient';
-import { CloudinaryStorageClient } from '../../infrastructure/storage/CloudinaryStorageClient';
+import { ITtsClient } from '../../domain/ports/ITtsClient';
+import { MediaStorageClient } from '../../infrastructure/storage/MediaStorageClient';
 import { calculateSpeedAdjustment } from '../../domain/services/DurationCalculator';
 
 /**
@@ -8,9 +8,9 @@ import { calculateSpeedAdjustment } from '../../domain/services/DurationCalculat
  */
 export class VoiceoverService {
     constructor(
-        private readonly primaryTTS: ITTSClient,
-        private readonly fallbackTTS?: ITTSClient,
-        private readonly storageClient?: CloudinaryStorageClient
+        private readonly primaryTTS: ITtsClient,
+        private readonly fallbackTTS?: ITtsClient,
+        private readonly storageClient?: MediaStorageClient
     ) { }
 
     /**

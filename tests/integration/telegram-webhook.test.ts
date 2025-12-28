@@ -14,15 +14,15 @@ describe('Integration: Telegram & Callback Pipeline', () => {
         port: 3000,
         environment: 'test',
         testMode: true,
-        openaiApiKey: 'test-key',
-        fishAudioApiKey: 'test-key',
-        fishAudioVoiceId: 'test-voice',
+        llmApiKey: 'test-key',
+        ttsCloningApiKey: 'test-key',
+        ttsCloningVoiceId: 'test-voice',
         telegramBotToken: 'test-bot-token',
         telegramWebhookSecret: 'test-secret',
         makeWebhookUrl: 'https://hook.eu2.make.com/w55ed4qflnhglj5ubde67e4xs93hdzyo',
         callbackHeader: 'yami-instgram-carousel-api-key',
         callbackToken: 'masked-api-key-value',
-        shotstackApiKey: 'test-key',
+        timelineApiKey: 'test-key',
         videoRenderer: 'shortstack' as const,
         minReelSeconds: 10,
         maxReelSeconds: 90,
@@ -66,7 +66,7 @@ describe('Integration: Telegram & Callback Pipeline', () => {
             .persist();
 
         // 2. Mock ALL orchestrator steps (briefly)
-        // Transcription (OpenAI)
+        // Transcription (Gpt)
         nock('https://api.openai.com')
             .post('/v1/audio/transcriptions')
             .reply(200, 'Hello world') // Transcription call
@@ -116,14 +116,14 @@ describe('Integration: Telegram & Callback Pipeline', () => {
             .reply(200, Buffer.from('fake-tts-data'))
             .persist();
 
-        // Subtitles (uses OpenAI transcriptions with srt format)
+        // Subtitles (uses Gpt transcriptions with srt format)
         // Note: the earlier persist() on /v1/audio/transcriptions handles this if it's general enough.
 
         // Images (skipped if primary/fallback mocked)
         nock('https://api.openai.com').post('/v1/images/generations').times(2).reply(200, { data: [{ url: 'https://example.com/i.jpg' }] });
         // Subtitles
         nock('https://api.openai.com').post('/v1/audio/transcriptions').reply(200, '1\n00:00:00,000 --> 00:00:10,000\nHello');
-        // Shotstack
+        // Timeline
         nock('https://api.shotstack.io').post('/stage/render').reply(200, { success: true, response: { id: 'r1' } });
         nock('https://api.shotstack.io').get('/stage/render/r1').reply(200, { success: true, response: { status: 'done', url: 'https://example.com/final.mp4' } });
 

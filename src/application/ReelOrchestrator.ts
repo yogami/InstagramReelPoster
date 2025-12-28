@@ -32,8 +32,8 @@ import { getPromptTemplate, getMusicStyle, detectCategoryFromKeywords } from '..
 import { SemanticAnalyzer } from '../infrastructure/analysis/SemanticAnalyzer';
 
 import { ITranscriptionClient } from '../domain/ports/ITranscriptionClient';
-import { ILLMClient, ReelPlan, SegmentContent } from '../domain/ports/ILLMClient';
-import { ITTSClient } from '../domain/ports/ITTSClient';
+import { ILlmClient, ReelPlan, SegmentContent } from '../domain/ports/ILlmClient';
+import { ITtsClient } from '../domain/ports/ITtsClient';
 import { IImageClient } from '../domain/ports/IImageClient';
 import { ISubtitlesClient } from '../domain/ports/ISubtitlesClient';
 import { IVideoRenderer } from '../domain/ports/IVideoRenderer';
@@ -45,16 +45,22 @@ import { IGrowthInsightsService } from '../domain/ports/IGrowthInsightsService';
 import { MusicSelector, MusicSource } from './MusicSelector';
 import { JobManager } from './JobManager';
 import { ApprovalService } from './ApprovalService';
-import { CloudinaryStorageClient } from '../infrastructure/storage/CloudinaryStorageClient';
+import { MediaStorageClient } from '../infrastructure/storage/MediaStorageClient';
 import { TrainingDataCollector } from '../infrastructure/training/TrainingDataCollector';
-import { TelegramService } from '../presentation/services/TelegramService';
+import { ChatService } from '../presentation/services/ChatService';
 import { getConfig } from '../config';
+
+// Pipeline Imports
+import { createJobContext, executePipeline } from './pipelines/PipelineInfrastructure';
+import { createStandardPipeline, PipelineDependencies } from './pipelines/JobProcessingPipeline';
+import { VoiceoverService } from './services/VoiceoverService';
+import { ImageGenerationService } from './services/ImageGenerationService';
 
 export interface OrchestratorDependencies {
     transcriptionClient: ITranscriptionClient;
-    llmClient: ILLMClient;
-    ttsClient: ITTSClient;
-    fallbackTTSClient?: ITTSClient;
+    llmClient: ILlmClient;
+    ttsClient: ITtsClient;
+    fallbackTtsClient?: ITtsClient;
     primaryImageClient?: IImageClient; // OpenRouter (optional)
     fallbackImageClient: IImageClient; // DALL-E (required)
     animatedVideoClient?: IAnimatedVideoClient;
@@ -65,7 +71,7 @@ export interface OrchestratorDependencies {
     hookAndStructureService?: IHookAndStructureService;
     captionService?: ICaptionService;
     growthInsightsService?: IGrowthInsightsService;
-    storageClient?: CloudinaryStorageClient;
+    storageClient?: MediaStorageClient;
     websiteScraperClient?: IWebsiteScraperClient;
     callbackToken?: string;
     callbackHeader?: string;
@@ -94,10 +100,10 @@ export class ReelOrchestrator {
     constructor(deps: OrchestratorDependencies) {
         this.deps = deps;
 
-        // Initialize ApprovalService with TelegramService if notification client supports it
+        // Initialize ApprovalService with ChatService if notification client supports it
         const config = getConfig();
         const telegramService = config.telegramBotToken
-            ? new TelegramService(config.telegramBotToken)
+            ? new ChatService(config.telegramBotToken)
             : null;
         this.approvalService = new ApprovalService(telegramService);
     }
@@ -112,6 +118,141 @@ export class ReelOrchestrator {
      * Updates job status at each step.
      */
     async processJob(jobId: string): Promise<ReelJob> {
+        this.logMemoryUsage('Start processJob (Pipeline)');
+        const job = await this.deps.jobManager.getJob(jobId);
+        if (!job) throw new Error(`Job not found: ${jobId}`);
+
+        // Send initial notification
+        if (job.telegramChatId && this.deps.notificationClient) {
+            await this.deps.notificationClient.sendNotification(
+                job.telegramChatId,
+                '🎬 *Starting your reel creation!*\n\nI\'ll notify you when it\'s ready. This usually takes 2-5 minutes.'
+            );
+        }
+
+        try {
+            // Website Promo Mode Branch
+            const refreshedJobForMode = await this.deps.jobManager.getJob(jobId);
+            const forceModeCheck = (refreshedJobForMode as any)?.forceMode;
+            if (forceModeCheck === 'website-promo' && job.websitePromoInput) {
+                console.log(`[${jobId}] Using WEBSITE PROMO pipeline...`);
+                return await this.processWebsitePromoJob(jobId, job);
+            }
+
+            // STANDARD PIPELINE
+            console.log(`[${jobId}] Initializing standard pipeline execution...`);
+
+            // 1. Construct Services
+            const voiceoverService = new VoiceoverService(
+                this.deps.ttsClient,
+                this.deps.fallbackTtsClient,
+                this.deps.storageClient
+            );
+
+            const primaryImage = this.deps.primaryImageClient || this.deps.fallbackImageClient;
+            const imageGenerationService = new ImageGenerationService(
+                primaryImage,
+                this.deps.fallbackImageClient,
+                this.deps.storageClient,
+                this.deps.jobManager
+            );
+
+            // 2. Prepare Pipeline Dependencies
+            const pipelineDeps: PipelineDependencies = {
+                ...this.deps,
+                voiceoverService,
+                imageGenerationService
+            };
+
+            // 3. Create Pipeline
+            const steps = createStandardPipeline(pipelineDeps);
+
+            // 4. Create Initial Context
+            const initialContext = createJobContext(jobId, job);
+
+            // 5. Execute Pipeline
+            const finalContext = await executePipeline(
+                initialContext,
+                steps,
+                async (stepName, ctx) => {
+                    this.logMemoryUsage(stepName);
+                }
+            );
+
+            // 6. Post-Pipeline Finalization
+            let finalVideoUrl = finalContext.finalVideoUrl;
+            let finalJob = await this.deps.jobManager.getJob(jobId);
+            if (!finalJob) throw new Error('Job disappeared after pipeline completion');
+
+            // Persistence
+            if (finalVideoUrl && this.deps.storageClient && !finalVideoUrl.includes('cloudinary')) {
+                try {
+                    await this.updateJobStatus(jobId, 'uploading', 'Uploading to permanent storage...');
+                    const uploadResult = await this.deps.storageClient.uploadVideo(finalVideoUrl, {
+                        folder: 'instagram-reels/final-videos',
+                        publicId: `reel_${jobId}_${Date.now()}`,
+                        resourceType: 'video'
+                    });
+                    finalVideoUrl = uploadResult.url;
+                    finalJob = await this.deps.jobManager.updateJob(jobId, { finalVideoUrl, status: 'completed' });
+                } catch (e) {
+                    console.error('Upload failed', e);
+                }
+            }
+
+            if (!finalJob) throw new Error('Job disappeared during finalization');
+
+            // Notifications
+            if (finalJob.telegramChatId && this.deps.notificationClient && finalJob.status === 'completed') {
+                const processingTime = Math.round((Date.now() - finalJob.createdAt.getTime()) / 1000);
+                await this.deps.notificationClient.sendNotification(
+                    finalJob.telegramChatId,
+                    `✅ *Your reel is ready!*\n\nProcessing took ${processingTime}s.`
+                );
+            }
+
+            // Callbacks
+            if (finalJob.callbackUrl && finalJob.status === 'completed') {
+                await this.notifyCallback(finalJob);
+            }
+
+            // Analytics
+            if (this.deps.growthInsightsService && finalJob.status === 'completed') {
+                try {
+                    await this.deps.growthInsightsService.recordAnalytics({
+                        reelId: jobId,
+                        hookUsed: finalJob.hookPlan?.chosenHook || 'None',
+                        targetDurationSeconds: finalJob.targetDurationSeconds || 0,
+                        actualDurationSeconds: finalJob.voiceoverDurationSeconds || 0,
+                        postedAt: new Date().toISOString()
+                    });
+                    console.log(`[${jobId}] Post-run analytics recorded.`);
+                } catch (err) {
+                    console.warn(`[${jobId}] Failed to record post-run analytics:`, err);
+                }
+            }
+
+            return finalJob;
+
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            await this.deps.jobManager.failJob(jobId, errorMessage);
+            if (job.telegramChatId && this.deps.notificationClient) {
+                // Determine friendly error
+                let friendly = errorMessage;
+                if (errorMessage.includes('insufficient credits')) friendly = 'Service credits exhausted. Please contact admin.';
+
+                await this.deps.notificationClient.sendNotification(job.telegramChatId, `❌ Error: ${friendly}`);
+            }
+            throw error;
+        }
+    }
+
+    /**
+     * Processes a reel job asynchronously (LEGACY).
+     * Updates job status at each step.
+     */
+    async processJobLegacy(jobId: string): Promise<ReelJob> {
         this.logMemoryUsage('Start processJob');
         const job = await this.deps.jobManager.getJob(jobId);
         if (!job) {
@@ -187,19 +328,8 @@ export class ReelOrchestrator {
                 detectionResult = { isAnimatedMode: job.isAnimatedVideoMode };
             }
 
-            // Check forceMode early to determine if we should override animated mode for parable
-            const refreshedJobForForceMode = await this.deps.jobManager.getJob(jobId);
-            const forceMode = (refreshedJobForForceMode as any)?.forceMode;
-
-            // CRITICAL FIX: Force IMAGE mode for parables because Kie.ai only supports 10s max videos
-            // Parables need 36-46s which requires image-per-beat rendering, not single animated video
-            if (forceMode === 'parable') {
-                if (detectionResult.isAnimatedMode) {
-                    console.log(`[${jobId}] OVERRIDE: Forcing IMAGE mode for parable (Kie.ai 10s limit incompatible with 36-46s parable)`);
-                    detectionResult.isAnimatedMode = false;
-                    await this.deps.jobManager.updateJob(jobId, { isAnimatedVideoMode: false });
-                }
-            }
+            // Detection result and force mode check complete.
+            // The pipeline steps will handle mode-specific logic.
 
             // Step 1.6: Detect content mode (direct-message vs parable)
             let contentMode: ContentMode = job.contentMode || 'direct-message';
@@ -551,11 +681,11 @@ export class ReelOrchestrator {
                         console.log(`[${jobId}] Parable mode: Generating ${parableScriptPlan.beats.length} video clips (one per beat)...`);
 
                         const videoUrls: string[] = [];
-                        const kieMaxDuration = 10; // Kie.ai max duration per clip
+                        const maxClipDuration = 10; // VideoGen max duration per clip
 
                         for (let i = 0; i < parableScriptPlan.beats.length; i++) {
                             const beat = parableScriptPlan.beats[i];
-                            const beatDuration = Math.min(beat.approxDurationSeconds || 10, kieMaxDuration);
+                            const beatDuration = Math.min(beat.approxDurationSeconds || 10, maxClipDuration);
 
                             console.log(`[${jobId}] Generating beat ${i + 1}/${parableScriptPlan.beats.length} (${beat.role}): ${beatDuration}s`);
 
@@ -596,8 +726,8 @@ export class ReelOrchestrator {
                     } else {
                         // MULTI-CLIP MODE FOR ALL ANIMATED VIDEOS (no looping)
                         // Calculate how many clips needed based on duration
-                        const kieMaxDuration = 10;
-                        const clipsNeeded = Math.ceil(voiceoverDuration / kieMaxDuration);
+                        const maxClipDuration = 10;
+                        const clipsNeeded = Math.ceil(voiceoverDuration / maxClipDuration);
                         const clipDuration = voiceoverDuration / clipsNeeded;
 
                         console.log(`[${jobId}] Multi-clip mode: ${clipsNeeded} clips x ${clipDuration.toFixed(1)}s = ${voiceoverDuration}s total`);
@@ -614,7 +744,7 @@ export class ReelOrchestrator {
                                 : `${plan.summary || plan.mainCaption} - Part ${clipNum}`;
 
                             const animatedResult = await this.deps.animatedVideoClient.generateAnimatedVideo({
-                                durationSeconds: Math.min(clipDuration, kieMaxDuration),
+                                durationSeconds: Math.min(clipDuration, maxClipDuration),
                                 theme: clipPrompt,
                                 storyline: detectionResult.storyline,
                                 mood: plan.mood,
@@ -696,7 +826,7 @@ export class ReelOrchestrator {
             this.logMemoryUsage('Step 10: Finished Rendering');
 
             // CRITICAL: Upload to Cloudinary for permanent storage
-            // Shotstack URLs expire after 24 hours, causing Instagram API failures
+            // Timeline URLs expire after 24 hours, causing Instagram API failures
             let permanentVideoUrl = videoUrl;
             if (this.deps.storageClient) {
                 try {
@@ -715,11 +845,11 @@ export class ReelOrchestrator {
                     console.log(`[${jobId}] Waiting 5s for final video propagation...`);
                     await new Promise(resolve => setTimeout(resolve, 5000));
                 } catch (uploadError) {
-                    console.error(`[${jobId}] Failed to upload video to Cloudinary, using Shotstack URL (may expire):`, uploadError);
-                    // Continue with Shotstack URL if Cloudinary upload fails
+                    console.error(`[${jobId}] Failed to upload video to Cloudinary, using Timeline URL (may expire):`, uploadError);
+                    // Continue with Timeline URL if Cloudinary upload fails
                 }
             } else {
-                console.warn(`[${jobId}] No storage client configured - using temporary Shotstack URL (expires in 24h)`);
+                console.warn(`[${jobId}] No storage client configured - using temporary Timeline URL (expires in 24h)`);
             }
 
             // Complete the job
@@ -839,16 +969,16 @@ export class ReelOrchestrator {
             console.log(`[TTS] Attempting synthesis with primary client (Fish Audio)...${voiceId ? ` (Voice: ${voiceId})` : ''}`);
             result = await this.deps.ttsClient.synthesize(text, { voiceId });
         } catch (error: any) {
-            console.error('[TTS] ❌ Primary TTS (Fish Audio) failed. Falling back to OpenAI.');
+            console.error('[TTS] ❌ Primary TTS (Fish Audio) failed. Falling back to Gpt.');
             console.error(`[TTS] Error Details: ${error.message}`);
             if (error.response) {
                 console.error(`[TTS] Status: ${error.response.status}`);
                 console.error(`[TTS] Data: ${JSON.stringify(error.response.data)}`);
             }
 
-            if (this.deps.fallbackTTSClient) {
+            if (this.deps.fallbackTtsClient) {
                 console.warn('[TTS] ⚠️ Using fallback TTS client...');
-                result = await this.deps.fallbackTTSClient.synthesize(text, { voiceId });
+                result = await this.deps.fallbackTtsClient.synthesize(text, { voiceId });
             } else {
                 throw error;
             }
@@ -869,9 +999,9 @@ export class ReelOrchestrator {
                 } catch (error: any) {
                     console.warn('[TTS] ⚠️ Primary TTS speed adjustment failed:', error.message);
 
-                    if (this.deps.fallbackTTSClient) {
+                    if (this.deps.fallbackTtsClient) {
                         console.log('[TTS] Trying fallback client for speed adjustment with pitch 0.9...');
-                        result = await this.deps.fallbackTTSClient.synthesize(text, { speed, pitch: 0.9 });
+                        result = await this.deps.fallbackTtsClient.synthesize(text, { speed, pitch: 0.9 });
                     } else {
                         console.warn('[TTS] No fallback available for adjustment, returning original.');
                     }
@@ -980,7 +1110,7 @@ export class ReelOrchestrator {
 
 
         // Add a small delay to ensure Cloudinary assets are propagated to CDNs
-        // This prevents "Asset URL not downloadable" errors from Shotstack
+        // This prevents "Asset URL not downloadable" errors from Timeline
         if (this.deps.storageClient) {
             console.log('Waiting 2s for asset propagation...');
             await new Promise(resolve => setTimeout(resolve, 2000));
@@ -993,13 +1123,29 @@ export class ReelOrchestrator {
      * Converts technical error messages to user-friendly ones.
      */
     private getFriendlyErrorMessage(error: string): string {
-        if (error.includes('transcribe') || error.includes('Whisper')) {
+        const lowerError = error.toLowerCase();
+        if (lowerError.includes('transcribe') || lowerError.includes('whisper')) {
             return 'I could not understand the audio. Please try recording again with less background noise.';
         }
-        if (error.includes('OpenAI') || error.includes('API key')) {
+        if (lowerError.includes('gpt') || lowerError.includes('ai service') || lowerError.includes('api key')) {
             return 'There was an issue connecting to our AI services. Please try again in a moment.';
         }
-        return 'Something went wrong. Please try again.';
+        if (lowerError.includes('rendering') || lowerError.includes('timeout')) {
+            return 'The video rendering failed. This can happen with very complex scripts. Please try a simpler prompt.';
+        }
+        if (lowerError.includes('image') || lowerError.includes('dalle') || lowerError.includes('generation')) {
+            return 'There was trouble generating images for your reel. Please try a different theme.';
+        }
+        if (lowerError.includes('duration') || lowerError.includes('too short') || lowerError.includes('too long')) {
+            return 'The generated audio was too short or too long for a reel. I am automatically trying to fix this.';
+        }
+        if (lowerError.includes('music') || lowerError.includes('track')) {
+            return 'I could not find suitable background music for your reel. Using a default track instead.';
+        }
+        if (lowerError.includes('insufficient credits')) {
+            return 'Service credits exhausted. Please contact admin.';
+        }
+        return 'Something went wrong. An unexpected error occurred. Please try again.';
     }
 
     /**
@@ -1255,7 +1401,7 @@ export class ReelOrchestrator {
         const template = getPromptTemplate(category);
 
         if (!this.deps.llmClient.generatePromoScript) {
-            throw new Error('LLMClient.generatePromoScript is required for website promo mode');
+            throw new Error('LlmClient.generatePromoScript is required for website promo mode');
         }
 
         const promoScript = await this.deps.llmClient.generatePromoScript(

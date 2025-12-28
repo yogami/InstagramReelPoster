@@ -4,7 +4,7 @@
  */
 
 import { PipelineStep, JobContext } from '../PipelineInfrastructure';
-import { ILLMClient } from '../../../domain/ports/ILLMClient';
+import { ILlmClient } from '../../../domain/ports/ILlmClient';
 import { JobManager } from '../../JobManager';
 import { ContentMode } from '../../../domain/entities/Parable';
 
@@ -12,7 +12,7 @@ export class ContentModeStep implements PipelineStep {
     readonly name = 'ContentModeDetection';
 
     constructor(
-        private readonly llmClient: ILLMClient,
+        private readonly llmClient: ILlmClient,
         private readonly jobManager: JobManager
     ) { }
 
@@ -31,7 +31,8 @@ export class ContentModeStep implements PipelineStep {
             contentMode = 'direct-message';
             console.log(`[${context.jobId}] Content Mode: DIRECT-MESSAGE (forced)`);
         } else if (this.llmClient.detectContentMode) {
-            const result = await this.llmClient.detectContentMode(context.transcript!);
+            const combinedText = `${context.job.description || ''}\n${context.transcript || ''}`.trim();
+            const result = await this.llmClient.detectContentMode(combinedText);
             contentMode = result.contentMode;
             console.log(`[${context.jobId}] Content Mode: ${contentMode.toUpperCase()} (detected)`);
         }

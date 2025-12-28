@@ -243,7 +243,7 @@ export function createReelRoutes(
      * GET /jobs/:id/salvage?videoUrl=url1,url2
      * 
      * Manually triggers a salvage operation for a job using provided video URLs.
-     * Useful when Kie.ai dashboard shows completed videos but polling failed.
+     * Useful when VideoGen dashboard shows completed videos but polling failed.
      */
     router.get(
         '/jobs/:id/salvage',

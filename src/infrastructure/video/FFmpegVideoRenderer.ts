@@ -6,17 +6,17 @@ import os from 'os';
 import { v4 as uuidv4 } from 'uuid';
 import { IVideoRenderer, RenderResult } from '../../domain/ports/IVideoRenderer';
 import { ReelManifest } from '../../domain/entities/ReelManifest';
-import { CloudinaryStorageClient } from '../storage/CloudinaryStorageClient';
+import { MediaStorageClient } from '../storage/MediaStorageClient';
 
 /**
  * Renders video locally using FFmpeg.
  * Requires 'ffmpeg' to be installed in the system.
  */
 export class FFmpegVideoRenderer implements IVideoRenderer {
-    private readonly cloudinaryClient: CloudinaryStorageClient;
+    private readonly cloudinaryClient: MediaStorageClient;
     private readonly tempDir: string;
 
-    constructor(cloudinaryClient: CloudinaryStorageClient) {
+    constructor(cloudinaryClient: MediaStorageClient) {
         this.cloudinaryClient = cloudinaryClient;
         this.tempDir = path.join(os.tmpdir(), 'reel-poster-renders');
         if (!fs.existsSync(this.tempDir)) {

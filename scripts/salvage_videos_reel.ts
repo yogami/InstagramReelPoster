@@ -1,16 +1,16 @@
 import { ReelOrchestrator } from '../src/application/ReelOrchestrator';
 import { JobManager } from '../src/application/JobManager';
-import { OpenAITranscriptionClient } from '../src/infrastructure/transcription/OpenAITranscriptionClient';
-import { OpenAILLMClient } from '../src/infrastructure/llm/OpenAILLMClient';
-import { FishAudioTTSClient } from '../src/infrastructure/tts/FishAudioTTSClient';
-import { OpenAISubtitlesClient } from '../src/infrastructure/subtitles/OpenAISubtitlesClient';
-import { ShortstackVideoRenderer } from '../src/infrastructure/video/ShortstackVideoRenderer';
+import { WhisperTranscriptionClient } from '../src/infrastructure/transcription/WhisperTranscriptionClient';
+import { GptLlmClient } from '../src/infrastructure/llm/GptLlmClient';
+import { CloningTtsClient } from '../src/infrastructure/tts/CloningTtsClient';
+import { WhisperSubtitlesClient } from '../src/infrastructure/subtitles/WhisperSubtitlesClient';
+import { TimelineVideoRenderer } from '../src/infrastructure/video/TimelineVideoRenderer';
 import { FFmpegVideoRenderer } from '../src/infrastructure/video/FFmpegVideoRenderer';
 import { MusicSelector } from '../src/application/MusicSelector';
 import { InMemoryMusicCatalogClient } from '../src/infrastructure/music/InMemoryMusicCatalogClient';
-import { KieMusicGeneratorClient } from '../src/infrastructure/music/KieMusicGeneratorClient';
-import { KieVideoClient } from '../src/infrastructure/video/KieVideoClient';
-import { CloudinaryStorageClient } from '../src/infrastructure/storage/CloudinaryStorageClient';
+import { SegmentMusicClient } from '../src/infrastructure/music/SegmentMusicClient';
+import { MultiModelVideoClient } from '../src/infrastructure/video/MultiModelVideoClient';
+import { MediaStorageClient } from '../src/infrastructure/storage/MediaStorageClient';
 import { getConfig } from '../src/config';
 import * as dotenv from 'dotenv';
 
@@ -30,7 +30,7 @@ async function salvageVideos() {
 
     // Initialize dependencies (matching app.ts logic)
     const cloudinaryClient = config.cloudinaryCloudName && config.cloudinaryApiKey
-        ? new CloudinaryStorageClient(config.cloudinaryCloudName, config.cloudinaryApiKey, config.cloudinaryApiSecret)
+        ? new MediaStorageClient(config.cloudinaryCloudName, config.cloudinaryApiKey, config.cloudinaryApiSecret)
         : null;
 
     if (!cloudinaryClient) {
@@ -38,25 +38,25 @@ async function salvageVideos() {
     }
 
     const jobManager = new JobManager(config.minReelSeconds, config.maxReelSeconds, config.redisUrl);
-    const transcriptionClient = new OpenAITranscriptionClient(config.openaiApiKey);
-    const llmClient = new OpenAILLMClient(config.openaiApiKey, config.openaiModel);
-    const ttsClient = new FishAudioTTSClient(config.fishAudioApiKey, config.fishAudioVoiceId, config.fishAudioBaseUrl);
-    const subtitlesClient = new OpenAISubtitlesClient(config.openaiApiKey, cloudinaryClient);
+    const transcriptionClient = new WhisperTranscriptionClient(config.openaiApiKey);
+    const llmClient = new GptLlmClient(config.openaiApiKey, config.openaiModel);
+    const ttsClient = new CloningTtsClient(config.fishAudioApiKey, config.fishAudioVoiceId, config.fishAudioBaseUrl);
+    const subtitlesClient = new WhisperSubtitlesClient(config.openaiApiKey, cloudinaryClient);
 
     // Video Renderer
     const videoRenderer = config.videoRenderer === 'ffmpeg'
         ? new FFmpegVideoRenderer(cloudinaryClient)
-        : new ShortstackVideoRenderer(config.shotstackApiKey, config.shotstackBaseUrl);
+        : new TimelineVideoRenderer(config.shotstackApiKey, config.shotstackBaseUrl);
 
     // Music
     const internalMusicCatalog = new InMemoryMusicCatalogClient(config.internalMusicCatalogPath);
     const musicGenerator = config.kieApiKey
-        ? new KieMusicGeneratorClient(config.kieApiKey, config.kieApiBaseUrl)
+        ? new SegmentMusicClient(config.kieApiKey, config.kieApiBaseUrl)
         : null;
     const musicSelector = new MusicSelector(internalMusicCatalog, null, musicGenerator);
 
     // Kie Video Client (needed even if we skip gen, part of orchestrator deps)
-    const animatedVideoClient = new KieVideoClient(config.kieApiKey, config.kieVideoBaseUrl, config.kieVideoModel);
+    const animatedVideoClient = new MultiModelVideoClient(config.kieApiKey, config.kieVideoBaseUrl, config.kieVideoModel);
 
     const orchestrator = new ReelOrchestrator({
         transcriptionClient,

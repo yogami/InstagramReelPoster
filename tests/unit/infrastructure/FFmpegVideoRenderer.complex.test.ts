@@ -31,7 +31,7 @@ const mockedOs = os as jest.Mocked<typeof os>;
 const mockedAxios = axios as unknown as jest.Mock;
 
 describe('FFmpegVideoRenderer (Indexing Fix)', () => {
-    let mockCloudinaryClient: any;
+    let mockMediaClient: any;
     let renderer: FFmpegVideoRenderer;
 
     beforeEach(() => {
@@ -44,12 +44,12 @@ describe('FFmpegVideoRenderer (Indexing Fix)', () => {
             })
         } as any);
 
-        mockCloudinaryClient = {
+        mockMediaClient = {
             uploadFromUrl: jest.fn().mockResolvedValue({ url: 'https://final-video.mp4' }),
             uploadVideo: jest.fn().mockResolvedValue({ url: 'https://final-video.mp4' })
         };
 
-        renderer = new FFmpegVideoRenderer(mockCloudinaryClient);
+        renderer = new FFmpegVideoRenderer(mockMediaClient);
 
         mockedAxios.mockResolvedValue({
             data: {

@@ -141,8 +141,8 @@ describe('Parable Image Mode Acceptance Criteria', () => {
     // AC5: Ken Burns Effect
     // =====================================================
     describe('AC5: Ken Burns Effect', () => {
-        it('Shotstack should apply zoomIn effect to images', () => {
-            // Simulate Shotstack clip generation
+        it('Timeline should apply zoomIn effect to images', () => {
+            // Simulate Timeline clip generation
             const visualClips = sampleBeats.map((beat, index) => ({
                 asset: { type: 'image', src: `image_${index}.png` },
                 start: index * 10,

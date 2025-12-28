@@ -2,10 +2,10 @@ import {
     ReelPlan,
     SegmentContent,
     PlanningConstraints,
-} from '../../domain/ports/ILLMClient';
+} from '../../domain/ports/ILlmClient';
 import { CaptionAndTags } from '../../domain/entities/Growth';
 import { getConfig } from '../../config';
-import { OpenAIService } from './OpenAIService';
+import { GptService } from './GptService';
 import {
     CHALLENGING_VIEW_SYSTEM_PROMPT,
     PLAN_REEL_PROMPT,
@@ -18,9 +18,9 @@ import {
  * Handles generation of standard (image-based) reel content.
  */
 export class StandardReelGenerator {
-    private readonly openAI: OpenAIService;
+    private readonly openAI: GptService;
 
-    constructor(openAI: OpenAIService) {
+    constructor(openAI: GptService) {
         this.openAI = openAI;
     }
 

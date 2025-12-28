@@ -1,2 +1,2 @@
-export * from './FishAudioTTSClient';
-export * from './XTTSTTSClient';
+export * from './CloningTtsClient';
+export * from './XttsClient';

@@ -1,10 +1,10 @@
-import { OpenAILLMClient } from '../../src/infrastructure/llm/OpenAILLMClient';
+import { GptLlmClient } from '../../src/infrastructure/llm/GptLlmClient';
 
 describe('LLM Resilience - Segment Normalization', () => {
     let client: any;
 
     beforeEach(() => {
-        client = new OpenAILLMClient('test-key');
+        client = new GptLlmClient('test-key');
     });
 
     it('should pass through a plain array', () => {

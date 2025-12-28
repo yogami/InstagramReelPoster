@@ -1,8 +1,8 @@
 import { HookAndStructureService } from '../../../src/application/HookAndStructureService';
-import { ILLMClient, ReelPlan } from '../../../src/domain/ports/ILLMClient';
+import { ILlmClient, ReelPlan } from '../../../src/domain/ports/ILlmClient';
 
 describe('HookAndStructureService', () => {
-    let llmClient: jest.Mocked<ILLMClient>;
+    let llmClient: jest.Mocked<ILlmClient>;
     let service: HookAndStructureService;
 
     beforeEach(() => {

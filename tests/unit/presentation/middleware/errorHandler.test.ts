@@ -7,7 +7,7 @@ import {
     NotFoundError,
     BadRequestError,
     UnauthorizedError
-} from '../../../../../src/presentation/middleware/errorHandler';
+} from '../../../../src/presentation/middleware/errorHandler';
 
 describe('Error Handling Middleware', () => {
     describe('AppError Classes', () => {

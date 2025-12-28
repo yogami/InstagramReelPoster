@@ -1,20 +1,20 @@
 
-import { OpenAILLMClient } from '../../src/infrastructure/llm/OpenAILLMClient';
+import { GptLlmClient } from '../../src/infrastructure/llm/GptLlmClient';
 import axios from 'axios';
 
 jest.mock('axios');
 const mockedAxios = axios as jest.Mocked<typeof axios>;
 
-describe('OpenAILLMClient Duration Logic', () => {
-    let client: OpenAILLMClient;
+describe('GptLlmClient Duration Logic', () => {
+    let client: GptLlmClient;
 
     beforeEach(() => {
-        client = new OpenAILLMClient('fake-key');
+        client = new GptLlmClient('fake-key');
         jest.clearAllMocks();
     });
 
     test('Should accept LLM-determined duration (e.g. 60s) when requested', async () => {
-        // Mock OpenAI response simulating "1 minute" understanding
+        // Mock Gpt response simulating "1 minute" understanding
         const mockPlanResponse = {
             targetDurationSeconds: 60,
             segmentCount: 12, // 60s / 5s = 12
@@ -47,7 +47,7 @@ describe('OpenAILLMClient Duration Logic', () => {
     });
 
     test('Should clamp excessive segment counts to 15', async () => {
-        // Mock OpenAI return 20 segments
+        // Mock Gpt return 20 segments
         const mockPlanResponse = {
             targetDurationSeconds: 100,
             segmentCount: 20,

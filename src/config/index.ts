@@ -12,15 +12,15 @@ export interface Config {
     environment: string;
     testMode: boolean; // When true, use fixtures instead of real HTTP
 
-    // OpenAI
-    openaiApiKey: string;
-    openaiModel: string;
+    // Gpt-based LLM & Services
+    llmApiKey: string;
+    llmModel: string;
 
-    // Fish Audio TTS
-    fishAudioApiKey: string;
-    fishAudioBaseUrl: string;
-    fishAudioVoiceId: string;
-    fishAudioPromoVoiceId: string;
+    // Voice Cloning TTS
+    ttsCloningApiKey: string;
+    ttsCloningBaseUrl: string;
+    ttsCloningVoiceId: string;
+    ttsCloningPromoVoiceId: string;
 
     // Telegram & Callbacks
     telegramBotToken: string;
@@ -33,28 +33,28 @@ export interface Config {
     linkedinWebhookUrl: string;
     linkedinWebhookApiKey: string;
 
-    // OpenRouter (Primary Image Generation)
-    openrouterApiKey: string;
-    openrouterBaseUrl: string;
-    openrouterModel: string;
+    // Remote Multi-Model (Images)
+    multiModelImageApiKey: string;
+    multiModelImageBaseUrl: string;
+    multiModelImageModel: string;
 
     // Music Catalog
     musicCatalogApiKey: string;
     musicCatalogBaseUrl: string;
     internalMusicCatalogPath: string;
 
-    // Kie.ai
-    kieApiKey: string;
-    kieApiBaseUrl: string;
-    kieVideoBaseUrl: string;
-    kieVideoModel: string;
+    // Multi-Model (Video/Music)
+    multiModelApiKey: string;
+    multiModelMusicBaseUrl: string;
+    multiModelVideoBaseUrl: string;
+    multiModelVideoModel: string;
 
     // Video Renderer
     videoRenderer: 'shortstack' | 'ffmpeg';
 
-    // Shotstack
-    shotstackApiKey: string;
-    shotstackBaseUrl: string;
+    // Timeline Rendering
+    timelineApiKey: string;
+    timelineBaseUrl: string;
 
     // Cloudinary (file storage)
     cloudinaryCloudName: string;
@@ -69,26 +69,27 @@ export interface Config {
     maxReelSeconds: number;
     speakingRateWps: number;
 
-    // Pixabay
-    pixabayApiKey: string;
+    // Stock Assets
+    stockApiKey: string;
 
-    // Beam.cloud (Primary Image Generation)
-    beamcloudApiKey: string;
-    beamcloudEndpointUrl: string;
-    beamcloudEnabled: boolean;
+    // Remote Flux (Images)
+    fluxApiKey: string;
+    fluxEndpointUrl: string;
+    fluxEnabled: boolean;
 
-    // Beam.cloud (Primary Video Generation)
-    beamcloudVideoEndpointUrl: string;
-    beamcloudVideoEnabled: boolean;
+    // Remote Video (Mochi/Hunyuan)
+    remoteVideoEndpointUrl: string; // Primary (Hunyuan)
+    remoteMochiEndpointUrl: string; // Fallback (Mochi)
+    remoteVideoEnabled: boolean;
 
-    // Beam.cloud (FFmpeg Video Rendering)
-    beamcloudRenderEndpointUrl: string;
-    beamcloudRenderEnabled: boolean;
+    // Remote FFmpeg Render
+    remoteRenderEndpointUrl: string;
+    remoteRenderEnabled: boolean;
 
     // Personal Clone Feature Flags
     featureFlags: {
         usePersonalCloneTTS: boolean;  // Use local XTTS v2 instead of Fish Audio
-        usePersonalCloneLLM: boolean;  // Use local fine-tuned LLM instead of OpenAI
+        usePersonalCloneLLM: boolean;  // Use local fine-tuned LLM instead of Gpt
         personalCloneTrainingMode: boolean; // Collect data for training
         enableUserApproval: boolean;  // Human-in-the-loop approval checkpoints
     };
@@ -152,15 +153,15 @@ export function loadConfig(): Config {
         environment: getEnvVar('NODE_ENV', 'development'),
         testMode: getEnvVarBoolean('TEST_MODE', false),
 
-        // OpenAI
-        openaiApiKey: getEnvVar('OPENAI_API_KEY'),
-        openaiModel: getEnvVar('OPENAI_MODEL', 'gpt-4.1'),
+        // LLM (Gpt)
+        llmApiKey: getEnvVar('OPENAI_API_KEY'),
+        llmModel: getEnvVar('OPENAI_MODEL', 'gpt-4.1'),
 
-        // Fish Audio TTS
-        fishAudioApiKey: getEnvVar('FISH_AUDIO_API_KEY'),
-        fishAudioBaseUrl: getEnvVar('FISH_AUDIO_BASE_URL', 'https://api.fish.audio'),
-        fishAudioVoiceId: getEnvVar('FISH_AUDIO_VOICE_ID'),
-        fishAudioPromoVoiceId: getEnvVar('FISH_AUDIO_PROMO_VOICE_ID', '88b18e0d81474a0ca08e2ea6f9df5ff4'),
+        // Voice Cloning TTS (Fish Audio)
+        ttsCloningApiKey: getEnvVar('FISH_AUDIO_API_KEY'),
+        ttsCloningBaseUrl: getEnvVar('FISH_AUDIO_BASE_URL', 'https://api.fish.audio'),
+        ttsCloningVoiceId: getEnvVar('FISH_AUDIO_VOICE_ID'),
+        ttsCloningPromoVoiceId: getEnvVar('FISH_AUDIO_PROMO_VOICE_ID', '88b18e0d81474a0ca08e2ea6f9df5ff4'),
 
         // Music Catalog
         musicCatalogApiKey: getEnvVar('MUSIC_CATALOG_API_KEY', ''),
@@ -178,23 +179,23 @@ export function loadConfig(): Config {
         linkedinWebhookUrl: getEnvVar('LINKEDIN_WEBHOOK_URL', ''),
         linkedinWebhookApiKey: getEnvVar('LINKEDIN_WEBHOOK_API_KEY', ''),
 
-        // OpenRouter
-        openrouterApiKey: getEnvVar('OPENROUTER_API_KEY', ''),
-        openrouterBaseUrl: getEnvVar('OPENROUTER_BASE_URL', 'https://openrouter.ai/api/v1'),
-        openrouterModel: getEnvVar('OPENROUTER_MODEL', 'black-forest-labs/FLUX.1-schnell-Free'),
+        // Multi-Model (OpenRouter Image)
+        multiModelImageApiKey: getEnvVar('OPENROUTER_API_KEY', ''),
+        multiModelImageBaseUrl: getEnvVar('OPENROUTER_BASE_URL', 'https://openrouter.ai/api/v1'),
+        multiModelImageModel: getEnvVar('OPENROUTER_MODEL', 'black-forest-labs/FLUX.1-schnell-Free'),
 
-        // Kie.ai
-        kieApiKey: getEnvVar('KIE_API_KEY', ''),
-        kieApiBaseUrl: getEnvVar('KIE_API_BASE_URL', 'https://api.kie.ai/suno'),
-        kieVideoBaseUrl: getEnvVar('KIE_API_VIDEO_BASE_URL', 'https://api.kie.ai/api/v1'),
-        kieVideoModel: getEnvVar('KIE_VIDEO_MODEL', 'kling-2.6/text-to-video'),
+        // Multi-Model (Aggregator Video/Music)
+        multiModelApiKey: getEnvVar('KIE_API_KEY', ''),
+        multiModelMusicBaseUrl: getEnvVar('KIE_API_BASE_URL', 'https://api.kie.ai/suno'),
+        multiModelVideoBaseUrl: getEnvVar('KIE_API_VIDEO_BASE_URL', 'https://api.kie.ai/api/v1'),
+        multiModelVideoModel: getEnvVar('KIE_VIDEO_MODEL', 'kling-2.6/text-to-video'),
 
-        // Video Renderer
+        // Video Renderer Select
         videoRenderer: getEnvVar('VIDEO_RENDERER', 'shortstack') as 'shortstack' | 'ffmpeg',
 
-        // Shotstack
-        shotstackApiKey: getEnvVar('SHOTSTACK_API_KEY'),
-        shotstackBaseUrl: getEnvVar('SHOTSTACK_BASE_URL', 'https://api.shotstack.io/v1'),
+        // Timeline (Shotstack)
+        timelineApiKey: getEnvVar('SHOTSTACK_API_KEY'),
+        timelineBaseUrl: getEnvVar('SHOTSTACK_BASE_URL', 'https://api.shotstack.io/v1'),
 
         // Cloudinary
         cloudinaryCloudName: getEnvVar('CLOUDINARY_CLOUD_NAME', ''),
@@ -209,22 +210,22 @@ export function loadConfig(): Config {
         maxReelSeconds: getEnvVarNumber('MAX_REEL_SECONDS', 90),
         speakingRateWps: getEnvVarNumber('SPEAKING_RATE_WPS', 2.3),
 
-        // Pixabay
-        pixabayApiKey: getEnvVar('PIXABAY_API_KEY', ''),
+        // Stock (Pixabay)
+        stockApiKey: getEnvVar('PIXABAY_API_KEY', ''),
 
-        // Beam.cloud (Primary Image Generation)
-        beamcloudApiKey: getEnvVar('BEAMCLOUD_API_KEY', ''),
-        beamcloudEndpointUrl: getEnvVar('BEAMCLOUD_ENDPOINT_URL', 'https://app.beam.cloud/endpoint/flux1-image'),
-        beamcloudEnabled: getEnvVarBoolean('BEAMCLOUD_ENABLED', false),
+        // Remote Flux (Beam.cloud)
+        fluxApiKey: getEnvVar('BEAMCLOUD_API_KEY', ''),
+        fluxEndpointUrl: getEnvVar('BEAMCLOUD_ENDPOINT_URL', 'https://app.beam.cloud/endpoint/flux1-image'),
+        fluxEnabled: getEnvVarBoolean('BEAMCLOUD_ENABLED', false),
 
-        // Beam.cloud (Primary Video Generation - preferred over Kie.ai due to cost/credits)
-        // Falls back to Hunyuan endpoint if VIDEO endpoint not configured
-        beamcloudVideoEndpointUrl: getEnvVar('BEAMCLOUD_VIDEO_ENDPOINT_URL', '') || getEnvVar('BEAMCLOUD_HUNYUAN_ENDPOINT_URL', ''),
-        beamcloudVideoEnabled: getEnvVarBoolean('BEAMCLOUD_VIDEO_ENABLED', true) || getEnvVarBoolean('BEAMCLOUD_HUNYUAN_ENABLED', false), // Default true
+        // Remote Video (Mochi/Hunyuan)
+        remoteVideoEndpointUrl: getEnvVar('BEAMCLOUD_HUNYUAN_ENDPOINT_URL', '') || getEnvVar('BEAMCLOUD_VIDEO_ENDPOINT_URL', ''),
+        remoteMochiEndpointUrl: getEnvVar('BEAMCLOUD_MOCHI_ENDPOINT_URL', ''),
+        remoteVideoEnabled: getEnvVarBoolean('BEAMCLOUD_VIDEO_ENABLED', true) || getEnvVarBoolean('BEAMCLOUD_HUNYUAN_ENABLED', false),
 
-        // Beam.cloud (FFmpeg Video Rendering)
-        beamcloudRenderEndpointUrl: getEnvVar('BEAMCLOUD_RENDER_ENDPOINT_URL', ''),
-        beamcloudRenderEnabled: getEnvVarBoolean('BEAMCLOUD_RENDER_ENABLED', false),
+        // Remote Render (FFmpeg)
+        remoteRenderEndpointUrl: getEnvVar('BEAMCLOUD_RENDER_ENDPOINT_URL', ''),
+        remoteRenderEnabled: getEnvVarBoolean('BEAMCLOUD_RENDER_ENABLED', false),
 
         // Personal Clone Feature Flags (all default to false - non-breaking)
         featureFlags: {
@@ -250,17 +251,17 @@ export function loadConfig(): Config {
 export function validateConfig(config: Config): string[] {
     const errors: string[] = [];
 
-    if (!config.openaiApiKey) {
-        errors.push('OPENAI_API_KEY is required for transcription, LLM, images, and subtitles');
+    if (!config.llmApiKey) {
+        errors.push('OPENAI_API_KEY (llmApiKey) is required for transcription, LLM, images, and subtitles');
     }
-    if (!config.fishAudioApiKey) {
-        errors.push('FISH_AUDIO_API_KEY is required for TTS');
+    if (!config.ttsCloningApiKey) {
+        errors.push('FISH_AUDIO_API_KEY (ttsCloningApiKey) is required for TTS');
     }
-    if (!config.fishAudioVoiceId) {
-        errors.push('FISH_AUDIO_VOICE_ID is required for TTS');
+    if (!config.ttsCloningVoiceId) {
+        errors.push('FISH_AUDIO_VOICE_ID (ttsCloningVoiceId) is required for TTS');
     }
-    if (config.videoRenderer === 'shortstack' && !config.shotstackApiKey) {
-        errors.push('SHOTSTACK_API_KEY is required when videoRenderer is "shortstack"');
+    if (config.videoRenderer === 'shortstack' && !config.timelineApiKey) {
+        errors.push('SHOTSTACK_API_KEY (timelineApiKey) is required when videoRenderer is "shortstack"');
     }
 
     if (config.videoRenderer === 'ffmpeg') {

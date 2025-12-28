@@ -14,7 +14,7 @@ export interface MusicGenerationRequest {
 
 /**
  * IMusicGeneratorClient - Port for AI music generation services.
- * Implementations: KieMusicGeneratorClient
+ * Implementations: SegmentMusicClient
  */
 export interface IMusicGeneratorClient {
     /**

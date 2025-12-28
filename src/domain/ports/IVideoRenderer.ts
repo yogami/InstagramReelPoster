@@ -12,7 +12,7 @@ export interface RenderResult {
 
 /**
  * IVideoRenderer - Port for video rendering services.
- * Implementations: ShortstackVideoRenderer, FFmpegVideoRenderer
+ * Implementations: TimelineVideoRenderer, FFmpegVideoRenderer
  */
 export interface IVideoRenderer {
     /**

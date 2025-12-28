@@ -1,11 +1,11 @@
 
 import { ReelOrchestrator } from '../../src/application/ReelOrchestrator';
-import { ITTSClient } from '../../src/domain/ports/ITTSClient';
+import { ITtsClient } from '../../src/domain/ports/ITtsClient';
 
 describe('TTS Priority Logic (Unit)', () => {
     let orchestrator: any; // Use any to access private methods
-    let mockPrimaryTTS: jest.Mocked<ITTSClient>;
-    let mockFallbackTTS: jest.Mocked<ITTSClient>;
+    let mockPrimaryTTS: jest.Mocked<ITtsClient>;
+    let mockFallbackTTS: jest.Mocked<ITtsClient>;
     let mockDeps: any;
 
     beforeEach(() => {
@@ -19,7 +19,7 @@ describe('TTS Priority Logic (Unit)', () => {
 
         mockDeps = {
             ttsClient: mockPrimaryTTS,
-            fallbackTTSClient: mockFallbackTTS,
+            fallbackTtsClient: mockFallbackTTS,
             // Minimal other deps to satisfy constructor if needed, or cast
             jobManager: {},
             transcriptionClient: {},
@@ -33,7 +33,7 @@ describe('TTS Priority Logic (Unit)', () => {
         orchestrator = new ReelOrchestrator(mockDeps);
     });
 
-    test('Should prioritize Primary Client (Fish Audio) when it succeeds', async () => {
+    test('Should prioritize Primary Client (Voice Cloning) when it succeeds', async () => {
         // Arrange
         mockPrimaryTTS.synthesize.mockResolvedValue({
             audioUrl: 'primary_url',
@@ -51,7 +51,7 @@ describe('TTS Priority Logic (Unit)', () => {
 
     test('Should user Fallback Client ONLY when Primary fails', async () => {
         // Arrange
-        mockPrimaryTTS.synthesize.mockRejectedValue(new Error('Fish Audio Rate Limit'));
+        mockPrimaryTTS.synthesize.mockRejectedValue(new Error('Voice Cloning Rate Limit'));
         mockFallbackTTS.synthesize.mockResolvedValue({
             audioUrl: 'fallback_url',
             durationSeconds: 10

@@ -77,7 +77,7 @@ describe('ReelOrchestrator - Animated Video Flow', () => {
                     durationSeconds: 45
                 })
             },
-            fallbackTTSClient: { synthesize: jest.fn() },
+            fallbackTtsClient: { synthesize: jest.fn() },
             primaryImageClient: {
                 generateImage: jest.fn().mockResolvedValue({ imageUrl: 'https://img.com/1.png' }),
                 resetSequence: jest.fn()
@@ -125,8 +125,6 @@ describe('ReelOrchestrator - Animated Video Flow', () => {
             reason: 'User asked for animation'
         });
 
-        // Use a spy on generateImages to ensure it's NOT called
-        const generateImagesSpy = jest.spyOn(orchestrator as any, 'generateImages');
         const updateJobSpy = mockJobManager.updateJob;
 
         // Mock animated video generation success
@@ -145,8 +143,8 @@ describe('ReelOrchestrator - Animated Video Flow', () => {
             isAnimatedVideoMode: true
         }));
 
-        // Verify generateImages was SKIPPED
-        expect(generateImagesSpy).not.toHaveBeenCalled();
+        // Verify image generation was SKIPPED
+        expect(mockDeps.primaryImageClient.generateImage).not.toHaveBeenCalled();
 
         // Verify animatedVideoClient was CALLED (multiple times for multi-clip)
         // For 45s voiceover with 10s max clips = 5 clips
@@ -170,12 +168,10 @@ describe('ReelOrchestrator - Animated Video Flow', () => {
             reason: 'Static content'
         });
 
-        const generateImagesSpy = jest.spyOn(orchestrator as any, 'generateImages');
-
         await orchestrator.processJob(mockJobId);
 
-        // Verify generateImages WAS called
-        expect(generateImagesSpy).toHaveBeenCalled();
+        // Verify image generation WAS called
+        expect(mockDeps.primaryImageClient.generateImage).toHaveBeenCalled();
         expect(mockDeps.animatedVideoClient.generateAnimatedVideo).not.toHaveBeenCalled();
     });
 

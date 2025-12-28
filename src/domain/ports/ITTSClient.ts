@@ -23,10 +23,10 @@ export interface TTSOptions {
 }
 
 /**
- * ITTSClient - Port for Text-to-Speech services.
- * Implementations: FishAudioTTSClient
+ * ITtsClient - Port for Text-to-Speech services.
+ * Implementations: CloningTtsClient
  */
-export interface ITTSClient {
+export interface ITtsClient {
     /**
      * Synthesizes text to speech audio.
      * @param text The text to synthesize

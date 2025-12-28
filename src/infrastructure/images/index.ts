@@ -1,1 +1,1 @@
-export * from './OpenAIImageClient';
+export * from './DalleImageClient';

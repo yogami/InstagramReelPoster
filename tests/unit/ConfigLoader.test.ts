@@ -20,7 +20,7 @@ describe('ConfigLoader Resilience', () => {
         process.env.SHOTSTACK_API_KEY = 'shotstack-1';
 
         const config = loadConfig();
-        expect(config.openaiApiKey).toBe('sk-test-key-with-quotes');
+        expect(config.llmApiKey).toBe('sk-test-key-with-quotes');
     });
 
     it('should strip single quotes from environment variables', () => {
@@ -30,7 +30,7 @@ describe('ConfigLoader Resilience', () => {
         process.env.SHOTSTACK_API_KEY = 'shotstack-1';
 
         const config = loadConfig();
-        expect(config.openaiApiKey).toBe('sk-test-key-with-single-quotes');
+        expect(config.llmApiKey).toBe('sk-test-key-with-single-quotes');
     });
 
     it('should trim whitespace from environment variables', () => {
@@ -40,7 +40,7 @@ describe('ConfigLoader Resilience', () => {
         process.env.SHOTSTACK_API_KEY = 'shotstack-1';
 
         const config = loadConfig();
-        expect(config.openaiApiKey).toBe('sk-test-key-with-spaces');
+        expect(config.llmApiKey).toBe('sk-test-key-with-spaces');
     });
 
     it('should handle numeric variables with quotes', () => {

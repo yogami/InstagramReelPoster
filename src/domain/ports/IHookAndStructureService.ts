@@ -1,5 +1,5 @@
 import { HookPlan } from '../entities/Growth';
-import { ReelPlan } from './ILLMClient';
+import { ReelPlan } from './ILlmClient';
 
 /**
  * Service for optimizing reel hooks and structure for retention and discovery.

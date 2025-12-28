@@ -1,17 +1,17 @@
 /**
- * MakeLinkedInPosterService Tests
+ * WebhookLinkedInPosterService Tests
  * 
  * Tests for Make.com LinkedIn posting service.
  */
 
-import { MakeLinkedInPosterService } from '../../../src/infrastructure/linkedin/MakeLinkedInPosterService';
+import { WebhookLinkedInPosterService } from '../../../src/infrastructure/linkedin/WebhookLinkedInPosterService';
 import { LinkedInPostPayload } from '../../../src/domain/ports/ILinkedInPosterService';
 import axios from 'axios';
 
 jest.mock('axios');
 const mockedAxios = axios as jest.Mocked<typeof axios>;
 
-describe('MakeLinkedInPosterService', () => {
+describe('WebhookLinkedInPosterService', () => {
     const validWebhookUrl = 'https://hook.eu2.make.com/test-webhook-id';
     const validApiKey = 'test-api-key';
 
@@ -24,20 +24,20 @@ describe('MakeLinkedInPosterService', () => {
     // =====================================================
     describe('Constructor', () => {
         it('should create service with valid webhook URL and API key', () => {
-            const service = new MakeLinkedInPosterService(validWebhookUrl, validApiKey);
-            expect(service).toBeInstanceOf(MakeLinkedInPosterService);
+            const service = new WebhookLinkedInPosterService(validWebhookUrl, validApiKey);
+            expect(service).toBeInstanceOf(WebhookLinkedInPosterService);
         });
 
         it('should reject empty webhook URL', () => {
-            expect(() => new MakeLinkedInPosterService('', validApiKey)).toThrow('LinkedIn webhook URL is required');
+            expect(() => new WebhookLinkedInPosterService('', validApiKey)).toThrow('LinkedIn webhook URL is required');
         });
 
         it('should reject empty API key', () => {
-            expect(() => new MakeLinkedInPosterService(validWebhookUrl, '')).toThrow('LinkedIn webhook API key is required');
+            expect(() => new WebhookLinkedInPosterService(validWebhookUrl, '')).toThrow('LinkedIn webhook API key is required');
         });
 
         it('should reject whitespace-only webhook URL', () => {
-            expect(() => new MakeLinkedInPosterService('   ', validApiKey)).toThrow('LinkedIn webhook URL is required');
+            expect(() => new WebhookLinkedInPosterService('   ', validApiKey)).toThrow('LinkedIn webhook URL is required');
         });
     });
 
@@ -51,7 +51,7 @@ describe('MakeLinkedInPosterService', () => {
                 data: { postId: 'urn:li:share:12345' }
             });
 
-            const service = new MakeLinkedInPosterService(validWebhookUrl, validApiKey);
+            const service = new WebhookLinkedInPosterService(validWebhookUrl, validApiKey);
             const result = await service.postToLinkedIn({
                 type: 'ARTICLE',
                 content: 'Test LinkedIn post content',
@@ -69,7 +69,7 @@ describe('MakeLinkedInPosterService', () => {
         it('should send correct payload to webhook', async () => {
             mockedAxios.post.mockResolvedValue({ status: 200, data: {} });
 
-            const service = new MakeLinkedInPosterService(validWebhookUrl, validApiKey);
+            const service = new WebhookLinkedInPosterService(validWebhookUrl, validApiKey);
             const payload: LinkedInPostPayload = {
                 type: 'ARTICLE',
                 content: 'My post content',
@@ -105,7 +105,7 @@ describe('MakeLinkedInPosterService', () => {
             });
             jest.spyOn(axios, 'isAxiosError').mockReturnValue(true);
 
-            const service = new MakeLinkedInPosterService(validWebhookUrl, validApiKey);
+            const service = new WebhookLinkedInPosterService(validWebhookUrl, validApiKey);
             const result = await service.postToLinkedIn({
                 type: 'NONE',
                 content: 'Test',
@@ -120,7 +120,7 @@ describe('MakeLinkedInPosterService', () => {
             mockedAxios.post.mockRejectedValue(new Error('Network error'));
             jest.spyOn(axios, 'isAxiosError').mockReturnValue(false);
 
-            const service = new MakeLinkedInPosterService(validWebhookUrl, validApiKey);
+            const service = new WebhookLinkedInPosterService(validWebhookUrl, validApiKey);
             const result = await service.postToLinkedIn({
                 type: 'NONE',
                 content: 'Test',

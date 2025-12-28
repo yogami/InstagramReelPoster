@@ -1,6 +1,6 @@
 /**
  * Port for sending notifications to users.
- * Implementations: TelegramNotificationClient
+ * Implementations: ChatNotificationClient
  */
 export interface INotificationClient {
     /**

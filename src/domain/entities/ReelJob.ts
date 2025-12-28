@@ -73,6 +73,8 @@ export interface ReelJobInput {
      * Will be truncated/adjusted to fit the target video duration if it exceeds the limit.
      */
     providedCommentary?: string;
+    /** Optional meta-instructions or user description of the reel */
+    description?: string;
 }
 
 /**
@@ -181,6 +183,8 @@ export interface ReelJob {
     /** Timestamps */
     createdAt: Date;
     updatedAt: Date;
+    /** Optional meta-instructions or user description of the reel */
+    description?: string;
 }
 
 /**
@@ -236,6 +240,7 @@ export function createReelJob(
         websitePromoInput: hasWebsitePromo ? input.websitePromoInput : undefined,
         language: input.language || 'en',
         voiceId: input.voiceId,
+        description: input.description,
         createdAt: now,
         updatedAt: now,
     };

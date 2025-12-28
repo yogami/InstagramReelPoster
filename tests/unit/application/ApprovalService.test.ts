@@ -6,8 +6,8 @@
 
 import { ApprovalService, ApprovalCheckpoint, CHECKPOINT_TIMEOUTS } from '../../../src/application/ApprovalService';
 
-// Mock TelegramService
-const mockTelegramService = {
+// Mock ChatService
+const mockChatService = {
     sendMessage: jest.fn().mockResolvedValue(undefined),
     getFileUrl: jest.fn().mockResolvedValue('http://example.com/file'),
 };
@@ -17,7 +17,7 @@ describe('ApprovalService', () => {
 
     beforeEach(() => {
         jest.clearAllMocks();
-        service = new ApprovalService(mockTelegramService as any);
+        service = new ApprovalService(mockChatService as any);
     });
 
     // =====================================================
@@ -51,7 +51,7 @@ describe('ApprovalService', () => {
             expect(result.reason).toBe('no_telegram');
         });
 
-        it('should auto-approve if TelegramService is null', async () => {
+        it('should auto-approve if ChatService is null', async () => {
             const serviceNoTelegram = new ApprovalService(null);
 
             const result = await serviceNoTelegram.requestApproval(
@@ -80,7 +80,7 @@ describe('ApprovalService', () => {
             );
 
             // Verify message was sent
-            expect(mockTelegramService.sendMessage).toHaveBeenCalledWith(
+            expect(mockChatService.sendMessage).toHaveBeenCalledWith(
                 12345,
                 expect.stringContaining('Script Ready for Review')
             );
@@ -143,7 +143,7 @@ describe('ApprovalService', () => {
         it('script checkpoint should show 📝 emoji', async () => {
             service.requestApproval('job_msg', 12345, 'script', 'Summary');
 
-            expect(mockTelegramService.sendMessage).toHaveBeenCalledWith(
+            expect(mockChatService.sendMessage).toHaveBeenCalledWith(
                 12345,
                 expect.stringContaining('📝')
             );
@@ -152,7 +152,7 @@ describe('ApprovalService', () => {
         it('visuals checkpoint should show 🎨 emoji', async () => {
             service.requestApproval('job_vis', 12345, 'visuals', 'Image summary');
 
-            expect(mockTelegramService.sendMessage).toHaveBeenCalledWith(
+            expect(mockChatService.sendMessage).toHaveBeenCalledWith(
                 12345,
                 expect.stringContaining('🎨')
             );
@@ -161,7 +161,7 @@ describe('ApprovalService', () => {
         it('message should include timeout warning', async () => {
             service.requestApproval('job_time', 12345, 'script', 'Summary');
 
-            expect(mockTelegramService.sendMessage).toHaveBeenCalledWith(
+            expect(mockChatService.sendMessage).toHaveBeenCalledWith(
                 12345,
                 expect.stringContaining('Auto-approves in 60 seconds')
             );

@@ -4,7 +4,7 @@
  */
 
 import { ReelJob } from '../../domain/entities/ReelJob';
-import { ReelPlan, SegmentContent } from '../../domain/ports/ILLMClient';
+import { ReelPlan, SegmentContent } from '../../domain/ports/ILlmClient';
 import { Segment } from '../../domain/entities/Segment';
 import { ContentMode } from '../../domain/entities/Parable';
 

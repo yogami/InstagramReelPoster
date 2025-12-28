@@ -1,6 +1,6 @@
 /**
  * Integration Tests: Full API Pipeline with Nock
- * Tests happy path, LLM invariants, OpenRouter context, music fallback, Shotstack polling
+ * Tests happy path, LLM invariants, MultiModel context, music fallback, Timeline polling
  * 
  * CRITICAL: These tests use nock to mock ALL external HTTP calls.
  * No real API calls are made. No credits are used.
@@ -9,9 +9,9 @@
 import nock from 'nock';
 import path from 'path';
 import fs from 'fs';
-import { OpenAILLMClient } from '../../src/infrastructure/llm/OpenAILLMClient';
-import { OpenRouterImageClient } from '../../src/infrastructure/images/OpenRouterImageClient';
-import { ShortstackVideoRenderer } from '../../src/infrastructure/video/ShortstackVideoRenderer';
+import { GptLlmClient } from '../../src/infrastructure/llm/GptLlmClient';
+import { MultiModelImageClient } from '../../src/infrastructure/images/MultiModelImageClient';
+import { TimelineVideoRenderer } from '../../src/infrastructure/video/TimelineVideoRenderer';
 import { MusicSelector } from '../../src/application/MusicSelector';
 import { IMusicCatalogClient } from '../../src/domain/ports/IMusicCatalogClient';
 import { IMusicGeneratorClient } from '../../src/domain/ports/IMusicGeneratorClient';
@@ -75,7 +75,7 @@ describe('Integration: LLM Segment Count Invariants', () => {
                 }]
             });
 
-        const client = new OpenAILLMClient('test-key');
+        const client = new GptLlmClient('test-key');
         const result = await client.generateSegmentContent(
             { targetDurationSeconds: 15, segmentCount, mood: 'calm', summary: 'test', musicTags: [], musicPrompt: '', mainCaption: 'Test caption' },
             'Test transcript'
@@ -110,7 +110,7 @@ describe('Integration: LLM Segment Count Invariants', () => {
                 }]
             });
 
-        const client = new OpenAILLMClient('test-key');
+        const client = new GptLlmClient('test-key');
         const result = await client.generateSegmentContent(
             { targetDurationSeconds: 10, segmentCount: 2, mood: 'calm', summary: 'test', musicTags: [], musicPrompt: '', mainCaption: 'Test caption' },
             'Test transcript'
@@ -142,7 +142,7 @@ describe('Integration: LLM Segment Count Invariants', () => {
                 }]
             });
 
-        const client = new OpenAILLMClient('test-key');
+        const client = new GptLlmClient('test-key');
         const result = await client.generateSegmentContent(
             { targetDurationSeconds: 5, segmentCount: 1, mood: 'calm', summary: 'meditation', musicTags: [], musicPrompt: '', mainCaption: 'Test caption' },
             'Meditation scene'
@@ -156,9 +156,9 @@ describe('Integration: LLM Segment Count Invariants', () => {
 // ============================================================================
 // OPENROUTER CONTEXT SIZE TESTS
 // ============================================================================
-describe('Integration: OpenRouter Context Size', () => {
+describe('Integration: MultiModel Context Size', () => {
     it('should extract compact context (~30-40 words) from previous prompt', () => {
-        const client = new OpenRouterImageClient('test-key');
+        const client = new MultiModelImageClient('test-key');
 
         // Access private method via reflection for testing
         const extractContext = (client as any).extractCompactContext.bind(client);
@@ -179,7 +179,7 @@ describe('Integration: OpenRouter Context Size', () => {
     });
 
     it('should maintain linear token growth (not exponential)', async () => {
-        const client = new OpenRouterImageClient('test-key');
+        const client = new MultiModelImageClient('test-key');
 
         // Mock 3 image generation calls
         for (let i = 0; i < 3; i++) {
@@ -208,7 +208,7 @@ describe('Integration: OpenRouter Context Size', () => {
     });
 
     it('should reset sequence between jobs', () => {
-        const client = new OpenRouterImageClient('test-key');
+        const client = new MultiModelImageClient('test-key');
 
         // Set some internal state by accessing private property
         (client as any).previousPrompt = 'Previous scene';
@@ -301,8 +301,8 @@ describe('Integration: Music Fallback Behavior', () => {
 // ============================================================================
 // SHOTSTACK RENDER + POLLING
 // ============================================================================
-describe('Integration: Shotstack Render + Polling', () => {
-    // Skip this test - Shotstack has 5s polling intervals that exceed default timeout
+describe('Integration: Timeline Render + Polling', () => {
+    // Skip this test - Timeline has 5s polling intervals that exceed default timeout
     // Can run manually with: npm test -- --testTimeout=60000 api-pipeline
     it.skip('should submit render and poll until done', async () => {
         // Mock render submit
@@ -332,7 +332,7 @@ describe('Integration: Shotstack Render + Polling', () => {
                 }
             });
 
-        const renderer = new ShortstackVideoRenderer('test-key', 'https://api.shotstack.io/stage');
+        const renderer = new TimelineVideoRenderer('test-key', 'https://api.shotstack.io/stage');
 
         const result = await renderer.render({
             durationSeconds: 15,
@@ -365,7 +365,7 @@ describe('Integration: Shotstack Render + Polling', () => {
                 response: { status: 'failed', error: 'Render failed' }
             });
 
-        const renderer = new ShortstackVideoRenderer('test-key', 'https://api.shotstack.io/stage');
+        const renderer = new TimelineVideoRenderer('test-key', 'https://api.shotstack.io/stage');
 
         await expect(renderer.render({
             durationSeconds: 15,
@@ -401,7 +401,7 @@ describe('Integration: Segment Count in Plan', () => {
                 }]
             });
 
-        const client = new OpenAILLMClient('test-key');
+        const client = new GptLlmClient('test-key');
         const plan = await client.planReel('Test meditation transcript', {
             minDurationSeconds: 10,
             maxDurationSeconds: 15

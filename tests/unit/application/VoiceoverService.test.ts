@@ -1,19 +1,19 @@
 import { VoiceoverService } from '../../../src/application/services/VoiceoverService';
-import { ITTSClient } from '../../../src/domain/ports/ITTSClient';
+import { ITtsClient } from '../../../src/domain/ports/ITtsClient';
 
 describe('VoiceoverService', () => {
     let service: VoiceoverService;
-    let mockPrimaryTTS: jest.Mocked<ITTSClient>;
-    let mockFallbackTTS: jest.Mocked<ITTSClient>;
+    let mockPrimaryTTS: jest.Mocked<ITtsClient>;
+    let mockFallbackTTS: jest.Mocked<ITtsClient>;
 
     beforeEach(() => {
         mockPrimaryTTS = {
             synthesize: jest.fn(),
-        } as unknown as jest.Mocked<ITTSClient>;
+        } as unknown as jest.Mocked<ITtsClient>;
 
         mockFallbackTTS = {
             synthesize: jest.fn(),
-        } as unknown as jest.Mocked<ITTSClient>;
+        } as unknown as jest.Mocked<ITtsClient>;
 
         service = new VoiceoverService(mockPrimaryTTS, mockFallbackTTS);
     });

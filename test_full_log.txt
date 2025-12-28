@@ -242,11 +242,11 @@ FAIL tests/unit/application/HookAndStructureService.test.ts
       at StandardReelGenerator.planReel (src/infrastructure/llm/StandardReelGenerator.ts:53:17)
 
 FAIL tests/unit/DurationRespect.test.ts
-  OpenAILLMClient Duration Logic
+  GptLlmClient Duration Logic
     ✕ Should accept LLM-determined duration (e.g. 60s) when requested (3 ms)
     ✕ Should clamp excessive segment counts to 15
 
-  ● OpenAILLMClient Duration Logic › Should accept LLM-determined duration (e.g. 60s) when requested
+  ● GptLlmClient Duration Logic › Should accept LLM-determined duration (e.g. 60s) when requested
 
     expect(received).toBe(expected) // Object.is equality
 
@@ -263,7 +263,7 @@ FAIL tests/unit/DurationRespect.test.ts
 
       at Object.<anonymous> (tests/unit/DurationRespect.test.ts:39:35)
 
-  ● OpenAILLMClient Duration Logic › Should clamp excessive segment counts to 15
+  ● GptLlmClient Duration Logic › Should clamp excessive segment counts to 15
 
     expect(received).toBe(expected) // Object.is equality
 
@@ -510,8 +510,8 @@ FAIL tests/unit/DurationRespect.test.ts
       77 |                         continue;
       78 |                     }
 
-      at OpenAIImageClient.generateImage (src/infrastructure/images/OpenAIImageClient.ts:75:33)
-      at Object.<anonymous> (tests/unit/infrastructure/OpenAIImageClient.test.ts:125:13)
+      at DalleImageClient.generateImage (src/infrastructure/images/DalleImageClient.ts:75:33)
+      at Object.<anonymous> (tests/unit/infrastructure/DalleImageClient.test.ts:125:13)
 
   console.log
     [dotenv@17.2.3] injecting env (34) from .env -- tip: ⚙️  specify custom .env file path with { path: '/custom/path/.env' }
@@ -713,7 +713,7 @@ FAIL tests/unit/infrastructure/LocalLLMClient.test.ts
   console.log
     [Fish Audio] Synthesizing with voice ID: test-voice-id
 
-      at FishAudioTTSClient.synthesize (src/infrastructure/tts/FishAudioTTSClient.ts:34:21)
+      at CloningTTSClient.synthesize (src/infrastructure/tts/CloningTTSClient.ts:34:21)
 
   console.log
     [dotenv@17.2.3] injecting env (34) from .env -- tip: 🔑 add access controls to secrets: https://dotenvx.com/ops
@@ -819,7 +819,7 @@ FAIL tests/unit/infrastructure/LocalLLMClient.test.ts
   console.log
     [Fish Audio] Synthesizing with voice ID: 716594c03801446bb87a964a1c2a5895
 
-      at FishAudioTTSClient.synthesize (src/infrastructure/tts/FishAudioTTSClient.ts:34:21)
+      at CloningTTSClient.synthesize (src/infrastructure/tts/CloningTTSClient.ts:34:21)
 
   console.log
     Generating images for 2 segments...
@@ -920,7 +920,7 @@ FAIL tests/unit/infrastructure/LocalLLMClient.test.ts
   console.log
     [Fish Audio] Synthesizing with voice ID: test-voice-id
 
-      at FishAudioTTSClient.synthesize (src/infrastructure/tts/FishAudioTTSClient.ts:34:21)
+      at CloningTTSClient.synthesize (src/infrastructure/tts/CloningTTSClient.ts:34:21)
 
   console.log
     [Kie.ai] Creating task at: https://api.kie.ai/api/v1/jobs/createTask with model: KLING_V2_5_TURBO
@@ -945,7 +945,7 @@ FAIL tests/unit/infrastructure/LocalLLMClient.test.ts
   console.log
     [Fish Audio] Synthesizing with voice ID: test-voice-id
 
-      at FishAudioTTSClient.synthesize (src/infrastructure/tts/FishAudioTTSClient.ts:34:21)
+      at CloningTTSClient.synthesize (src/infrastructure/tts/CloningTTSClient.ts:34:21)
 
 (node:26966) Warning: `--localstorage-file` was provided without a valid path
 (Use `node --trace-warnings ...` to show where the warning was created)
@@ -1028,7 +1028,7 @@ FAIL tests/unit/infrastructure/KieVideoClient.test.ts
   console.log
     [Fish Audio] Synthesizing with voice ID: test-voice-id
 
-      at FishAudioTTSClient.synthesize (src/infrastructure/tts/FishAudioTTSClient.ts:34:21)
+      at CloningTTSClient.synthesize (src/infrastructure/tts/CloningTTSClient.ts:34:21)
 
   console.log
     [job_0ae77ddf] transcribing: Transcribing voice note...
@@ -1038,22 +1038,22 @@ FAIL tests/unit/infrastructure/KieVideoClient.test.ts
   console.log
     [Whisper] Downloading source: https://example.com/voice-note.mp3
 
-      at OpenAITranscriptionClient.transcribe (src/infrastructure/transcription/OpenAITranscriptionClient.ts:46:21)
+      at WhisperTranscriptionClient.transcribe (src/infrastructure/transcription/WhisperTranscriptionClient.ts:46:21)
 
   console.log
     [Fish Audio] Synthesizing with voice ID: test-voice-id
 
-      at FishAudioTTSClient.synthesize (src/infrastructure/tts/FishAudioTTSClient.ts:34:21)
+      at CloningTTSClient.synthesize (src/infrastructure/tts/CloningTTSClient.ts:34:21)
 
   console.log
     [Fish Audio] Synthesizing with voice ID: test-voice-id
 
-      at FishAudioTTSClient.synthesize (src/infrastructure/tts/FishAudioTTSClient.ts:34:21)
+      at CloningTTSClient.synthesize (src/infrastructure/tts/CloningTTSClient.ts:34:21)
 
   console.log
     [Whisper] Downloaded 0.0MB
 
-      at OpenAITranscriptionClient.transcribe (src/infrastructure/transcription/OpenAITranscriptionClient.ts:62:21)
+      at WhisperTranscriptionClient.transcribe (src/infrastructure/transcription/WhisperTranscriptionClient.ts:62:21)
 
   console.log
     [dotenv@17.2.3] injecting env (34) from .env -- tip: ⚙️  suppress all logs with { quiet: true }
@@ -1063,7 +1063,7 @@ FAIL tests/unit/infrastructure/KieVideoClient.test.ts
   console.log
     [Whisper] Sending to OpenAI...
 
-      at OpenAITranscriptionClient.transcribe (src/infrastructure/transcription/OpenAITranscriptionClient.ts:96:21)
+      at WhisperTranscriptionClient.transcribe (src/infrastructure/transcription/WhisperTranscriptionClient.ts:96:21)
 
   console.log
     [Test] Submitting render to Shotstack...
@@ -1073,12 +1073,12 @@ FAIL tests/unit/infrastructure/KieVideoClient.test.ts
   console.log
     [Fish Audio] Synthesizing with voice ID: test-voice-id
 
-      at FishAudioTTSClient.synthesize (src/infrastructure/tts/FishAudioTTSClient.ts:34:21)
+      at CloningTTSClient.synthesize (src/infrastructure/tts/CloningTTSClient.ts:34:21)
 
   console.log
     [Shotstack] Request payload size: 0.82 KB
 
-      at ShortstackVideoRenderer.startRender (src/infrastructure/video/ShortstackVideoRenderer.ts:316:21)
+      at TimelineVideoRenderer.startRender (src/infrastructure/video/TimelineVideoRenderer.ts:316:21)
 
   console.log
     [dotenv@17.2.3] injecting env (34) from .env -- tip: ⚙️  override existing env vars with { override: true }
@@ -1113,7 +1113,7 @@ FAIL tests/unit/infrastructure/KieVideoClient.test.ts
   console.log
     [Fish Audio] Synthesizing with voice ID: test-voice-id
 
-      at FishAudioTTSClient.synthesize (src/infrastructure/tts/FishAudioTTSClient.ts:34:21)
+      at CloningTTSClient.synthesize (src/infrastructure/tts/CloningTTSClient.ts:34:21)
 
   console.log
     [Memory] Start processJob: 312.11 MB
@@ -1144,8 +1144,8 @@ FAIL tests/unit/infrastructure/KieVideoClient.test.ts
 (Use `node --trace-warnings ...` to show where the warning was created)
 (node:26962) Warning: `--localstorage-file` was provided without a valid path
 (Use `node --trace-warnings ...` to show where the warning was created)
-PASS tests/unit/infrastructure/FishAudioTTSClient.test.ts
-  FishAudioTTSClient
+PASS tests/unit/infrastructure/CloningTTSClient.test.ts
+  CloningTTSClient
     Constructor validation
       ✓ should throw error when API key is missing (18 ms)
       ✓ should throw error when voice ID is missing
@@ -1205,10 +1205,10 @@ FAIL tests/unit/SegmentConsistency.test.ts
       },
       "body": "{\"model\":\"gpt-4o\",\"messages\":[{\"role\":\"system\",\"content\":\"You are an intent detection assistant. Analyze user input and return structured JSON responses. Be precise and factual.\"},{\"role\":\"user\",\"content\":\"Analyze the transcript and determine if the user wants an ANIMATED VIDEO REEL (story-driven, scene-by-scene) or a standard IMAGE-BASED REEL.\\n\\nTranscript: \\\"Today I want to talk about the importance of mindfulness in our daily lives. When we practice being present in the moment, we reduce stress and anxiety. It helps us connect better with ourselves and others. Even just five minutes of meditation can make a huge difference in how we feel throughout the day.\\\"\\n\\nA reel should be ANIMATED if the user:\\n- Describes a \\\"story,\\\" \\\"tale,\\\" or \\\"narrative\\\"\\n- Mentions \\\"monks,\\\" \\\"warriors,\\\" \\\"kings,\\\" or specific characters in a sequence\\n- Asks for \\\"animation\\\" or \\\"movement\\\" between scenes\\n- Describes a parable or teaching story\\n\\nRespond with a JSON object:\\n{\\n  \\\"isAnimatedMode\\\": true/false,\\n  \\\"storyline\\\": \\\"Short description of the story if animated, else null\\\",\\n  \\\"reason\\\": \\\"Brief explanation\\\"\\n}\"}],\"temperature\":0.3,\"response_format\":{\"type\":\"json_object\"}}"
     }
-        at OpenAIService.handleError (/Users/user1000/gitprojects/InstagramReelPoster/src/infrastructure/llm/OpenAIService.ts:96:15)
-        at OpenAIService.chatCompletion (/Users/user1000/gitprojects/InstagramReelPoster/src/infrastructure/llm/OpenAIService.ts:39:32)
+        at GptService.handleError (/Users/user1000/gitprojects/InstagramReelPoster/src/infrastructure/llm/GptService.ts:96:15)
+        at GptService.chatCompletion (/Users/user1000/gitprojects/InstagramReelPoster/src/infrastructure/llm/GptService.ts:39:32)
         at processTicksAndRejections (node:internal/process/task_queues:103:5)
-        at OpenAILLMClient.detectReelMode (/Users/user1000/gitprojects/InstagramReelPoster/src/infrastructure/llm/OpenAILLMClient.ts:60:30)
+        at GptLlmClient.detectReelMode (/Users/user1000/gitprojects/InstagramReelPoster/src/infrastructure/llm/GptLlmClient.ts:60:30)
         at ReelOrchestrator.processJob (/Users/user1000/gitprojects/InstagramReelPoster/src/application/ReelOrchestrator.ts:141:35)
         at Object.<anonymous> (/Users/user1000/gitprojects/InstagramReelPoster/tests/e2e/reel-generation.test.ts:108:24)
 
@@ -1220,7 +1220,7 @@ FAIL tests/unit/SegmentConsistency.test.ts
       73 |                 isAnimatedMode: false,
       74 |                 reason: 'Detection failed, defaulting to image-based reel',
 
-      at OpenAILLMClient.detectReelMode (src/infrastructure/llm/OpenAILLMClient.ts:71:21)
+      at GptLlmClient.detectReelMode (src/infrastructure/llm/GptLlmClient.ts:71:21)
       at ReelOrchestrator.processJob (src/application/ReelOrchestrator.ts:141:35)
       at Object.<anonymous> (tests/e2e/reel-generation.test.ts:108:24)
 
@@ -1244,8 +1244,8 @@ FAIL tests/unit/SegmentConsistency.test.ts
       },
       "body": "{\"model\":\"gpt-4o\",\"messages\":[{\"role\":\"system\",\"content\":\"You are an intent detection assistant. Analyze user input and return structured JSON responses. Be precise and factual.\"},{\"role\":\"user\",\"content\":\"Analyze this voice note transcript and determine if it's asking for a PARABLE/STORY or DIRECT COMMENTARY.\\n\\nTranscript:\\n\\\"\\\"\\\"\\nToday I want to talk about the importance of mindfulness in our daily lives. When we practice being present in the moment, we reduce stress and anxiety. It helps us connect better with ourselves and others. Even just five minutes of meditation can make a huge difference in how we feel throughout the day.\\n\\\"\\\"\\\"\\n\\nPARABLE KEYWORDS (return \\\"parable\\\" if any are present):\\n- \\\"story\\\", \\\"tale\\\", \\\"parable\\\", \\\"once upon\\\"\\n- \\\"monk\\\", \\\"sage\\\", \\\"saint\\\", \\\"warrior\\\", \\\"king\\\", \\\"farmer\\\"\\n- \\\"ancient\\\", \\\"old tale\\\", \\\"legend\\\", \\\"fable\\\"\\n- References to Zen, Sufi, Buddhist, Hindu, or folklore stories\\n- Describing characters, scenes, or narratives\\n\\nDIRECT-MESSAGE (default - return this if no story indicators):\\n- Commentary, rant, thoughts, opinions\\n- Discussing concepts without narrative framing\\n- Educational or explanatory content\\n\\nRespond with JSON:\\n{\\n  \\\"contentMode\\\": \\\"parable\\\" or \\\"direct-message\\\",\\n  \\\"reason\\\": \\\"brief explanation\\\"\\n}\"}],\"temperature\":0.3,\"response_format\":{\"type\":\"json_object\"}}"
     }
-        at OpenAIService.handleError (/Users/user1000/gitprojects/InstagramReelPoster/src/infrastructure/llm/OpenAIService.ts:96:15)
-        at OpenAIService.chatCompletion (/Users/user1000/gitprojects/InstagramReelPoster/src/infrastructure/llm/OpenAIService.ts:39:32)
+        at GptService.handleError (/Users/user1000/gitprojects/InstagramReelPoster/src/infrastructure/llm/GptService.ts:96:15)
+        at GptService.chatCompletion (/Users/user1000/gitprojects/InstagramReelPoster/src/infrastructure/llm/GptService.ts:39:32)
         at processTicksAndRejections (node:internal/process/task_queues:103:5)
         at ParableGenerator.detectContentMode (/Users/user1000/gitprojects/InstagramReelPoster/src/infrastructure/llm/ParableGenerator.ts:67:30)
         at ReelOrchestrator.processJob (/Users/user1000/gitprojects/InstagramReelPoster/src/application/ReelOrchestrator.ts:193:51)
@@ -1367,18 +1367,18 @@ FAIL tests/unit/SegmentConsistency.test.ts
       at StandardReelGenerator.generateSegmentContent (src/infrastructure/llm/StandardReelGenerator.ts:77:17)
 
   console.warn
-    [OpenAIService] Transient error (429: Rate limit exceeded...), retrying in 2.635s (Attempt 1/5)...
+    [GptService] Transient error (429: Rate limit exceeded...), retrying in 2.635s (Attempt 1/5)...
 
       89 |             const delay = baseDelay + jitter;
       90 |
-    > 91 |             console.warn(`[OpenAIService] Transient error (${status}: ${message.substring(0, 50)}...), retrying in ${delay / 1000}s (Attempt ${attempt + 1}/${maxRetries})...`);
+    > 91 |             console.warn(`[GptService] Transient error (${status}: ${message.substring(0, 50)}...), retrying in ${delay / 1000}s (Attempt ${attempt + 1}/${maxRetries})...`);
          |                     ^
       92 |             await new Promise(resolve => setTimeout(resolve, delay));
       93 |             return true;
       94 |         }
 
-      at OpenAIService.handleError (src/infrastructure/llm/OpenAIService.ts:91:21)
-      at OpenAIService.chatCompletion (src/infrastructure/llm/OpenAIService.ts:39:32)
+      at GptService.handleError (src/infrastructure/llm/GptService.ts:91:21)
+      at GptService.chatCompletion (src/infrastructure/llm/GptService.ts:39:32)
       at StandardReelGenerator.planReel (src/infrastructure/llm/StandardReelGenerator.ts:36:26)
       at Object.<anonymous> (tests/chaos/chaos.test.ts:104:13)
 
@@ -1400,22 +1400,22 @@ FAIL tests/unit/SegmentConsistency.test.ts
   console.log
     [Whisper] Downloading source: https://example.com/voice-note.mp3
 
-      at OpenAITranscriptionClient.transcribe (src/infrastructure/transcription/OpenAITranscriptionClient.ts:46:21)
+      at WhisperTranscriptionClient.transcribe (src/infrastructure/transcription/WhisperTranscriptionClient.ts:46:21)
 
   console.log
     [Shotstack] Request payload size: 1.11 KB
 
-      at ShortstackVideoRenderer.startRender (src/infrastructure/video/ShortstackVideoRenderer.ts:316:21)
+      at TimelineVideoRenderer.startRender (src/infrastructure/video/TimelineVideoRenderer.ts:316:21)
 
   console.log
     [Whisper] Downloaded 0.0MB
 
-      at OpenAITranscriptionClient.transcribe (src/infrastructure/transcription/OpenAITranscriptionClient.ts:62:21)
+      at WhisperTranscriptionClient.transcribe (src/infrastructure/transcription/WhisperTranscriptionClient.ts:62:21)
 
   console.log
     [Whisper] Sending to OpenAI...
 
-      at OpenAITranscriptionClient.transcribe (src/infrastructure/transcription/OpenAITranscriptionClient.ts:96:21)
+      at WhisperTranscriptionClient.transcribe (src/infrastructure/transcription/WhisperTranscriptionClient.ts:96:21)
 
   console.log
     [Memory] Step 1: Transcription: 342.2 MB
@@ -1457,10 +1457,10 @@ FAIL tests/unit/SegmentConsistency.test.ts
       },
       "body": "{\"model\":\"gpt-4o\",\"messages\":[{\"role\":\"system\",\"content\":\"You are an intent detection assistant. Analyze user input and return structured JSON responses. Be precise and factual.\"},{\"role\":\"user\",\"content\":\"Analyze the transcript and determine if the user wants an ANIMATED VIDEO REEL (story-driven, scene-by-scene) or a standard IMAGE-BASED REEL.\\n\\nTranscript: \\\"Today I want to talk about the importance of mindfulness in our daily lives. When we practice being present in the moment, we reduce stress and anxiety. It helps us connect better with ourselves and others. Even just five minutes of meditation can make a huge difference in how we feel throughout the day.\\\"\\n\\nA reel should be ANIMATED if the user:\\n- Describes a \\\"story,\\\" \\\"tale,\\\" or \\\"narrative\\\"\\n- Mentions \\\"monks,\\\" \\\"warriors,\\\" \\\"kings,\\\" or specific characters in a sequence\\n- Asks for \\\"animation\\\" or \\\"movement\\\" between scenes\\n- Describes a parable or teaching story\\n\\nRespond with a JSON object:\\n{\\n  \\\"isAnimatedMode\\\": true/false,\\n  \\\"storyline\\\": \\\"Short description of the story if animated, else null\\\",\\n  \\\"reason\\\": \\\"Brief explanation\\\"\\n}\"}],\"temperature\":0.3,\"response_format\":{\"type\":\"json_object\"}}"
     }
-        at OpenAIService.handleError (/Users/user1000/gitprojects/InstagramReelPoster/src/infrastructure/llm/OpenAIService.ts:96:15)
-        at OpenAIService.chatCompletion (/Users/user1000/gitprojects/InstagramReelPoster/src/infrastructure/llm/OpenAIService.ts:39:32)
+        at GptService.handleError (/Users/user1000/gitprojects/InstagramReelPoster/src/infrastructure/llm/GptService.ts:96:15)
+        at GptService.chatCompletion (/Users/user1000/gitprojects/InstagramReelPoster/src/infrastructure/llm/GptService.ts:39:32)
         at processTicksAndRejections (node:internal/process/task_queues:103:5)
-        at OpenAILLMClient.detectReelMode (/Users/user1000/gitprojects/InstagramReelPoster/src/infrastructure/llm/OpenAILLMClient.ts:60:30)
+        at GptLlmClient.detectReelMode (/Users/user1000/gitprojects/InstagramReelPoster/src/infrastructure/llm/GptLlmClient.ts:60:30)
         at ReelOrchestrator.processJob (/Users/user1000/gitprojects/InstagramReelPoster/src/application/ReelOrchestrator.ts:141:35)
         at Object.<anonymous> (/Users/user1000/gitprojects/InstagramReelPoster/tests/e2e/reel-generation.test.ts:134:24)
 
@@ -1472,7 +1472,7 @@ FAIL tests/unit/SegmentConsistency.test.ts
       73 |                 isAnimatedMode: false,
       74 |                 reason: 'Detection failed, defaulting to image-based reel',
 
-      at OpenAILLMClient.detectReelMode (src/infrastructure/llm/OpenAILLMClient.ts:71:21)
+      at GptLlmClient.detectReelMode (src/infrastructure/llm/GptLlmClient.ts:71:21)
       at ReelOrchestrator.processJob (src/application/ReelOrchestrator.ts:141:35)
       at Object.<anonymous> (tests/e2e/reel-generation.test.ts:134:24)
 
@@ -1496,8 +1496,8 @@ FAIL tests/unit/SegmentConsistency.test.ts
       },
       "body": "{\"model\":\"gpt-4o\",\"messages\":[{\"role\":\"system\",\"content\":\"You are an intent detection assistant. Analyze user input and return structured JSON responses. Be precise and factual.\"},{\"role\":\"user\",\"content\":\"Analyze this voice note transcript and determine if it's asking for a PARABLE/STORY or DIRECT COMMENTARY.\\n\\nTranscript:\\n\\\"\\\"\\\"\\nToday I want to talk about the importance of mindfulness in our daily lives. When we practice being present in the moment, we reduce stress and anxiety. It helps us connect better with ourselves and others. Even just five minutes of meditation can make a huge difference in how we feel throughout the day.\\n\\\"\\\"\\\"\\n\\nPARABLE KEYWORDS (return \\\"parable\\\" if any are present):\\n- \\\"story\\\", \\\"tale\\\", \\\"parable\\\", \\\"once upon\\\"\\n- \\\"monk\\\", \\\"sage\\\", \\\"saint\\\", \\\"warrior\\\", \\\"king\\\", \\\"farmer\\\"\\n- \\\"ancient\\\", \\\"old tale\\\", \\\"legend\\\", \\\"fable\\\"\\n- References to Zen, Sufi, Buddhist, Hindu, or folklore stories\\n- Describing characters, scenes, or narratives\\n\\nDIRECT-MESSAGE (default - return this if no story indicators):\\n- Commentary, rant, thoughts, opinions\\n- Discussing concepts without narrative framing\\n- Educational or explanatory content\\n\\nRespond with JSON:\\n{\\n  \\\"contentMode\\\": \\\"parable\\\" or \\\"direct-message\\\",\\n  \\\"reason\\\": \\\"brief explanation\\\"\\n}\"}],\"temperature\":0.3,\"response_format\":{\"type\":\"json_object\"}}"
     }
-        at OpenAIService.handleError (/Users/user1000/gitprojects/InstagramReelPoster/src/infrastructure/llm/OpenAIService.ts:96:15)
-        at OpenAIService.chatCompletion (/Users/user1000/gitprojects/InstagramReelPoster/src/infrastructure/llm/OpenAIService.ts:39:32)
+        at GptService.handleError (/Users/user1000/gitprojects/InstagramReelPoster/src/infrastructure/llm/GptService.ts:96:15)
+        at GptService.chatCompletion (/Users/user1000/gitprojects/InstagramReelPoster/src/infrastructure/llm/GptService.ts:39:32)
         at processTicksAndRejections (node:internal/process/task_queues:103:5)
         at ParableGenerator.detectContentMode (/Users/user1000/gitprojects/InstagramReelPoster/src/infrastructure/llm/ParableGenerator.ts:67:30)
         at ReelOrchestrator.processJob (/Users/user1000/gitprojects/InstagramReelPoster/src/application/ReelOrchestrator.ts:193:51)
@@ -1639,8 +1639,8 @@ FAIL tests/e2e/reel-generation.test.ts
       98 |
       99 |     private shouldRetry(status: number | undefined, attempt: number, maxRetries: number): boolean {
 
-      at OpenAIService.handleError (src/infrastructure/llm/OpenAIService.ts:96:15)
-      at OpenAIService.chatCompletion (src/infrastructure/llm/OpenAIService.ts:39:32)
+      at GptService.handleError (src/infrastructure/llm/GptService.ts:96:15)
+      at GptService.chatCompletion (src/infrastructure/llm/GptService.ts:39:32)
       at StandardReelGenerator.generateVisuals (src/infrastructure/llm/StandardReelGenerator.ts:211:26)
       at StandardReelGenerator.generateSegmentContent (src/infrastructure/llm/StandardReelGenerator.ts:80:25)
       at ReelOrchestrator.processJob (src/application/ReelOrchestrator.ts:328:38)
@@ -1671,8 +1671,8 @@ FAIL tests/e2e/reel-generation.test.ts
       98 |
       99 |     private shouldRetry(status: number | undefined, attempt: number, maxRetries: number): boolean {
 
-      at OpenAIService.handleError (src/infrastructure/llm/OpenAIService.ts:96:15)
-      at OpenAIService.chatCompletion (src/infrastructure/llm/OpenAIService.ts:39:32)
+      at GptService.handleError (src/infrastructure/llm/GptService.ts:96:15)
+      at GptService.chatCompletion (src/infrastructure/llm/GptService.ts:39:32)
       at StandardReelGenerator.generateVisuals (src/infrastructure/llm/StandardReelGenerator.ts:211:26)
       at StandardReelGenerator.generateSegmentContent (src/infrastructure/llm/StandardReelGenerator.ts:80:25)
       at ReelOrchestrator.processJob (src/application/ReelOrchestrator.ts:328:38)
@@ -1681,12 +1681,12 @@ FAIL tests/e2e/reel-generation.test.ts
   console.log
     [Shotstack] Render started: render-123
 
-      at ShortstackVideoRenderer.startRender (src/infrastructure/video/ShortstackVideoRenderer.ts:334:21)
+      at TimelineVideoRenderer.startRender (src/infrastructure/video/TimelineVideoRenderer.ts:334:21)
 
   console.log
     [Shotstack] Render render-123 status: queued
 
-      at ShortstackVideoRenderer.pollForCompletion (src/infrastructure/video/ShortstackVideoRenderer.ts:364:25)
+      at TimelineVideoRenderer.pollForCompletion (src/infrastructure/video/TimelineVideoRenderer.ts:364:25)
 
   console.log
     [dotenv@17.2.3] injecting env (34) from .env -- tip: 📡 add observability to secrets: https://dotenvx.com/ops
@@ -1791,32 +1791,32 @@ FAIL tests/e2e/reel-generation.test.ts
   console.log
     [OpenRouter] Generating image with google/gemini-2.5-flash-image...
 
-      at OpenRouterImageClient.generateImage (src/infrastructure/images/OpenRouterImageClient.ts:34:21)
+      at MultiModelImageClient.generateImage (src/infrastructure/images/MultiModelImageClient.ts:34:21)
 
   console.log
     [OpenRouter] Image generated successfully
 
-      at OpenRouterImageClient.generateImage (src/infrastructure/images/OpenRouterImageClient.ts:62:21)
+      at MultiModelImageClient.generateImage (src/infrastructure/images/MultiModelImageClient.ts:62:21)
 
   console.log
     [OpenRouter] Generating image with google/gemini-2.5-flash-image...
 
-      at OpenRouterImageClient.generateImage (src/infrastructure/images/OpenRouterImageClient.ts:34:21)
+      at MultiModelImageClient.generateImage (src/infrastructure/images/MultiModelImageClient.ts:34:21)
 
   console.log
     [OpenRouter] Image generated successfully
 
-      at OpenRouterImageClient.generateImage (src/infrastructure/images/OpenRouterImageClient.ts:62:21)
+      at MultiModelImageClient.generateImage (src/infrastructure/images/MultiModelImageClient.ts:62:21)
 
   console.log
     [OpenRouter] Generating image with google/gemini-2.5-flash-image...
 
-      at OpenRouterImageClient.generateImage (src/infrastructure/images/OpenRouterImageClient.ts:34:21)
+      at MultiModelImageClient.generateImage (src/infrastructure/images/MultiModelImageClient.ts:34:21)
 
   console.log
     [OpenRouter] Image generated successfully
 
-      at OpenRouterImageClient.generateImage (src/infrastructure/images/OpenRouterImageClient.ts:62:21)
+      at MultiModelImageClient.generateImage (src/infrastructure/images/MultiModelImageClient.ts:62:21)
 
   console.log
     No tracks matched both tags and duration, trying tags-only match
@@ -1836,17 +1836,17 @@ FAIL tests/e2e/reel-generation.test.ts
   console.log
     [Shotstack] Request payload size: 0.81 KB
 
-      at ShortstackVideoRenderer.startRender (src/infrastructure/video/ShortstackVideoRenderer.ts:316:21)
+      at TimelineVideoRenderer.startRender (src/infrastructure/video/TimelineVideoRenderer.ts:316:21)
 
   console.log
     [Shotstack] Render started: render-fail
 
-      at ShortstackVideoRenderer.startRender (src/infrastructure/video/ShortstackVideoRenderer.ts:334:21)
+      at TimelineVideoRenderer.startRender (src/infrastructure/video/TimelineVideoRenderer.ts:334:21)
 
   console.log
     [Shotstack] Render render-fail status: failed
 
-      at ShortstackVideoRenderer.pollForCompletion (src/infrastructure/video/ShortstackVideoRenderer.ts:364:25)
+      at TimelineVideoRenderer.pollForCompletion (src/infrastructure/video/TimelineVideoRenderer.ts:364:25)
 
   console.log
     [ReelPlan] Overriding LLM segment count 5 with calculated 3
@@ -1880,7 +1880,7 @@ PASS tests/integration/api-pipeline.test.ts
   console.log
     [Shotstack] Render render-123 status: rendering
 
-      at ShortstackVideoRenderer.pollForCompletion (src/infrastructure/video/ShortstackVideoRenderer.ts:364:25)
+      at TimelineVideoRenderer.pollForCompletion (src/infrastructure/video/TimelineVideoRenderer.ts:364:25)
 
   console.log
     [dotenv@17.2.3] injecting env (34) from .env -- tip: ⚙️  suppress all logs with { quiet: true }
@@ -1905,7 +1905,7 @@ PASS tests/integration/api-pipeline.test.ts
   console.log
     [LLM] Reel mode detection: ANIMATED - User explicitly mentioned animated video
 
-      at OpenAILLMClient.detectReelMode (src/infrastructure/llm/OpenAILLMClient.ts:63:21)
+      at GptLlmClient.detectReelMode (src/infrastructure/llm/GptLlmClient.ts:63:21)
 
   console.log
     📡 Callback configured: Header=yami-instgram-carousel-api-key, Token=maske...
@@ -1915,22 +1915,22 @@ PASS tests/integration/api-pipeline.test.ts
   console.log
     [LLM] Reel mode detection: ANIMATED - User mentioned animation
 
-      at OpenAILLMClient.detectReelMode (src/infrastructure/llm/OpenAILLMClient.ts:63:21)
+      at GptLlmClient.detectReelMode (src/infrastructure/llm/GptLlmClient.ts:63:21)
 
   console.log
     [LLM] Reel mode detection: ANIMATED - User wants moving visuals
 
-      at OpenAILLMClient.detectReelMode (src/infrastructure/llm/OpenAILLMClient.ts:63:21)
+      at GptLlmClient.detectReelMode (src/infrastructure/llm/GptLlmClient.ts:63:21)
 
   console.log
     [LLM] Reel mode detection: IMAGES - No animation keywords detected
 
-      at OpenAILLMClient.detectReelMode (src/infrastructure/llm/OpenAILLMClient.ts:63:21)
+      at GptLlmClient.detectReelMode (src/infrastructure/llm/GptLlmClient.ts:63:21)
 
   console.log
     [LLM] Reel mode detection: ANIMATED - User provided a storyline for animation
 
-      at OpenAILLMClient.detectReelMode (src/infrastructure/llm/OpenAILLMClient.ts:63:21)
+      at GptLlmClient.detectReelMode (src/infrastructure/llm/GptLlmClient.ts:63:21)
 
   console.warn
     Invalid Telegram webhook secret token received
@@ -1983,7 +1983,7 @@ PASS tests/integration/api-pipeline.test.ts
   console.log
     [LLM] Reel mode detection: ANIMATED - User wants animation but no specific storyline
 
-      at OpenAILLMClient.detectReelMode (src/infrastructure/llm/OpenAILLMClient.ts:63:21)
+      at GptLlmClient.detectReelMode (src/infrastructure/llm/GptLlmClient.ts:63:21)
 
   console.error
     [ERROR] UnauthorizedError: Invalid webhook secret
@@ -2076,80 +2076,80 @@ PASS tests/integration/telegram-webhook.test.ts
   console.log
     [XTTS] Synthesizing with local XTTS server: http://localhost:8020
 
-      at XTTSTTSClient.synthesize (src/infrastructure/tts/XTTSTTSClient.ts:44:21)
+      at XttsClient.synthesize (src/infrastructure/tts/XttsClient.ts:44:21)
 
   console.log
     [XTTS] Synthesized 11 chars in ~1.0s
 
-      at XTTSTTSClient.synthesize (src/infrastructure/tts/XTTSTTSClient.ts:71:21)
+      at XttsClient.synthesize (src/infrastructure/tts/XttsClient.ts:71:21)
 
   console.log
     [XTTS] Synthesizing with local XTTS server: http://localhost:8020
 
-      at XTTSTTSClient.synthesize (src/infrastructure/tts/XTTSTTSClient.ts:44:21)
+      at XttsClient.synthesize (src/infrastructure/tts/XttsClient.ts:44:21)
 
   console.log
     [XTTS] Trying xtts-api-server format...
 
-      at XTTSTTSClient.synthesizeWithXttsApiServer (src/infrastructure/tts/XTTSTTSClient.ts:97:17)
+      at XttsClient.synthesizeWithXttsApiServer (src/infrastructure/tts/XttsClient.ts:97:17)
 
   console.log
     [XTTS] Synthesizing with local XTTS server: http://localhost:8020
 
-      at XTTSTTSClient.synthesize (src/infrastructure/tts/XTTSTTSClient.ts:44:21)
+      at XttsClient.synthesize (src/infrastructure/tts/XttsClient.ts:44:21)
 
   console.log
     [XTTS] Trying xtts-api-server format...
 
-      at XTTSTTSClient.synthesizeWithXttsApiServer (src/infrastructure/tts/XTTSTTSClient.ts:97:17)
+      at XttsClient.synthesizeWithXttsApiServer (src/infrastructure/tts/XttsClient.ts:97:17)
 
   console.log
     [XTTS] Synthesizing with local XTTS server: http://localhost:8020
 
-      at XTTSTTSClient.synthesize (src/infrastructure/tts/XTTSTTSClient.ts:44:21)
+      at XttsClient.synthesize (src/infrastructure/tts/XttsClient.ts:44:21)
 
   console.log
     [XTTS] Synthesizing with local XTTS server: http://localhost:8020
 
-      at XTTSTTSClient.synthesize (src/infrastructure/tts/XTTSTTSClient.ts:44:21)
+      at XttsClient.synthesize (src/infrastructure/tts/XttsClient.ts:44:21)
 
   console.log
     [XTTS] Synthesizing with local XTTS server: http://localhost:8020
 
-      at XTTSTTSClient.synthesize (src/infrastructure/tts/XTTSTTSClient.ts:44:21)
+      at XttsClient.synthesize (src/infrastructure/tts/XttsClient.ts:44:21)
 
   console.log
     [Shotstack] Render render-123 status: done
 
-      at ShortstackVideoRenderer.pollForCompletion (src/infrastructure/video/ShortstackVideoRenderer.ts:364:25)
+      at TimelineVideoRenderer.pollForCompletion (src/infrastructure/video/TimelineVideoRenderer.ts:364:25)
 
   console.log
     [Shotstack] Request payload size: 1.11 KB
 
-      at ShortstackVideoRenderer.startRender (src/infrastructure/video/ShortstackVideoRenderer.ts:316:21)
+      at TimelineVideoRenderer.startRender (src/infrastructure/video/TimelineVideoRenderer.ts:316:21)
 
   console.log
     [XTTS] Synthesizing with local XTTS server: http://localhost:8020
 
-      at XTTSTTSClient.synthesize (src/infrastructure/tts/XTTSTTSClient.ts:44:21)
+      at XttsClient.synthesize (src/infrastructure/tts/XttsClient.ts:44:21)
 
   console.log
     [XTTS] Synthesized 48 chars in ~4.8s
 
-      at XTTSTTSClient.synthesize (src/infrastructure/tts/XTTSTTSClient.ts:71:21)
+      at XttsClient.synthesize (src/infrastructure/tts/XttsClient.ts:71:21)
 
   console.log
     [XTTS] Synthesizing with local XTTS server: http://localhost:8020
 
-      at XTTSTTSClient.synthesize (src/infrastructure/tts/XTTSTTSClient.ts:44:21)
+      at XttsClient.synthesize (src/infrastructure/tts/XttsClient.ts:44:21)
 
   console.log
     [XTTS] Synthesized 48 chars in ~2.4s
 
-      at XTTSTTSClient.synthesize (src/infrastructure/tts/XTTSTTSClient.ts:71:21)
+      at XttsClient.synthesize (src/infrastructure/tts/XttsClient.ts:71:21)
 
-PASS tests/unit/infrastructure/XTTSTTSClient.test.ts
-  XTTSTTSClient
+PASS tests/unit/infrastructure/XttsClient.test.ts
+  XttsClient
     constructor
       ✓ should throw if server URL is missing (3 ms)
       ✓ should create client with valid server URL
@@ -2182,34 +2182,34 @@ PASS tests/unit/infrastructure/XTTSTTSClient.test.ts
       340 |                     error.response?.data?.error ||
       341 |                     error.message;
 
-      at ShortstackVideoRenderer.startRender (src/infrastructure/video/ShortstackVideoRenderer.ts:338:25)
-      at ShortstackVideoRenderer.render (src/infrastructure/video/ShortstackVideoRenderer.ts:138:26)
-      at Object.<anonymous> (tests/unit/infrastructure/ShortstackVideoRenderer.test.ts:80:13)
+      at TimelineVideoRenderer.startRender (src/infrastructure/video/TimelineVideoRenderer.ts:338:25)
+      at TimelineVideoRenderer.render (src/infrastructure/video/TimelineVideoRenderer.ts:138:26)
+      at Object.<anonymous> (tests/unit/infrastructure/TimelineVideoRenderer.test.ts:80:13)
 
   console.log
     [Shotstack] Request payload size: 1.11 KB
 
-      at ShortstackVideoRenderer.startRender (src/infrastructure/video/ShortstackVideoRenderer.ts:316:21)
+      at TimelineVideoRenderer.startRender (src/infrastructure/video/TimelineVideoRenderer.ts:316:21)
 
   console.log
     [Shotstack] Render started: render-fail
 
-      at ShortstackVideoRenderer.startRender (src/infrastructure/video/ShortstackVideoRenderer.ts:334:21)
+      at TimelineVideoRenderer.startRender (src/infrastructure/video/TimelineVideoRenderer.ts:334:21)
 
   console.log
     [Shotstack] Render render-fail status: failed
 
-      at ShortstackVideoRenderer.pollForCompletion (src/infrastructure/video/ShortstackVideoRenderer.ts:364:25)
+      at TimelineVideoRenderer.pollForCompletion (src/infrastructure/video/TimelineVideoRenderer.ts:364:25)
 
   console.log
     [Shotstack] Request payload size: 1.11 KB
 
-      at ShortstackVideoRenderer.startRender (src/infrastructure/video/ShortstackVideoRenderer.ts:316:21)
+      at TimelineVideoRenderer.startRender (src/infrastructure/video/TimelineVideoRenderer.ts:316:21)
 
   console.log
     [Shotstack] Render started: render-timeout
 
-      at ShortstackVideoRenderer.startRender (src/infrastructure/video/ShortstackVideoRenderer.ts:334:21)
+      at TimelineVideoRenderer.startRender (src/infrastructure/video/TimelineVideoRenderer.ts:334:21)
 
   console.log
     [dotenv@17.2.3] injecting env (34) from .env -- tip: ⚙️  specify custom .env file path with { path: '/custom/path/.env' }
@@ -2219,19 +2219,19 @@ PASS tests/unit/infrastructure/XTTSTTSClient.test.ts
   console.log
     [Shotstack] Render render-timeout status: queued
 
-      at ShortstackVideoRenderer.pollForCompletion (src/infrastructure/video/ShortstackVideoRenderer.ts:364:25)
+      at TimelineVideoRenderer.pollForCompletion (src/infrastructure/video/TimelineVideoRenderer.ts:364:25)
 
   console.log
     [Shotstack] Render render-timeout status: queued
 
-      at ShortstackVideoRenderer.pollForCompletion (src/infrastructure/video/ShortstackVideoRenderer.ts:364:25)
+      at TimelineVideoRenderer.pollForCompletion (src/infrastructure/video/TimelineVideoRenderer.ts:364:25)
 
   console.warn
     [ParableGenerator] Content mode detection failed, defaulting to direct-message: Error: Failed to parse LLM response as JSON: invalid json response...
-        at OpenAIService.parseJSON (/Users/user1000/gitprojects/InstagramReelPoster/src/infrastructure/llm/OpenAIService.ts:112:19)
+        at GptService.parseJSON (/Users/user1000/gitprojects/InstagramReelPoster/src/infrastructure/llm/GptService.ts:112:19)
         at ParableGenerator.detectContentMode (/Users/user1000/gitprojects/InstagramReelPoster/src/infrastructure/llm/ParableGenerator.ts:68:40)
         at processTicksAndRejections (node:internal/process/task_queues:103:5)
-        at Object.<anonymous> (/Users/user1000/gitprojects/InstagramReelPoster/tests/unit/infrastructure/OpenAILLMClient.parable.test.ts:82:28)
+        at Object.<anonymous> (/Users/user1000/gitprojects/InstagramReelPoster/tests/unit/infrastructure/GptLlmClient.parable.test.ts:82:28)
 
       74 |             };
       75 |         } catch (error) {
@@ -2242,40 +2242,40 @@ PASS tests/unit/infrastructure/XTTSTTSClient.test.ts
       79 |                 reason: 'Detection failed, defaulting to direct-message'
 
       at ParableGenerator.detectContentMode (src/infrastructure/llm/ParableGenerator.ts:76:21)
-      at Object.<anonymous> (tests/unit/infrastructure/OpenAILLMClient.parable.test.ts:82:28)
+      at Object.<anonymous> (tests/unit/infrastructure/GptLlmClient.parable.test.ts:82:28)
 
   console.log
     [Shotstack] Render render-timeout status: queued
 
-      at ShortstackVideoRenderer.pollForCompletion (src/infrastructure/video/ShortstackVideoRenderer.ts:364:25)
+      at TimelineVideoRenderer.pollForCompletion (src/infrastructure/video/TimelineVideoRenderer.ts:364:25)
 
   console.log
     [Shotstack] Request payload size: 1.11 KB
 
-      at ShortstackVideoRenderer.startRender (src/infrastructure/video/ShortstackVideoRenderer.ts:316:21)
+      at TimelineVideoRenderer.startRender (src/infrastructure/video/TimelineVideoRenderer.ts:316:21)
 
   console.log
     [Shotstack] Request payload size: 1.11 KB
 
-      at ShortstackVideoRenderer.startRender (src/infrastructure/video/ShortstackVideoRenderer.ts:316:21)
+      at TimelineVideoRenderer.startRender (src/infrastructure/video/TimelineVideoRenderer.ts:316:21)
 
   console.log
     [Shotstack] Render started: render-no-url
 
-      at ShortstackVideoRenderer.startRender (src/infrastructure/video/ShortstackVideoRenderer.ts:334:21)
+      at TimelineVideoRenderer.startRender (src/infrastructure/video/TimelineVideoRenderer.ts:334:21)
 
   console.log
     [Shotstack] Render render-no-url status: done
 
-      at ShortstackVideoRenderer.pollForCompletion (src/infrastructure/video/ShortstackVideoRenderer.ts:364:25)
+      at TimelineVideoRenderer.pollForCompletion (src/infrastructure/video/TimelineVideoRenderer.ts:364:25)
 
   console.log
     [Shotstack] Request payload size: 1.11 KB
 
-      at ShortstackVideoRenderer.startRender (src/infrastructure/video/ShortstackVideoRenderer.ts:316:21)
+      at TimelineVideoRenderer.startRender (src/infrastructure/video/TimelineVideoRenderer.ts:316:21)
 
-PASS tests/unit/infrastructure/OpenAILLMClient.parable.test.ts
-  OpenAILLMClient Parable Methods
+PASS tests/unit/infrastructure/GptLlmClient.parable.test.ts
+  GptLlmClient Parable Methods
     detectContentMode
       ✓ should detect parable mode when transcript mentions story keywords (12 ms)
       ✓ should detect direct-message mode for commentary transcripts (5 ms)
@@ -2296,32 +2296,32 @@ PASS tests/unit/infrastructure/OpenAILLMClient.parable.test.ts
   console.log
     [Shotstack] Render started: render-123
 
-      at ShortstackVideoRenderer.startRender (src/infrastructure/video/ShortstackVideoRenderer.ts:334:21)
+      at TimelineVideoRenderer.startRender (src/infrastructure/video/TimelineVideoRenderer.ts:334:21)
 
   console.log
     [Shotstack] Render render-123 status: done
 
-      at ShortstackVideoRenderer.pollForCompletion (src/infrastructure/video/ShortstackVideoRenderer.ts:364:25)
+      at TimelineVideoRenderer.pollForCompletion (src/infrastructure/video/TimelineVideoRenderer.ts:364:25)
 
   console.log
     [Shotstack] Request payload size: 1.11 KB
 
-      at ShortstackVideoRenderer.startRender (src/infrastructure/video/ShortstackVideoRenderer.ts:316:21)
+      at TimelineVideoRenderer.startRender (src/infrastructure/video/TimelineVideoRenderer.ts:316:21)
 
   console.log
     [Shotstack] Render started: render-123
 
-      at ShortstackVideoRenderer.startRender (src/infrastructure/video/ShortstackVideoRenderer.ts:334:21)
+      at TimelineVideoRenderer.startRender (src/infrastructure/video/TimelineVideoRenderer.ts:334:21)
 
   console.log
     [Shotstack] Render render-123 status: done
 
-      at ShortstackVideoRenderer.pollForCompletion (src/infrastructure/video/ShortstackVideoRenderer.ts:364:25)
+      at TimelineVideoRenderer.pollForCompletion (src/infrastructure/video/TimelineVideoRenderer.ts:364:25)
 
   console.log
     [Shotstack] Request payload size: 1.32 KB
 
-      at ShortstackVideoRenderer.startRender (src/infrastructure/video/ShortstackVideoRenderer.ts:316:21)
+      at TimelineVideoRenderer.startRender (src/infrastructure/video/TimelineVideoRenderer.ts:316:21)
 
   console.log
     [dotenv@17.2.3] injecting env (34) from .env -- tip: ⚙️  suppress all logs with { quiet: true }
@@ -2341,7 +2341,7 @@ PASS tests/unit/infrastructure/OpenAILLMClient.parable.test.ts
   console.log
     [Shotstack] Render started: render-loop
 
-      at ShortstackVideoRenderer.startRender (src/infrastructure/video/ShortstackVideoRenderer.ts:334:21)
+      at TimelineVideoRenderer.startRender (src/infrastructure/video/TimelineVideoRenderer.ts:334:21)
 
   console.error
     [TTS] ❌ Primary TTS (Fish Audio) failed. Falling back to OpenAI.
@@ -2423,17 +2423,17 @@ PASS tests/unit/TTSPriority.test.ts
   console.log
     [Shotstack] Render render-loop status: done
 
-      at ShortstackVideoRenderer.pollForCompletion (src/infrastructure/video/ShortstackVideoRenderer.ts:364:25)
+      at TimelineVideoRenderer.pollForCompletion (src/infrastructure/video/TimelineVideoRenderer.ts:364:25)
 
   console.log
     [Shotstack] Request payload size: 1.11 KB
 
-      at ShortstackVideoRenderer.startRender (src/infrastructure/video/ShortstackVideoRenderer.ts:316:21)
+      at TimelineVideoRenderer.startRender (src/infrastructure/video/TimelineVideoRenderer.ts:316:21)
 
   console.log
     [Shotstack] Render started: render-404
 
-      at ShortstackVideoRenderer.startRender (src/infrastructure/video/ShortstackVideoRenderer.ts:334:21)
+      at TimelineVideoRenderer.startRender (src/infrastructure/video/TimelineVideoRenderer.ts:334:21)
 
 PASS tests/unit/presentation/reelRoutes.test.ts
   createReelRoutes
@@ -2458,10 +2458,10 @@ PASS tests/unit/presentation/reelRoutes.test.ts
   console.log
     [Shotstack] Render render-404 status: done
 
-      at ShortstackVideoRenderer.pollForCompletion (src/infrastructure/video/ShortstackVideoRenderer.ts:364:25)
+      at TimelineVideoRenderer.pollForCompletion (src/infrastructure/video/TimelineVideoRenderer.ts:364:25)
 
-PASS tests/unit/infrastructure/ShortstackVideoRenderer.test.ts
-  ShortstackVideoRenderer
+PASS tests/unit/infrastructure/TimelineVideoRenderer.test.ts
+  TimelineVideoRenderer
     Constructor validation
       ✓ should throw error when API key is missing (7 ms)
       ✓ should create renderer with valid API key (1 ms)
@@ -2557,8 +2557,8 @@ PASS tests/unit/application/MusicTagSelection.test.ts
     Selection Accuracy Summary
       ✓ should print benchmark summary for documentation (4 ms)
 
-PASS tests/unit/infrastructure/OpenAILLMClient.caption.test.ts
-  OpenAILLMClient Caption Generation
+PASS tests/unit/infrastructure/GptLlmClient.caption.test.ts
+  GptLlmClient Caption Generation
     ✓ should correctly parse caption and hashtags from OpenAI response (10 ms)
     ✓ should provide default hashtags if the LLM response is missing them (4 ms)
     ✓ should handle hashtags returned as a single string instead of an array (5 ms)
@@ -2749,67 +2749,67 @@ PASS tests/unit/application/JobManager.test.ts
   console.log
     [OpenRouter] Generating image with google/gemini-2.5-flash-image...
 
-      at OpenRouterImageClient.generateImage (src/infrastructure/images/OpenRouterImageClient.ts:34:21)
+      at MultiModelImageClient.generateImage (src/infrastructure/images/MultiModelImageClient.ts:34:21)
 
   console.log
     [OpenRouter] Image generated successfully
 
-      at OpenRouterImageClient.generateImage (src/infrastructure/images/OpenRouterImageClient.ts:62:21)
+      at MultiModelImageClient.generateImage (src/infrastructure/images/MultiModelImageClient.ts:62:21)
 
   console.log
     [OpenRouter] Generating image with google/gemini-2.5-flash-image...
 
-      at OpenRouterImageClient.generateImage (src/infrastructure/images/OpenRouterImageClient.ts:34:21)
+      at MultiModelImageClient.generateImage (src/infrastructure/images/MultiModelImageClient.ts:34:21)
 
   console.log
     [OpenRouter] Image generated successfully
 
-      at OpenRouterImageClient.generateImage (src/infrastructure/images/OpenRouterImageClient.ts:62:21)
+      at MultiModelImageClient.generateImage (src/infrastructure/images/MultiModelImageClient.ts:62:21)
 
   console.log
     [OpenRouter] Generating image with google/gemini-2.5-flash-image...
 
-      at OpenRouterImageClient.generateImage (src/infrastructure/images/OpenRouterImageClient.ts:34:21)
+      at MultiModelImageClient.generateImage (src/infrastructure/images/MultiModelImageClient.ts:34:21)
 
   console.log
     [OpenRouter] Image generated successfully
 
-      at OpenRouterImageClient.generateImage (src/infrastructure/images/OpenRouterImageClient.ts:62:21)
+      at MultiModelImageClient.generateImage (src/infrastructure/images/MultiModelImageClient.ts:62:21)
 
   console.log
     [OpenRouter] Generating image with google/gemini-2.5-flash-image...
 
-      at OpenRouterImageClient.generateImage (src/infrastructure/images/OpenRouterImageClient.ts:34:21)
+      at MultiModelImageClient.generateImage (src/infrastructure/images/MultiModelImageClient.ts:34:21)
 
   console.log
     [OpenRouter] Image generated successfully
 
-      at OpenRouterImageClient.generateImage (src/infrastructure/images/OpenRouterImageClient.ts:62:21)
+      at MultiModelImageClient.generateImage (src/infrastructure/images/MultiModelImageClient.ts:62:21)
 
   console.log
     [OpenRouter] Generating image with google/gemini-2.5-flash-image...
 
-      at OpenRouterImageClient.generateImage (src/infrastructure/images/OpenRouterImageClient.ts:34:21)
+      at MultiModelImageClient.generateImage (src/infrastructure/images/MultiModelImageClient.ts:34:21)
 
   console.log
     [OpenRouter] Image generated successfully
 
-      at OpenRouterImageClient.generateImage (src/infrastructure/images/OpenRouterImageClient.ts:62:21)
+      at MultiModelImageClient.generateImage (src/infrastructure/images/MultiModelImageClient.ts:62:21)
 
   console.log
     [OpenRouter] Generating image with google/gemini-2.5-flash-image...
 
-      at OpenRouterImageClient.generateImage (src/infrastructure/images/OpenRouterImageClient.ts:34:21)
+      at MultiModelImageClient.generateImage (src/infrastructure/images/MultiModelImageClient.ts:34:21)
 
   console.log
     [OpenRouter] Image generated successfully
 
-      at OpenRouterImageClient.generateImage (src/infrastructure/images/OpenRouterImageClient.ts:62:21)
+      at MultiModelImageClient.generateImage (src/infrastructure/images/MultiModelImageClient.ts:62:21)
 
   console.log
     [OpenRouter] Generating image with google/gemini-2.5-flash-image...
 
-      at OpenRouterImageClient.generateImage (src/infrastructure/images/OpenRouterImageClient.ts:34:21)
+      at MultiModelImageClient.generateImage (src/infrastructure/images/MultiModelImageClient.ts:34:21)
 
   console.error
     [OpenRouter] Image generation failed: { error: { message: 'Model not found' } }
@@ -2822,13 +2822,13 @@ PASS tests/unit/application/JobManager.test.ts
       70 |             }
       71 |             throw error;
 
-      at OpenRouterImageClient.generateImage (src/infrastructure/images/OpenRouterImageClient.ts:68:25)
-      at Object.<anonymous> (tests/unit/infrastructure/OpenRouterImageClient.test.ts:186:13)
+      at MultiModelImageClient.generateImage (src/infrastructure/images/MultiModelImageClient.ts:68:25)
+      at Object.<anonymous> (tests/unit/infrastructure/MultiModelImageClient.test.ts:186:13)
 
   console.log
     [OpenRouter] Generating image with google/gemini-2.5-flash-image...
 
-      at OpenRouterImageClient.generateImage (src/infrastructure/images/OpenRouterImageClient.ts:34:21)
+      at MultiModelImageClient.generateImage (src/infrastructure/images/MultiModelImageClient.ts:34:21)
 
   console.error
     [OpenRouter] Image generation failed: undefined
@@ -2841,16 +2841,16 @@ PASS tests/unit/application/JobManager.test.ts
       70 |             }
       71 |             throw error;
 
-      at OpenRouterImageClient.generateImage (src/infrastructure/images/OpenRouterImageClient.ts:68:25)
-      at Object.<anonymous> (tests/unit/infrastructure/OpenRouterImageClient.test.ts:203:13)
+      at MultiModelImageClient.generateImage (src/infrastructure/images/MultiModelImageClient.ts:68:25)
+      at Object.<anonymous> (tests/unit/infrastructure/MultiModelImageClient.test.ts:203:13)
 
   console.log
     [OpenRouter] Generating image with google/gemini-2.5-flash-image...
 
-      at OpenRouterImageClient.generateImage (src/infrastructure/images/OpenRouterImageClient.ts:34:21)
+      at MultiModelImageClient.generateImage (src/infrastructure/images/MultiModelImageClient.ts:34:21)
 
-PASS tests/unit/infrastructure/OpenRouterImageClient.test.ts
-  OpenRouterImageClient
+PASS tests/unit/infrastructure/MultiModelImageClient.test.ts
+  MultiModelImageClient
     constructor
       ✓ should throw error if apiKey is empty (4 ms)
       ✓ should create client with valid apiKey
@@ -2952,37 +2952,37 @@ PASS tests/unit/infrastructure/KieMusicGeneratorClient.test.ts
   console.log
     [OpenRouter] Transcribing source (google/gemini-2.0-flash-001): https://example.com/audio.mp3
 
-      at OpenRouterTranscriptionClient.transcribe (src/infrastructure/transcription/OpenRouterTranscriptionClient.ts:35:21)
+      at RemoteTranscriptionClient.transcribe (src/infrastructure/transcription/RemoteTranscriptionClient.ts:35:21)
 
   console.log
     [OpenRouter] Transcription successful (49 chars)
 
-      at OpenRouterTranscriptionClient.transcribe (src/infrastructure/transcription/OpenRouterTranscriptionClient.ts:81:21)
+      at RemoteTranscriptionClient.transcribe (src/infrastructure/transcription/RemoteTranscriptionClient.ts:81:21)
 
   console.log
     [OpenRouter] Transcribing source (google/gemini-2.0-flash-001): https://example.com/audio.mp3
 
-      at OpenRouterTranscriptionClient.transcribe (src/infrastructure/transcription/OpenRouterTranscriptionClient.ts:35:21)
+      at RemoteTranscriptionClient.transcribe (src/infrastructure/transcription/RemoteTranscriptionClient.ts:35:21)
 
   console.log
     [OpenRouter] Transcription successful (41 chars)
 
-      at OpenRouterTranscriptionClient.transcribe (src/infrastructure/transcription/OpenRouterTranscriptionClient.ts:81:21)
+      at RemoteTranscriptionClient.transcribe (src/infrastructure/transcription/RemoteTranscriptionClient.ts:81:21)
 
   console.log
     [OpenRouter] Transcribing source (google/gemini-2.0-flash-001): https://example.com/audio.mp3
 
-      at OpenRouterTranscriptionClient.transcribe (src/infrastructure/transcription/OpenRouterTranscriptionClient.ts:35:21)
+      at RemoteTranscriptionClient.transcribe (src/infrastructure/transcription/RemoteTranscriptionClient.ts:35:21)
 
   console.log
     [OpenRouter] Transcription successful (4 chars)
 
-      at OpenRouterTranscriptionClient.transcribe (src/infrastructure/transcription/OpenRouterTranscriptionClient.ts:81:21)
+      at RemoteTranscriptionClient.transcribe (src/infrastructure/transcription/RemoteTranscriptionClient.ts:81:21)
 
   console.log
     [OpenRouter] Transcribing source (google/gemini-2.0-flash-001): https://example.com/audio.mp3
 
-      at OpenRouterTranscriptionClient.transcribe (src/infrastructure/transcription/OpenRouterTranscriptionClient.ts:35:21)
+      at RemoteTranscriptionClient.transcribe (src/infrastructure/transcription/RemoteTranscriptionClient.ts:35:21)
 
   console.error
     [OpenRouter] Unexpected response format: {}
@@ -2995,14 +2995,14 @@ PASS tests/unit/infrastructure/KieMusicGeneratorClient.test.ts
       73 |             }
       74 |
 
-      at OpenRouterTranscriptionClient.transcribe (src/infrastructure/transcription/OpenRouterTranscriptionClient.ts:71:25)
-      at Object.<anonymous> (tests/unit/infrastructure/OpenRouterTranscriptionClient.test.ts:127:13)
+      at RemoteTranscriptionClient.transcribe (src/infrastructure/transcription/RemoteTranscriptionClient.ts:71:25)
+      at Object.<anonymous> (tests/unit/infrastructure/RemoteTranscriptionClient.test.ts:127:13)
 
   console.error
     [OpenRouter] Unexpected error: Error: OpenRouter returned an invalid response structure
-        at OpenRouterTranscriptionClient.transcribe (/Users/user1000/gitprojects/InstagramReelPoster/src/infrastructure/transcription/OpenRouterTranscriptionClient.ts:72:23)
+        at RemoteTranscriptionClient.transcribe (/Users/user1000/gitprojects/InstagramReelPoster/src/infrastructure/transcription/RemoteTranscriptionClient.ts:72:23)
         at processTicksAndRejections (node:internal/process/task_queues:103:5)
-        at Object.<anonymous> (/Users/user1000/gitprojects/InstagramReelPoster/tests/unit/infrastructure/OpenRouterTranscriptionClient.test.ts:127:13)
+        at Object.<anonymous> (/Users/user1000/gitprojects/InstagramReelPoster/tests/unit/infrastructure/RemoteTranscriptionClient.test.ts:127:13)
 
       87 |                 throw new Error(`Transcription failed via OpenRouter: ${message}`);
       88 |             }
@@ -3012,13 +3012,13 @@ PASS tests/unit/infrastructure/KieMusicGeneratorClient.test.ts
       91 |         }
       92 |     }
 
-      at OpenRouterTranscriptionClient.transcribe (src/infrastructure/transcription/OpenRouterTranscriptionClient.ts:89:21)
-      at Object.<anonymous> (tests/unit/infrastructure/OpenRouterTranscriptionClient.test.ts:127:13)
+      at RemoteTranscriptionClient.transcribe (src/infrastructure/transcription/RemoteTranscriptionClient.ts:89:21)
+      at Object.<anonymous> (tests/unit/infrastructure/RemoteTranscriptionClient.test.ts:127:13)
 
   console.log
     [OpenRouter] Transcribing source (google/gemini-2.0-flash-001): https://example.com/audio.mp3
 
-      at OpenRouterTranscriptionClient.transcribe (src/infrastructure/transcription/OpenRouterTranscriptionClient.ts:35:21)
+      at RemoteTranscriptionClient.transcribe (src/infrastructure/transcription/RemoteTranscriptionClient.ts:35:21)
 
   console.warn
     [OpenRouter] Received empty content from model
@@ -3031,14 +3031,14 @@ PASS tests/unit/infrastructure/KieMusicGeneratorClient.test.ts
       79 |             }
       80 |
 
-      at OpenRouterTranscriptionClient.transcribe (src/infrastructure/transcription/OpenRouterTranscriptionClient.ts:77:25)
-      at Object.<anonymous> (tests/unit/infrastructure/OpenRouterTranscriptionClient.test.ts:142:13)
+      at RemoteTranscriptionClient.transcribe (src/infrastructure/transcription/RemoteTranscriptionClient.ts:77:25)
+      at Object.<anonymous> (tests/unit/infrastructure/RemoteTranscriptionClient.test.ts:142:13)
 
   console.error
     [OpenRouter] Unexpected error: Error: OpenRouter model returned empty transcription
-        at OpenRouterTranscriptionClient.transcribe (/Users/user1000/gitprojects/InstagramReelPoster/src/infrastructure/transcription/OpenRouterTranscriptionClient.ts:78:23)
+        at RemoteTranscriptionClient.transcribe (/Users/user1000/gitprojects/InstagramReelPoster/src/infrastructure/transcription/RemoteTranscriptionClient.ts:78:23)
         at processTicksAndRejections (node:internal/process/task_queues:103:5)
-        at Object.<anonymous> (/Users/user1000/gitprojects/InstagramReelPoster/tests/unit/infrastructure/OpenRouterTranscriptionClient.test.ts:142:13)
+        at Object.<anonymous> (/Users/user1000/gitprojects/InstagramReelPoster/tests/unit/infrastructure/RemoteTranscriptionClient.test.ts:142:13)
 
       87 |                 throw new Error(`Transcription failed via OpenRouter: ${message}`);
       88 |             }
@@ -3048,13 +3048,13 @@ PASS tests/unit/infrastructure/KieMusicGeneratorClient.test.ts
       91 |         }
       92 |     }
 
-      at OpenRouterTranscriptionClient.transcribe (src/infrastructure/transcription/OpenRouterTranscriptionClient.ts:89:21)
-      at Object.<anonymous> (tests/unit/infrastructure/OpenRouterTranscriptionClient.test.ts:142:13)
+      at RemoteTranscriptionClient.transcribe (src/infrastructure/transcription/RemoteTranscriptionClient.ts:89:21)
+      at Object.<anonymous> (tests/unit/infrastructure/RemoteTranscriptionClient.test.ts:142:13)
 
   console.log
     [OpenRouter] Transcribing source (google/gemini-2.0-flash-001): https://example.com/audio.mp3
 
-      at OpenRouterTranscriptionClient.transcribe (src/infrastructure/transcription/OpenRouterTranscriptionClient.ts:35:21)
+      at RemoteTranscriptionClient.transcribe (src/infrastructure/transcription/RemoteTranscriptionClient.ts:35:21)
 
   console.warn
     [OpenRouter] Received empty content from model
@@ -3067,14 +3067,14 @@ PASS tests/unit/infrastructure/KieMusicGeneratorClient.test.ts
       79 |             }
       80 |
 
-      at OpenRouterTranscriptionClient.transcribe (src/infrastructure/transcription/OpenRouterTranscriptionClient.ts:77:25)
-      at Object.<anonymous> (tests/unit/infrastructure/OpenRouterTranscriptionClient.test.ts:157:13)
+      at RemoteTranscriptionClient.transcribe (src/infrastructure/transcription/RemoteTranscriptionClient.ts:77:25)
+      at Object.<anonymous> (tests/unit/infrastructure/RemoteTranscriptionClient.test.ts:157:13)
 
   console.error
     [OpenRouter] Unexpected error: Error: OpenRouter model returned empty transcription
-        at OpenRouterTranscriptionClient.transcribe (/Users/user1000/gitprojects/InstagramReelPoster/src/infrastructure/transcription/OpenRouterTranscriptionClient.ts:78:23)
+        at RemoteTranscriptionClient.transcribe (/Users/user1000/gitprojects/InstagramReelPoster/src/infrastructure/transcription/RemoteTranscriptionClient.ts:78:23)
         at processTicksAndRejections (node:internal/process/task_queues:103:5)
-        at Object.<anonymous> (/Users/user1000/gitprojects/InstagramReelPoster/tests/unit/infrastructure/OpenRouterTranscriptionClient.test.ts:157:13)
+        at Object.<anonymous> (/Users/user1000/gitprojects/InstagramReelPoster/tests/unit/infrastructure/RemoteTranscriptionClient.test.ts:157:13)
 
       87 |                 throw new Error(`Transcription failed via OpenRouter: ${message}`);
       88 |             }
@@ -3084,13 +3084,13 @@ PASS tests/unit/infrastructure/KieMusicGeneratorClient.test.ts
       91 |         }
       92 |     }
 
-      at OpenRouterTranscriptionClient.transcribe (src/infrastructure/transcription/OpenRouterTranscriptionClient.ts:89:21)
-      at Object.<anonymous> (tests/unit/infrastructure/OpenRouterTranscriptionClient.test.ts:157:13)
+      at RemoteTranscriptionClient.transcribe (src/infrastructure/transcription/RemoteTranscriptionClient.ts:89:21)
+      at Object.<anonymous> (tests/unit/infrastructure/RemoteTranscriptionClient.test.ts:157:13)
 
   console.log
     [OpenRouter] Transcribing source (google/gemini-2.0-flash-001): https://example.com/audio.mp3
 
-      at OpenRouterTranscriptionClient.transcribe (src/infrastructure/transcription/OpenRouterTranscriptionClient.ts:35:21)
+      at RemoteTranscriptionClient.transcribe (src/infrastructure/transcription/RemoteTranscriptionClient.ts:35:21)
 
   console.error
     [OpenRouter] API Error: {
@@ -3107,17 +3107,17 @@ PASS tests/unit/infrastructure/KieMusicGeneratorClient.test.ts
       87 |                 throw new Error(`Transcription failed via OpenRouter: ${message}`);
       88 |             }
 
-      at OpenRouterTranscriptionClient.transcribe (src/infrastructure/transcription/OpenRouterTranscriptionClient.ts:85:25)
-      at Object.<anonymous> (tests/unit/infrastructure/OpenRouterTranscriptionClient.test.ts:175:13)
+      at RemoteTranscriptionClient.transcribe (src/infrastructure/transcription/RemoteTranscriptionClient.ts:85:25)
+      at Object.<anonymous> (tests/unit/infrastructure/RemoteTranscriptionClient.test.ts:175:13)
 
   console.log
     [OpenRouter] Transcribing source (google/gemini-2.0-flash-001): https://example.com/audio.mp3
 
-      at OpenRouterTranscriptionClient.transcribe (src/infrastructure/transcription/OpenRouterTranscriptionClient.ts:35:21)
+      at RemoteTranscriptionClient.transcribe (src/infrastructure/transcription/RemoteTranscriptionClient.ts:35:21)
 
   console.error
     [OpenRouter] Unexpected error: Error: Network failure
-        at Object.<anonymous> (/Users/user1000/gitprojects/InstagramReelPoster/tests/unit/infrastructure/OpenRouterTranscriptionClient.test.ts:182:52)
+        at Object.<anonymous> (/Users/user1000/gitprojects/InstagramReelPoster/tests/unit/infrastructure/RemoteTranscriptionClient.test.ts:182:52)
         at Promise.finally.completed (/Users/user1000/gitprojects/InstagramReelPoster/node_modules/jest-circus/build/jestAdapterInit.js:1557:28)
         at new Promise (<anonymous>)
         at callAsyncCircusFn (/Users/user1000/gitprojects/InstagramReelPoster/node_modules/jest-circus/build/jestAdapterInit.js:1497:10)
@@ -3143,11 +3143,11 @@ PASS tests/unit/infrastructure/KieMusicGeneratorClient.test.ts
       91 |         }
       92 |     }
 
-      at OpenRouterTranscriptionClient.transcribe (src/infrastructure/transcription/OpenRouterTranscriptionClient.ts:89:21)
-      at Object.<anonymous> (tests/unit/infrastructure/OpenRouterTranscriptionClient.test.ts:186:13)
+      at RemoteTranscriptionClient.transcribe (src/infrastructure/transcription/RemoteTranscriptionClient.ts:89:21)
+      at Object.<anonymous> (tests/unit/infrastructure/RemoteTranscriptionClient.test.ts:186:13)
 
-PASS tests/unit/infrastructure/OpenRouterTranscriptionClient.test.ts
-  OpenRouterTranscriptionClient
+PASS tests/unit/infrastructure/RemoteTranscriptionClient.test.ts
+  RemoteTranscriptionClient
     constructor
       ✓ should throw error if apiKey is empty (3 ms)
       ✓ should create client with valid apiKey
@@ -3232,8 +3232,8 @@ PASS tests/unit/infrastructure/FFmpegVideoRenderer.complex.test.ts
     ✓ should use [1:v] for visuals when music is NOT present (2 ms)
     ✓ should handle image segments correctly without music (2 ms)
 
-PASS tests/unit/infrastructure/OpenAILinkedInDraftService.test.ts
-  OpenAILinkedInDraftService (AC4)
+PASS tests/unit/infrastructure/GptLinkedInDraftService.test.ts
+  GptLinkedInDraftService (AC4)
     Constructor
       ✓ should create service with valid API key
       ✓ should reject empty API key (3 ms)
@@ -3600,7 +3600,7 @@ PASS tests/unit/infrastructure/TrainingDataCollector.test.ts
   console.log
     [Pixabay] Searching for: "sunset"
 
-      at PixabayImageClient.generateImage (src/infrastructure/images/PixabayImageClient.ts:30:21)
+      at StockImageClient.generateImage (src/infrastructure/images/StockImageClient.ts:30:21)
 
   console.error
     AI music generation failed: Error: AI unavailable
@@ -3650,7 +3650,7 @@ PASS tests/unit/infrastructure/TrainingDataCollector.test.ts
   console.log
     [Pixabay] Searching for: "a dog running on the beach under the moonlight"
 
-      at PixabayImageClient.generateImage (src/infrastructure/images/PixabayImageClient.ts:30:21)
+      at StockImageClient.generateImage (src/infrastructure/images/StockImageClient.ts:30:21)
 
 PASS tests/unit/application/MusicSelector.test.ts
   MusicSelector Edge Cases
@@ -3677,20 +3677,20 @@ PASS tests/unit/application/MusicSelector.test.ts
   console.log
     [Pixabay] Searching for: "very specific query that yields nothing"
 
-      at PixabayImageClient.generateImage (src/infrastructure/images/PixabayImageClient.ts:30:21)
+      at StockImageClient.generateImage (src/infrastructure/images/StockImageClient.ts:30:21)
 
   console.log
     [Pixabay] No results, trying broader search...
 
-      at PixabayImageClient.generateImage (src/infrastructure/images/PixabayImageClient.ts:51:29)
+      at StockImageClient.generateImage (src/infrastructure/images/StockImageClient.ts:51:29)
 
   console.log
     [Pixabay] Searching for: "nothing found"
 
-      at PixabayImageClient.generateImage (src/infrastructure/images/PixabayImageClient.ts:30:21)
+      at StockImageClient.generateImage (src/infrastructure/images/StockImageClient.ts:30:21)
 
-PASS tests/unit/infrastructure/PixabayImageClient.test.ts
-  PixabayImageClient
+PASS tests/unit/infrastructure/StockImageClient.test.ts
+  StockImageClient
     ✓ should throw if api key is missing (2 ms)
     ✓ should clean simple prompts (2 ms)
     ✓ should clean complex prompts
@@ -3864,8 +3864,8 @@ PASS tests/unit/core-logic.test.ts
       ✓ should preserve segment start and end times (1 ms)
       ✓ should trim whitespace from URLs
 
-PASS tests/unit/infrastructure/OpenAITTSClient.test.ts
-  OpenAITTSClient
+PASS tests/unit/infrastructure/StandardTtsClient.test.ts
+  StandardTtsClient
     constructor
       ✓ should throw error if apiKey is empty (2 ms)
       ✓ should create client with valid apiKey
@@ -3900,8 +3900,8 @@ PASS tests/unit/presentation/jobRoutes.test.ts
     ✓ failed job response should include error
     ✓ processing job response should include step
 
-PASS tests/unit/infrastructure/CloudinaryStorageClient.test.ts
-  CloudinaryStorageClient
+PASS tests/unit/infrastructure/MediaStorageClient.test.ts
+  MediaStorageClient
     constructor
       ✓ should throw error if cloudName is missing (3 ms)
       ✓ should throw error if apiKey is missing
@@ -3975,27 +3975,27 @@ PASS tests/unit/prompts/ParablePromptValidation.test.ts
   console.log
     [LinkedIn] Posting to Make.com webhook: https://hook.eu2.make.com/test-webhook-id...
 
-      at MakeLinkedInPosterService.postToLinkedIn (src/infrastructure/linkedin/MakeLinkedInPosterService.ts:28:21)
+      at WebhookLinkedInPosterService.postToLinkedIn (src/infrastructure/linkedin/WebhookLinkedInPosterService.ts:28:21)
 
   console.log
     [LinkedIn] Make.com response status: 200
 
-      at MakeLinkedInPosterService.postToLinkedIn (src/infrastructure/linkedin/MakeLinkedInPosterService.ts:42:21)
+      at WebhookLinkedInPosterService.postToLinkedIn (src/infrastructure/linkedin/WebhookLinkedInPosterService.ts:42:21)
 
   console.log
     [LinkedIn] Posting to Make.com webhook: https://hook.eu2.make.com/test-webhook-id...
 
-      at MakeLinkedInPosterService.postToLinkedIn (src/infrastructure/linkedin/MakeLinkedInPosterService.ts:28:21)
+      at WebhookLinkedInPosterService.postToLinkedIn (src/infrastructure/linkedin/WebhookLinkedInPosterService.ts:28:21)
 
   console.log
     [LinkedIn] Make.com response status: 200
 
-      at MakeLinkedInPosterService.postToLinkedIn (src/infrastructure/linkedin/MakeLinkedInPosterService.ts:42:21)
+      at WebhookLinkedInPosterService.postToLinkedIn (src/infrastructure/linkedin/WebhookLinkedInPosterService.ts:42:21)
 
   console.log
     [LinkedIn] Posting to Make.com webhook: https://hook.eu2.make.com/test-webhook-id...
 
-      at MakeLinkedInPosterService.postToLinkedIn (src/infrastructure/linkedin/MakeLinkedInPosterService.ts:28:21)
+      at WebhookLinkedInPosterService.postToLinkedIn (src/infrastructure/linkedin/WebhookLinkedInPosterService.ts:28:21)
 
   console.error
     [LinkedIn] Failed to post: Unknown error
@@ -4008,13 +4008,13 @@ PASS tests/unit/prompts/ParablePromptValidation.test.ts
       62 |             if (axios.isAxiosError(error) && error.response) {
       63 |                 return {
 
-      at MakeLinkedInPosterService.postToLinkedIn (src/infrastructure/linkedin/MakeLinkedInPosterService.ts:60:21)
-      at Object.<anonymous> (tests/unit/infrastructure/MakeLinkedInPosterService.test.ts:109:28)
+      at WebhookLinkedInPosterService.postToLinkedIn (src/infrastructure/linkedin/WebhookLinkedInPosterService.ts:60:21)
+      at Object.<anonymous> (tests/unit/infrastructure/WebhookLinkedInPosterService.test.ts:109:28)
 
   console.log
     [LinkedIn] Posting to Make.com webhook: https://hook.eu2.make.com/test-webhook-id...
 
-      at MakeLinkedInPosterService.postToLinkedIn (src/infrastructure/linkedin/MakeLinkedInPosterService.ts:28:21)
+      at WebhookLinkedInPosterService.postToLinkedIn (src/infrastructure/linkedin/WebhookLinkedInPosterService.ts:28:21)
 
   console.error
     [LinkedIn] Failed to post: Network error
@@ -4027,11 +4027,11 @@ PASS tests/unit/prompts/ParablePromptValidation.test.ts
       62 |             if (axios.isAxiosError(error) && error.response) {
       63 |                 return {
 
-      at MakeLinkedInPosterService.postToLinkedIn (src/infrastructure/linkedin/MakeLinkedInPosterService.ts:60:21)
-      at Object.<anonymous> (tests/unit/infrastructure/MakeLinkedInPosterService.test.ts:124:28)
+      at WebhookLinkedInPosterService.postToLinkedIn (src/infrastructure/linkedin/WebhookLinkedInPosterService.ts:60:21)
+      at Object.<anonymous> (tests/unit/infrastructure/WebhookLinkedInPosterService.test.ts:124:28)
 
-PASS tests/unit/infrastructure/MakeLinkedInPosterService.test.ts
-  MakeLinkedInPosterService
+PASS tests/unit/infrastructure/WebhookLinkedInPosterService.test.ts
+  WebhookLinkedInPosterService
     Constructor
       ✓ should create service with valid webhook URL and API key
       ✓ should reject empty webhook URL (2 ms)
@@ -4328,7 +4328,7 @@ FAIL tests/integration/ParableCaptionLive.test.ts
   console.log
     [Shotstack] Render started: f05ab39a-82ea-440c-b0aa-c48b43400d29
 
-      at ShortstackVideoRenderer.startRender (src/infrastructure/video/ShortstackVideoRenderer.ts:334:21)
+      at TimelineVideoRenderer.startRender (src/infrastructure/video/TimelineVideoRenderer.ts:334:21)
 
   console.log
     Generating images for 1 segments...
@@ -4399,7 +4399,7 @@ PASS tests/integration/FishAudioLive.test.ts
   console.log
     [Shotstack] Render f05ab39a-82ea-440c-b0aa-c48b43400d29 status: failed
 
-      at ShortstackVideoRenderer.pollForCompletion (src/infrastructure/video/ShortstackVideoRenderer.ts:364:25)
+      at TimelineVideoRenderer.pollForCompletion (src/infrastructure/video/TimelineVideoRenderer.ts:364:25)
 
   console.log
     [Test] Error Details: Shotstack render failed: Downloading assets failed: Asset URL not downloadable (403): https://shotstack-assets.s3.ap-southeast-2.amazonaws.com/captions/subtitles.srt
@@ -4417,8 +4417,8 @@ PASS tests/integration/FishAudioLive.test.ts
       77 |                         continue;
       78 |                     }
 
-      at OpenAIImageClient.generateImage (src/infrastructure/images/OpenAIImageClient.ts:75:33)
-      at Object.<anonymous> (tests/unit/infrastructure/OpenAIImageClient.test.ts:125:13)
+      at DalleImageClient.generateImage (src/infrastructure/images/DalleImageClient.ts:75:33)
+      at Object.<anonymous> (tests/unit/infrastructure/DalleImageClient.test.ts:125:13)
 
   console.log
     ✅ PASS: Payload was accepted (Render failed later, likely due to asset issues, but schema is valid)
@@ -4432,7 +4432,7 @@ PASS tests/integration/ShotstackPayload.test.ts
   console.log
     [Fish Audio] Synthesizing with voice ID: test-voice
 
-      at FishAudioTTSClient.synthesize (src/infrastructure/tts/FishAudioTTSClient.ts:34:21)
+      at CloningTTSClient.synthesize (src/infrastructure/tts/CloningTTSClient.ts:34:21)
 
 (node:26961) Warning: `--localstorage-file` was provided without a valid path
 (Use `node --trace-warnings ...` to show where the warning was created)
@@ -4483,8 +4483,8 @@ FAIL tests/chaos/chaos.test.ts
           98 |
           99 |     private shouldRetry(status: number | undefined, attempt: number, maxRetries: number): boolean {
 
-      at OpenAIService.handleError (src/infrastructure/llm/OpenAIService.ts:96:15)
-      at OpenAIService.chatCompletion (src/infrastructure/llm/OpenAIService.ts:39:32)
+      at GptService.handleError (src/infrastructure/llm/GptService.ts:96:15)
+      at GptService.chatCompletion (src/infrastructure/llm/GptService.ts:39:32)
       at StandardReelGenerator.planReel (src/infrastructure/llm/StandardReelGenerator.ts:36:26)
       at Object.<anonymous> (tests/chaos/chaos.test.ts:104:13)
       at Object.toThrow (node_modules/expect/build/index.js:2155:20)
@@ -4505,8 +4505,8 @@ FAIL tests/chaos/chaos.test.ts
           98 |
           99 |     private shouldRetry(status: number | undefined, attempt: number, maxRetries: number): boolean {
 
-      at OpenAIService.handleError (src/infrastructure/llm/OpenAIService.ts:96:15)
-      at OpenAIService.chatCompletion (src/infrastructure/llm/OpenAIService.ts:39:32)
+      at GptService.handleError (src/infrastructure/llm/GptService.ts:96:15)
+      at GptService.chatCompletion (src/infrastructure/llm/GptService.ts:39:32)
       at StandardReelGenerator.planReel (src/infrastructure/llm/StandardReelGenerator.ts:36:26)
       at Object.<anonymous> (tests/chaos/chaos.test.ts:118:13)
       at Object.toThrow (node_modules/expect/build/index.js:2155:20)
@@ -4708,7 +4708,7 @@ FAIL tests/chaos/chaos.test.ts
     > 73 |     console.log('=== PARABLE CAPTION & HASHTAG LIVE TEST ===\n');
          |             ^
       74 |
-      75 |     const client = new OpenAILLMClient(OPENAI_API_KEY!);
+      75 |     const client = new GptLlmClient(OPENAI_API_KEY!);
       76 |
 
       at console.log (node_modules/@jest/console/build/index.js:311:10)
@@ -4720,7 +4720,7 @@ FAIL tests/chaos/chaos.test.ts
     Attempted to log "1. Testing generateParableCaptionAndTags...
     ".
 
-      75 |     const client = new OpenAILLMClient(OPENAI_API_KEY!);
+      75 |     const client = new GptLlmClient(OPENAI_API_KEY!);
       76 |
     > 77 |     console.log('1. Testing generateParableCaptionAndTags...\n');
          |             ^
@@ -4895,8 +4895,8 @@ PASS tests/unit/application/ReelOrchestrator.test.ts
 
 (node:26958) Warning: `--localstorage-file` was provided without a valid path
 (Use `node --trace-warnings ...` to show where the warning was created)
-FAIL tests/unit/infrastructure/OpenAIImageClient.test.ts (6.871 s)
-  OpenAIImageClient
+FAIL tests/unit/infrastructure/DalleImageClient.test.ts (6.871 s)
+  DalleImageClient
     Constructor validation
       ✓ should throw error when API key is missing (9 ms)
       ✓ should create client with valid API key
@@ -4916,7 +4916,7 @@ FAIL tests/unit/infrastructure/OpenAIImageClient.test.ts (6.871 s)
       ✓ should use default size if not specified (4 ms)
       ✓ should use custom size when provided (4 ms)
 
-  ● OpenAIImageClient › generateImage() - Error handling › should handle 429 rate limit after retries
+  ● DalleImageClient › generateImage() - Error handling › should handle 429 rate limit after retries
 
     thrown: "Exceeded timeout of 5000 ms for a test.
     Add a timeout value to this test to increase the timeout, if this is a long-running test. See https://jestjs.io/docs/api#testname-fn-timeout."
@@ -4925,13 +4925,13 @@ FAIL tests/unit/infrastructure/OpenAIImageClient.test.ts (6.871 s)
       113 |
     > 114 |         it('should handle 429 rate limit after retries', async () => {
           |         ^
-      115 |             const client = new OpenAIImageClient(apiKey, baseUrl);
+      115 |             const client = new DalleImageClient(apiKey, baseUrl);
       116 |
       117 |             // Mock 3 consecutive 429 errors (maxRetries = 3)
 
-      at tests/unit/infrastructure/OpenAIImageClient.test.ts:114:9
-      at tests/unit/infrastructure/OpenAIImageClient.test.ts:97:5
-      at Object.<anonymous> (tests/unit/infrastructure/OpenAIImageClient.test.ts:4:1)
+      at tests/unit/infrastructure/DalleImageClient.test.ts:114:9
+      at tests/unit/infrastructure/DalleImageClient.test.ts:97:5
+      at Object.<anonymous> (tests/unit/infrastructure/DalleImageClient.test.ts:4:1)
 
 
   ●  Cannot log after tests are done. Did you forget to wait for something async in your test?
@@ -5196,10 +5196,10 @@ FAIL tests/unit/infrastructure/OpenAIImageClient.test.ts (6.871 s)
 
   console.warn
     [LLM] Reel mode detection failed, defaulting to image mode: Error: Failed to parse LLM response as JSON: not valid json...
-        at OpenAIService.parseJSON (/Users/user1000/gitprojects/InstagramReelPoster/src/infrastructure/llm/OpenAIService.ts:112:19)
-        at OpenAILLMClient.detectReelMode (/Users/user1000/gitprojects/InstagramReelPoster/src/infrastructure/llm/OpenAILLMClient.ts:61:47)
+        at GptService.parseJSON (/Users/user1000/gitprojects/InstagramReelPoster/src/infrastructure/llm/GptService.ts:112:19)
+        at GptLlmClient.detectReelMode (/Users/user1000/gitprojects/InstagramReelPoster/src/infrastructure/llm/GptLlmClient.ts:61:47)
         at processTicksAndRejections (node:internal/process/task_queues:103:5)
-        at Object.<anonymous> (/Users/user1000/gitprojects/InstagramReelPoster/tests/unit/infrastructure/OpenAILLMClient.detectReelMode.test.ts:146:28)
+        at Object.<anonymous> (/Users/user1000/gitprojects/InstagramReelPoster/tests/unit/infrastructure/GptLlmClient.detectReelMode.test.ts:146:28)
 
       69 |             };
       70 |         } catch (error) {
@@ -5209,11 +5209,11 @@ FAIL tests/unit/infrastructure/OpenAIImageClient.test.ts (6.871 s)
       73 |                 isAnimatedMode: false,
       74 |                 reason: 'Detection failed, defaulting to image-based reel',
 
-      at OpenAILLMClient.detectReelMode (src/infrastructure/llm/OpenAILLMClient.ts:71:21)
-      at Object.<anonymous> (tests/unit/infrastructure/OpenAILLMClient.detectReelMode.test.ts:146:28)
+      at GptLlmClient.detectReelMode (src/infrastructure/llm/GptLlmClient.ts:71:21)
+      at Object.<anonymous> (tests/unit/infrastructure/GptLlmClient.detectReelMode.test.ts:146:28)
 
-FAIL tests/unit/infrastructure/OpenAILLMClient.detectReelMode.test.ts (5.073 s)
-  OpenAILLMClient.detectReelMode
+FAIL tests/unit/infrastructure/GptLlmClient.detectReelMode.test.ts (5.073 s)
+  GptLlmClient.detectReelMode
     Animated mode detection
       ✓ should return isAnimatedMode: true when transcript mentions "animated video" (5 ms)
       ✓ should return isAnimatedMode: true when transcript mentions "animation" (4 ms)
@@ -5229,7 +5229,7 @@ FAIL tests/unit/infrastructure/OpenAILLMClient.detectReelMode.test.ts (5.073 s)
       ✕ should handle API errors gracefully and default to image mode (5003 ms)
       ✓ should handle malformed JSON response gracefully (16 ms)
 
-  ● OpenAILLMClient.detectReelMode › Error handling › should handle API errors gracefully and default to image mode
+  ● GptLlmClient.detectReelMode › Error handling › should handle API errors gracefully and default to image mode
 
     thrown: "Exceeded timeout of 5000 ms for a test.
     Add a timeout value to this test to increase the timeout, if this is a long-running test. See https://jestjs.io/docs/api#testname-fn-timeout."
@@ -5242,16 +5242,16 @@ FAIL tests/unit/infrastructure/OpenAILLMClient.detectReelMode.test.ts (5.073 s)
       126 |                 .post('/v1/chat/completions')
       127 |                 .replyWithError('Network error');
 
-      at tests/unit/infrastructure/OpenAILLMClient.detectReelMode.test.ts:124:9
-      at tests/unit/infrastructure/OpenAILLMClient.detectReelMode.test.ts:123:5
-      at Object.<anonymous> (tests/unit/infrastructure/OpenAILLMClient.detectReelMode.test.ts:5:1)
+      at tests/unit/infrastructure/GptLlmClient.detectReelMode.test.ts:124:9
+      at tests/unit/infrastructure/GptLlmClient.detectReelMode.test.ts:123:5
+      at Object.<anonymous> (tests/unit/infrastructure/GptLlmClient.detectReelMode.test.ts:5:1)
 
-  ● OpenAILLMClient.detectReelMode › Error handling › should handle API errors gracefully and default to image mode
-
-
+  ● GptLlmClient.detectReelMode › Error handling › should handle API errors gracefully and default to image mode
 
 
-  ● OpenAILLMClient.detectReelMode › Error handling › should handle API errors gracefully and default to image mode
+
+
+  ● GptLlmClient.detectReelMode › Error handling › should handle API errors gracefully and default to image mode
 
 
 
@@ -5409,7 +5409,7 @@ FAIL tests/unit/application/HookAndStructureService.test.ts
       at Object.<anonymous> (tests/unit/application/HookAndStructureService.test.ts:52:46)
 
 FAIL tests/unit/DurationRespect.test.ts
-  ● OpenAILLMClient Duration Logic › Should accept LLM-determined duration (e.g. 60s) when requested
+  ● GptLlmClient Duration Logic › Should accept LLM-determined duration (e.g. 60s) when requested
 
     expect(received).toBe(expected) // Object.is equality
 
@@ -5426,7 +5426,7 @@ FAIL tests/unit/DurationRespect.test.ts
 
       at Object.<anonymous> (tests/unit/DurationRespect.test.ts:39:35)
 
-  ● OpenAILLMClient Duration Logic › Should clamp excessive segment counts to 15
+  ● GptLlmClient Duration Logic › Should clamp excessive segment counts to 15
 
     expect(received).toBe(expected) // Object.is equality
 
@@ -5668,8 +5668,8 @@ FAIL tests/e2e/reel-generation.test.ts
       98 |
       99 |     private shouldRetry(status: number | undefined, attempt: number, maxRetries: number): boolean {
 
-      at OpenAIService.handleError (src/infrastructure/llm/OpenAIService.ts:96:15)
-      at OpenAIService.chatCompletion (src/infrastructure/llm/OpenAIService.ts:39:32)
+      at GptService.handleError (src/infrastructure/llm/GptService.ts:96:15)
+      at GptService.chatCompletion (src/infrastructure/llm/GptService.ts:39:32)
       at StandardReelGenerator.generateVisuals (src/infrastructure/llm/StandardReelGenerator.ts:211:26)
       at StandardReelGenerator.generateSegmentContent (src/infrastructure/llm/StandardReelGenerator.ts:80:25)
       at ReelOrchestrator.processJob (src/application/ReelOrchestrator.ts:328:38)
@@ -5700,8 +5700,8 @@ FAIL tests/e2e/reel-generation.test.ts
       98 |
       99 |     private shouldRetry(status: number | undefined, attempt: number, maxRetries: number): boolean {
 
-      at OpenAIService.handleError (src/infrastructure/llm/OpenAIService.ts:96:15)
-      at OpenAIService.chatCompletion (src/infrastructure/llm/OpenAIService.ts:39:32)
+      at GptService.handleError (src/infrastructure/llm/GptService.ts:96:15)
+      at GptService.chatCompletion (src/infrastructure/llm/GptService.ts:39:32)
       at StandardReelGenerator.generateVisuals (src/infrastructure/llm/StandardReelGenerator.ts:211:26)
       at StandardReelGenerator.generateSegmentContent (src/infrastructure/llm/StandardReelGenerator.ts:80:25)
       at ReelOrchestrator.processJob (src/application/ReelOrchestrator.ts:328:38)
@@ -5747,8 +5747,8 @@ FAIL tests/chaos/chaos.test.ts
           98 |
           99 |     private shouldRetry(status: number | undefined, attempt: number, maxRetries: number): boolean {
 
-      at OpenAIService.handleError (src/infrastructure/llm/OpenAIService.ts:96:15)
-      at OpenAIService.chatCompletion (src/infrastructure/llm/OpenAIService.ts:39:32)
+      at GptService.handleError (src/infrastructure/llm/GptService.ts:96:15)
+      at GptService.chatCompletion (src/infrastructure/llm/GptService.ts:39:32)
       at StandardReelGenerator.planReel (src/infrastructure/llm/StandardReelGenerator.ts:36:26)
       at Object.<anonymous> (tests/chaos/chaos.test.ts:104:13)
       at Object.toThrow (node_modules/expect/build/index.js:2155:20)
@@ -5769,15 +5769,15 @@ FAIL tests/chaos/chaos.test.ts
           98 |
           99 |     private shouldRetry(status: number | undefined, attempt: number, maxRetries: number): boolean {
 
-      at OpenAIService.handleError (src/infrastructure/llm/OpenAIService.ts:96:15)
-      at OpenAIService.chatCompletion (src/infrastructure/llm/OpenAIService.ts:39:32)
+      at GptService.handleError (src/infrastructure/llm/GptService.ts:96:15)
+      at GptService.chatCompletion (src/infrastructure/llm/GptService.ts:39:32)
       at StandardReelGenerator.planReel (src/infrastructure/llm/StandardReelGenerator.ts:36:26)
       at Object.<anonymous> (tests/chaos/chaos.test.ts:118:13)
       at Object.toThrow (node_modules/expect/build/index.js:2155:20)
       at Object.<anonymous> (tests/chaos/chaos.test.ts:119:26)
 
-FAIL tests/unit/infrastructure/OpenAIImageClient.test.ts (6.871 s)
-  ● OpenAIImageClient › generateImage() - Error handling › should handle 429 rate limit after retries
+FAIL tests/unit/infrastructure/DalleImageClient.test.ts (6.871 s)
+  ● DalleImageClient › generateImage() - Error handling › should handle 429 rate limit after retries
 
     thrown: "Exceeded timeout of 5000 ms for a test.
     Add a timeout value to this test to increase the timeout, if this is a long-running test. See https://jestjs.io/docs/api#testname-fn-timeout."
@@ -5786,16 +5786,16 @@ FAIL tests/unit/infrastructure/OpenAIImageClient.test.ts (6.871 s)
       113 |
     > 114 |         it('should handle 429 rate limit after retries', async () => {
           |         ^
-      115 |             const client = new OpenAIImageClient(apiKey, baseUrl);
+      115 |             const client = new DalleImageClient(apiKey, baseUrl);
       116 |
       117 |             // Mock 3 consecutive 429 errors (maxRetries = 3)
 
-      at tests/unit/infrastructure/OpenAIImageClient.test.ts:114:9
-      at tests/unit/infrastructure/OpenAIImageClient.test.ts:97:5
-      at Object.<anonymous> (tests/unit/infrastructure/OpenAIImageClient.test.ts:4:1)
+      at tests/unit/infrastructure/DalleImageClient.test.ts:114:9
+      at tests/unit/infrastructure/DalleImageClient.test.ts:97:5
+      at Object.<anonymous> (tests/unit/infrastructure/DalleImageClient.test.ts:4:1)
 
-FAIL tests/unit/infrastructure/OpenAILLMClient.detectReelMode.test.ts (5.073 s)
-  ● OpenAILLMClient.detectReelMode › Error handling › should handle API errors gracefully and default to image mode
+FAIL tests/unit/infrastructure/GptLlmClient.detectReelMode.test.ts (5.073 s)
+  ● GptLlmClient.detectReelMode › Error handling › should handle API errors gracefully and default to image mode
 
     thrown: "Exceeded timeout of 5000 ms for a test.
     Add a timeout value to this test to increase the timeout, if this is a long-running test. See https://jestjs.io/docs/api#testname-fn-timeout."
@@ -5808,16 +5808,16 @@ FAIL tests/unit/infrastructure/OpenAILLMClient.detectReelMode.test.ts (5.073 s)
       126 |                 .post('/v1/chat/completions')
       127 |                 .replyWithError('Network error');
 
-      at tests/unit/infrastructure/OpenAILLMClient.detectReelMode.test.ts:124:9
-      at tests/unit/infrastructure/OpenAILLMClient.detectReelMode.test.ts:123:5
-      at Object.<anonymous> (tests/unit/infrastructure/OpenAILLMClient.detectReelMode.test.ts:5:1)
+      at tests/unit/infrastructure/GptLlmClient.detectReelMode.test.ts:124:9
+      at tests/unit/infrastructure/GptLlmClient.detectReelMode.test.ts:123:5
+      at Object.<anonymous> (tests/unit/infrastructure/GptLlmClient.detectReelMode.test.ts:5:1)
 
-  ● OpenAILLMClient.detectReelMode › Error handling › should handle API errors gracefully and default to image mode
-
-
+  ● GptLlmClient.detectReelMode › Error handling › should handle API errors gracefully and default to image mode
 
 
-  ● OpenAILLMClient.detectReelMode › Error handling › should handle API errors gracefully and default to image mode
+
+
+  ● GptLlmClient.detectReelMode › Error handling › should handle API errors gracefully and default to image mode
 
 
 

@@ -1,1 +1,1 @@
-export * from './OpenAITranscriptionClient';
+export * from './WhisperTranscriptionClient';

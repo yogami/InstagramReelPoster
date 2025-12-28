@@ -116,7 +116,7 @@ describe('ReelOrchestrator - Website Promo Pipeline', () => {
 
             await expect(
                 (orchestrator as any).generatePromoContent('job-1', websiteInput, websiteAnalysis, 'service')
-            ).rejects.toThrow('LLMClient.generatePromoScript is required');
+            ).rejects.toThrow('LlmClient.generatePromoScript is required');
         });
 
         it('should generate promo script with logo when provided', async () => {
@@ -206,7 +206,7 @@ describe('ReelOrchestrator - Website Promo Pipeline', () => {
             expect(result[0].imageUrl).toBeDefined();
         });
 
-        it('should skip Cloudinary upload for already-cloudinary URLs', async () => {
+        it('should skip Media upload for already-cloudinary URLs', async () => {
             const segments = [createMockSegment(0)];
             const resolvedMedia = ['https://cloudinary.com/existing.png'];
 
@@ -243,7 +243,7 @@ function createMockDeps(mockJobManager: any) {
         ttsClient: {
             synthesize: jest.fn().mockResolvedValue({ audioUrl: 'https://tts.example.com/audio.mp3', durationSeconds: 30 })
         },
-        fallbackTTSClient: { synthesize: jest.fn() },
+        fallbackTtsClient: { synthesize: jest.fn() },
         primaryImageClient: { generateImage: jest.fn().mockResolvedValue({ imageUrl: 'https://ai.example.com/image.png' }) },
         fallbackImageClient: { generateImage: jest.fn().mockResolvedValue({ imageUrl: 'https://fallback.example.com/image.png' }) },
         subtitlesClient: { generateSubtitles: jest.fn() },

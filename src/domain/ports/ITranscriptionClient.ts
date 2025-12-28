@@ -1,6 +1,6 @@
 /**
  * ITranscriptionClient - Port for audio transcription services.
- * Implementations: OpenAITranscriptionClient
+ * Implementations: WhisperTranscriptionClient
  */
 export interface ITranscriptionClient {
     /**

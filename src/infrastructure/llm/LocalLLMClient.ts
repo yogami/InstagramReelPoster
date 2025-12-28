@@ -1,18 +1,18 @@
 import axios from 'axios';
 import {
-    ILLMClient,
+    ILlmClient,
     ReelPlan,
     SegmentContent,
     PlanningConstraints,
     ReelModeDetectionResult,
-} from '../../domain/ports/ILLMClient';
+} from '../../domain/ports/ILlmClient';
 import { HookPlan, CaptionAndTags } from '../../domain/entities/Growth';
 import { getConfig } from '../../config';
 
 /**
  * Local LLM Client for Ollama-compatible servers.
  */
-export class LocalLLMClient implements ILLMClient {
+export class LocalLlmClient implements ILlmClient {
     private readonly serverUrl: string;
     private readonly model: string;
     private readonly systemPrompt: string;

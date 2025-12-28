@@ -1,0 +1,118 @@
+import axios from 'axios';
+
+export class GptService {
+    private readonly apiKey: string;
+    private readonly baseUrl: string;
+    private readonly model: string;
+
+    constructor(
+        apiKey: string,
+        model: string = 'gpt-4.1',
+        baseUrl: string = 'https://api.openai.com'
+    ) {
+        if (!apiKey) {
+            throw new Error('LLM API key is required');
+        }
+        this.apiKey = apiKey;
+        this.model = model;
+        this.baseUrl = baseUrl;
+    }
+
+    /**
+     * Executes a chat completion request with retries and error handling.
+     */
+    async chatCompletion(
+        prompt: string,
+        systemPrompt: string,
+        options: {
+            jsonMode?: boolean;
+            temperature?: number;
+            maxRetries?: number;
+        } = {}
+    ): Promise<string> {
+        const { jsonMode = false, temperature = 0.7, maxRetries = 5 } = options;
+
+        for (let attempt = 0; attempt < maxRetries; attempt++) {
+            try {
+                return await this.executeRequest(prompt, systemPrompt, temperature, jsonMode);
+            } catch (error) {
+                if (await this.handleError(error, attempt, maxRetries)) {
+                    continue;
+                }
+                throw error;
+            }
+        }
+
+        throw new Error('LLM call failed after max retries');
+    }
+
+    private async executeRequest(
+        prompt: string,
+        systemPrompt: string,
+        temperature: number,
+        jsonMode: boolean
+    ): Promise<string> {
+        const response = await axios.post(
+            `${this.baseUrl}/v1/chat/completions`,
+            {
+                model: this.model,
+                messages: [
+                    { role: 'system', content: systemPrompt },
+                    { role: 'user', content: prompt },
+                ],
+                temperature: temperature,
+                ...(jsonMode && { response_format: { type: 'json_object' } }),
+            },
+            {
+                headers: {
+                    Authorization: `Bearer ${this.apiKey}`,
+                    'Content-Type': 'application/json',
+                },
+            }
+        );
+
+        return response.data.choices[0].message.content;
+    }
+
+    private async handleError(error: unknown, attempt: number, maxRetries: number): Promise<boolean> {
+        if (!axios.isAxiosError(error)) {
+            return false;
+        }
+
+        const status = error.response?.status;
+        const message = error.response?.data?.error?.message || error.message;
+
+        if (this.shouldRetry(status, attempt, maxRetries)) {
+            // Exponential backoff with jitter: 2s, 4s, 8s... + random(0-1000ms)
+            const baseDelay = Math.pow(2, attempt + 1) * 1000;
+            const jitter = Math.floor(Math.random() * 1000);
+            const delay = baseDelay + jitter;
+
+            await this.sleep(delay);
+            return true;
+        }
+
+        throw new Error(`LLM call failed: ${message}`);
+    }
+
+    private shouldRetry(status: number | undefined, attempt: number, maxRetries: number): boolean {
+        // Status 429 = Rate Limit, 502/503/504 = Server errors
+        return (status === 429 || status === 502 || status === 503 || status === 504) && attempt < maxRetries - 1;
+    }
+
+    /**
+     * Parses a JSON response from the LLM, handling potential markdown code blocks.
+     */
+    parseJSON<T>(response: string): T {
+        try {
+            const jsonStr = response.replace(/```json\n?|\n?```/g, '').trim();
+            return JSON.parse(jsonStr);
+        } catch {
+            throw new Error(`Failed to parse LLM response as JSON: ${response.substring(0, 200)}...`);
+        }
+    }
+
+    private sleep(ms: number): Promise<void> {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+}

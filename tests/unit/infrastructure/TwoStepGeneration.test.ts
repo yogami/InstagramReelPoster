@@ -1,24 +1,24 @@
 
-import { OpenAILLMClient } from '../../../src/infrastructure/llm/OpenAILLMClient';
-import { OpenAIService } from '../../../src/infrastructure/llm/OpenAIService';
-import { ReelPlan } from '../../../src/domain/ports/ILLMClient';
+import { GptLlmClient } from '../../../src/infrastructure/llm/GptLlmClient';
+import { GptService } from '../../../src/infrastructure/llm/GptService';
+import { ReelPlan } from '../../../src/domain/ports/ILlmClient';
 
 // Mock dependencies
-jest.mock('../../../src/infrastructure/llm/OpenAIService');
-const MockOpenAIService = OpenAIService as jest.MockedClass<typeof OpenAIService>;
+jest.mock('../../../src/infrastructure/llm/GptService');
+const MockGptService = GptService as jest.MockedClass<typeof GptService>;
 
 describe('Two-Step Generation Workflow', () => {
-    let client: OpenAILLMClient;
-    let mockOpenAI: jest.Mocked<OpenAIService>;
+    let client: GptLlmClient;
+    let mockGpt: jest.Mocked<GptService>;
 
     beforeEach(() => {
         jest.clearAllMocks();
-        mockOpenAI = new MockOpenAIService('test-key') as jest.Mocked<OpenAIService>;
+        mockGpt = new MockGptService('test-key') as jest.Mocked<GptService>;
 
         // Setup client to use the mock service
-        client = new OpenAILLMClient('test-key');
-        (client as any).openAIService = mockOpenAI;
-        (client as any).standardReelGenerator.openAI = mockOpenAI;
+        client = new GptLlmClient('test-key');
+        (client as any).openAIService = mockGpt;
+        (client as any).standardReelGenerator.openAI = mockGpt;
     });
 
     it('should execute iterative segment generation then visuals and merge results', async () => {
@@ -58,13 +58,13 @@ describe('Two-Step Generation Workflow', () => {
         ]);
 
         // Mock calls: 3 segment calls + 1 visuals call
-        mockOpenAI.chatCompletion
+        mockGpt.chatCompletion
             .mockResolvedValueOnce(mockSegment1)
             .mockResolvedValueOnce(mockSegment2)
             .mockResolvedValueOnce(mockSegment3)
             .mockResolvedValueOnce(mockVisualsResponse);
 
-        mockOpenAI.parseJSON
+        mockGpt.parseJSON
             .mockReturnValueOnce(JSON.parse(mockSegment1))
             .mockReturnValueOnce(JSON.parse(mockSegment2))
             .mockReturnValueOnce(JSON.parse(mockSegment3))
@@ -73,17 +73,17 @@ describe('Two-Step Generation Workflow', () => {
         const result = await client.generateSegmentContent(plan, transcript);
 
         // Verify iterative segment calls (first 3 calls)
-        expect(mockOpenAI.chatCompletion).toHaveBeenCalledTimes(4); // 3 segments + 1 visuals
-        const segment1Call = mockOpenAI.chatCompletion.mock.calls[0];
+        expect(mockGpt.chatCompletion).toHaveBeenCalledTimes(4); // 3 segments + 1 visuals
+        const segment1Call = mockGpt.chatCompletion.mock.calls[0];
         expect(segment1Call[0]).toContain('SEGMENT 1 of 3');
         expect(segment1Call[0]).toContain('Role: hook');
 
-        const segment2Call = mockOpenAI.chatCompletion.mock.calls[1];
+        const segment2Call = mockGpt.chatCompletion.mock.calls[1];
         expect(segment2Call[0]).toContain('SEGMENT 2 of 3');
         expect(segment2Call[0]).toContain('Role: body');
 
         // Verify visuals call (4th call)
-        const visualsCall = mockOpenAI.chatCompletion.mock.calls[3];
+        const visualsCall = mockGpt.chatCompletion.mock.calls[3];
         expect(visualsCall[0]).toContain('Generate visual prompts');
         expect(visualsCall[0]).toContain('Segment 1 text.'); // Commentary passed to visuals
 
@@ -116,11 +116,11 @@ describe('Two-Step Generation Workflow', () => {
             continuityTags: { location: 'loc', timeOfDay: 'day', dominantColor: 'blue', heroProp: 'none', wardrobeDetail: 'none' }
         }]);
 
-        mockOpenAI.chatCompletion
+        mockGpt.chatCompletion
             .mockResolvedValueOnce(mockSegmentResponse)
             .mockResolvedValueOnce(mockVisualsResponse);
 
-        mockOpenAI.parseJSON
+        mockGpt.parseJSON
             .mockReturnValueOnce(JSON.parse(mockSegmentResponse))
             .mockReturnValueOnce(JSON.parse(mockVisualsResponse));
 

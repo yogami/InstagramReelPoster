@@ -14,18 +14,18 @@ describe('Bug Regression Verification', () => {
     });
 
 
-    test('Fix 2: Voice should be configured to Fish Audio (User Preference)', () => {
+    test('Fix 2: Voice should be configured to Voice Cloning (User Preference)', () => {
         const filePath = path.join(projectRoot, 'presentation/app.ts');
         const content = fs.readFileSync(filePath, 'utf-8');
 
-        // Should use FishAudioTTSClient
-        expect(content).toContain('new FishAudioTTSClient');
+        // Should use CloningTtsClient
+        expect(content).toContain('new CloningTtsClient');
 
-        // Should import FishAudioTTSClient
-        expect(content).toContain('import { FishAudioTTSClient }');
+        // Should import CloningTtsClient
+        expect(content).toContain('import { CloningTtsClient }');
     });
 
-    test('Fix 3: Orchestrator should upload to Cloudinary and Delay (preventing Shotstack download error)', () => {
+    test('Fix 3: Orchestrator should upload to Media and Delay (preventing Timeline download error)', () => {
         const filePath = path.join(projectRoot, 'application/ReelOrchestrator.ts');
         const content = fs.readFileSync(filePath, 'utf-8');
 
@@ -56,20 +56,20 @@ describe('Bug Regression Verification', () => {
     });
 
     test('Fix 7: Background Music Volume should be low (0.1)', () => {
-        const filePath = path.join(projectRoot, 'infrastructure/video/ShortstackVideoRenderer.ts');
+        const filePath = path.join(projectRoot, 'infrastructure/video/TimelineVideoRenderer.ts');
         const content = fs.readFileSync(filePath, 'utf-8');
         expect(content).toContain('volume: 0.1');
     });
 
     test('Fix 8: Subtitles should be readable (Size 48, Margin 350)', () => {
-        const filePath = path.join(projectRoot, 'infrastructure/video/ShortstackVideoRenderer.ts');
+        const filePath = path.join(projectRoot, 'infrastructure/video/TimelineVideoRenderer.ts');
         const content = fs.readFileSync(filePath, 'utf-8');
         expect(content).toContain('size: 48');
         expect(content).toContain('y: 0.15');
     });
 
     test('Fix 9: Images should be Vertical (9:16 Prompt)', () => {
-        const filePath = path.join(projectRoot, 'infrastructure/images/OpenRouterImageClient.ts');
+        const filePath = path.join(projectRoot, 'infrastructure/images/MultiModelImageClient.ts');
         const content = fs.readFileSync(filePath, 'utf-8');
         expect(content).toContain('Aspect Ratio: 9:16 Vertical Portrait');
     });

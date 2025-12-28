@@ -1,5 +1,5 @@
 import { IImageClient } from '../../domain/ports/IImageClient';
-import { CloudinaryStorageClient } from '../../infrastructure/storage/CloudinaryStorageClient';
+import { MediaStorageClient } from '../../infrastructure/storage/MediaStorageClient';
 import { Segment } from '../../domain/entities/Segment';
 import { JobManager } from '../JobManager';
 
@@ -11,7 +11,7 @@ export class ImageGenerationService {
     constructor(
         private readonly primaryClient: IImageClient,
         private readonly fallbackClient: IImageClient,
-        private readonly storageClient?: CloudinaryStorageClient,
+        private readonly storageClient?: MediaStorageClient,
         private readonly jobManager?: JobManager
     ) { }
 

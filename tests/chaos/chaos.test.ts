@@ -19,9 +19,9 @@ describe('Chaos Tests - API Failure Scenarios', () => {
     });
 
     describe('API Timeout Handling', () => {
-        it('should timeout gracefully when OpenAI takes too long', async () => {
-            const { OpenAILLMClient } = require('../../src/infrastructure/llm/OpenAILLMClient');
-            const client = new OpenAILLMClient('test-key', 'gpt-4o', 'https://api.openai.com');
+        it('should timeout gracefully when Gpt takes too long', async () => {
+            const { GptLlmClient } = require('../../src/infrastructure/llm/GptLlmClient');
+            const client = new GptLlmClient('test-key', 'gpt-4o', 'https://api.openai.com');
 
             // Use fake timers to control the timeout
             jest.useFakeTimers();
@@ -54,8 +54,8 @@ describe('Chaos Tests - API Failure Scenarios', () => {
 
     describe('Malformed Response Handling', () => {
         it('should handle LLM returning HTML instead of JSON', async () => {
-            const { OpenAILLMClient } = require('../../src/infrastructure/llm/OpenAILLMClient');
-            const client = new OpenAILLMClient('test-key', 'gpt-4o', 'https://api.openai.com');
+            const { GptLlmClient } = require('../../src/infrastructure/llm/GptLlmClient');
+            const client = new GptLlmClient('test-key', 'gpt-4o', 'https://api.openai.com');
 
             nock('https://api.openai.com')
                 .post('/v1/chat/completions')
@@ -72,8 +72,8 @@ describe('Chaos Tests - API Failure Scenarios', () => {
         });
 
         it('should handle LLM returning empty response', async () => {
-            const { OpenAILLMClient } = require('../../src/infrastructure/llm/OpenAILLMClient');
-            const client = new OpenAILLMClient('test-key', 'gpt-4o', 'https://api.openai.com');
+            const { GptLlmClient } = require('../../src/infrastructure/llm/GptLlmClient');
+            const client = new GptLlmClient('test-key', 'gpt-4o', 'https://api.openai.com');
 
             nock('https://api.openai.com')
                 .post('/v1/chat/completions')
@@ -88,8 +88,8 @@ describe('Chaos Tests - API Failure Scenarios', () => {
         });
 
         it('should handle LLM returning truncated JSON', async () => {
-            const { OpenAILLMClient } = require('../../src/infrastructure/llm/OpenAILLMClient');
-            const client = new OpenAILLMClient('test-key', 'gpt-4o', 'https://api.openai.com');
+            const { GptLlmClient } = require('../../src/infrastructure/llm/GptLlmClient');
+            const client = new GptLlmClient('test-key', 'gpt-4o', 'https://api.openai.com');
 
             nock('https://api.openai.com')
                 .post('/v1/chat/completions')
@@ -105,9 +105,9 @@ describe('Chaos Tests - API Failure Scenarios', () => {
     });
 
     describe('Rate Limit Handling', () => {
-        it('should throw on 429 from OpenAI', async () => {
-            const { OpenAILLMClient } = require('../../src/infrastructure/llm/OpenAILLMClient');
-            const client = new OpenAILLMClient('test-key', 'gpt-4o', 'https://api.openai.com');
+        it('should throw on 429 from Gpt', async () => {
+            const { GptLlmClient } = require('../../src/infrastructure/llm/GptLlmClient');
+            const client = new GptLlmClient('test-key', 'gpt-4o', 'https://api.openai.com');
 
             nock('https://api.openai.com')
                 .post('/v1/chat/completions')
@@ -115,11 +115,11 @@ describe('Chaos Tests - API Failure Scenarios', () => {
                 .reply(429, { error: { message: 'Rate limit exceeded' } });
 
             // Mock sleep to be instant
-            const { OpenAIService } = require('../../src/infrastructure/llm/OpenAIService');
-            jest.spyOn(OpenAIService.prototype as any, 'sleep').mockResolvedValue(undefined);
+            const { GptService } = require('../../src/infrastructure/llm/GptService');
+            jest.spyOn(GptService.prototype as any, 'sleep').mockResolvedValue(undefined);
 
             await expect(client.planReel('test', { minDurationSeconds: 10, maxDurationSeconds: 15 }))
-                .rejects.toThrow(/OpenAI call failed: Rate limit exceeded/);
+                .rejects.toThrow(/LLM call failed: Rate limit exceeded/);
 
             jest.restoreAllMocks();
         });
@@ -127,22 +127,22 @@ describe('Chaos Tests - API Failure Scenarios', () => {
 
     describe('Invalid Credentials', () => {
         it('should throw clear error on 401 Unauthorized', async () => {
-            const { OpenAILLMClient } = require('../../src/infrastructure/llm/OpenAILLMClient');
-            const client = new OpenAILLMClient('invalid-key', 'gpt-4o', 'https://api.openai.com');
+            const { GptLlmClient } = require('../../src/infrastructure/llm/GptLlmClient');
+            const client = new GptLlmClient('invalid-key', 'gpt-4o', 'https://api.openai.com');
 
             nock('https://api.openai.com')
                 .post('/v1/chat/completions')
                 .reply(401, { error: { message: 'Invalid API key' } });
 
             await expect(client.planReel('test', { minDurationSeconds: 10, maxDurationSeconds: 15 }))
-                .rejects.toThrow('OpenAI call failed: Invalid API key');
+                .rejects.toThrow('LLM call failed: Invalid API key');
         });
     });
 
     describe('Content Policy Violations', () => {
         it('should throw clear error when content is rejected', async () => {
-            const { OpenAIImageClient } = require('../../src/infrastructure/images/OpenAIImageClient');
-            const client = new OpenAIImageClient('test-key', 'https://api.openai.com');
+            const { DalleImageClient } = require('../../src/infrastructure/images/DalleImageClient');
+            const client = new DalleImageClient('test-key', 'https://api.openai.com');
 
             nock('https://api.openai.com')
                 .post('/v1/images/generations')
@@ -163,8 +163,8 @@ describe('Chaos Tests - API Failure Scenarios', () => {
 describe('Chaos Tests - Data Edge Cases', () => {
     describe('Extreme Input Values', () => {
         it('should handle very long text in TTS', async () => {
-            const { FishAudioTTSClient } = require('../../src/infrastructure/tts/FishAudioTTSClient');
-            const client = new FishAudioTTSClient('test-key', 'test-voice', 'https://api.fish.audio');
+            const { CloningTtsClient } = require('../../src/infrastructure/tts/CloningTtsClient');
+            const client = new CloningTtsClient('test-key', 'test-voice', 'https://api.fish.audio');
 
             const veryLongText = 'word '.repeat(50); // Shorter for test speed
 
@@ -179,8 +179,8 @@ describe('Chaos Tests - Data Edge Cases', () => {
         });
 
         it('should handle Unicode characters in prompts', async () => {
-            const { OpenAIImageClient } = require('../../src/infrastructure/images/OpenAIImageClient');
-            const client = new OpenAIImageClient('test-key', 'https://api.openai.com');
+            const { DalleImageClient } = require('../../src/infrastructure/images/DalleImageClient');
+            const client = new DalleImageClient('test-key', 'https://api.openai.com');
 
             nock('https://api.openai.com')
                 .post('/v1/images/generations')

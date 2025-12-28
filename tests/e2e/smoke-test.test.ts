@@ -1,12 +1,12 @@
 import { ReelOrchestrator, OrchestratorDependencies } from '../../src/application/ReelOrchestrator';
 import { JobManager } from '../../src/application/JobManager';
-import { OpenAITranscriptionClient } from '../../src/infrastructure/transcription/OpenAITranscriptionClient';
-import { OpenAILLMClient } from '../../src/infrastructure/llm/OpenAILLMClient';
-import { FishAudioTTSClient } from '../../src/infrastructure/tts/FishAudioTTSClient';
-import { OpenRouterImageClient } from '../../src/infrastructure/images/OpenRouterImageClient';
-import { OpenAIImageClient } from '../../src/infrastructure/images/OpenAIImageClient';
-import { OpenAISubtitlesClient } from '../../src/infrastructure/subtitles/OpenAISubtitlesClient';
-import { ShortstackVideoRenderer } from '../../src/infrastructure/video/ShortstackVideoRenderer';
+import { WhisperTranscriptionClient } from '../../src/infrastructure/transcription/WhisperTranscriptionClient';
+import { GptLlmClient } from '../../src/infrastructure/llm/GptLlmClient';
+import { CloningTtsClient } from '../../src/infrastructure/tts/CloningTtsClient';
+import { MultiModelImageClient } from '../../src/infrastructure/images/MultiModelImageClient';
+import { DalleImageClient } from '../../src/infrastructure/images/DalleImageClient';
+import { WhisperSubtitlesClient } from '../../src/infrastructure/subtitles/WhisperSubtitlesClient';
+import { TimelineVideoRenderer } from '../../src/infrastructure/video/TimelineVideoRenderer';
 import { InMemoryMusicCatalogClient } from '../../src/infrastructure/music/InMemoryMusicCatalogClient';
 import { MusicSelector } from '../../src/application/MusicSelector';
 import { getConfig } from '../../src/config';
@@ -14,7 +14,7 @@ import { getConfig } from '../../src/config';
 /**
  * SMOKE TEST - Uses REAL APIs
  * 
- * This test hits actual external services (OpenAI, Fish Audio, Shotstack)
+ * This test hits actual external services (Gpt, Voice Cloning, Timeline)
  * to validate end-to-end integration with real data.
  * 
  * Cost: ~$0.15 per run (10s video)
@@ -37,61 +37,61 @@ describe('Smoke Test - Real API Integration', () => {
             const config = getConfig();
 
             // Validate required keys are present
-            if (!config.openaiApiKey) {
+            if (!config.llmApiKey) {
                 throw new Error('OPENAI_API_KEY required for smoke tests');
             }
-            if (!config.fishAudioApiKey) {
+            if (!config.ttsCloningApiKey) {
                 throw new Error('FISH_AUDIO_API_KEY required for smoke tests');
             }
-            if (!config.shotstackApiKey) {
+            if (!config.timelineApiKey) {
                 throw new Error('SHOTSTACK_API_KEY required for smoke tests');
             }
 
             // Initialize real clients
             jobManager = new JobManager(10, 15); // Force short duration (10-15s)
 
-            const transcriptionClient = new OpenAITranscriptionClient(
-                config.openaiApiKey,
+            const transcriptionClient = new WhisperTranscriptionClient(
+                config.llmApiKey,
                 'https://api.openai.com'
             );
-            const llmClient = new OpenAILLMClient(
-                config.openaiApiKey,
-                config.openaiModel,
+            const llmClient = new GptLlmClient(
+                config.llmApiKey,
+                config.llmModel,
                 'https://api.openai.com'
             );
-            const ttsClient = new FishAudioTTSClient(
-                config.fishAudioApiKey,
-                config.fishAudioVoiceId,
-                config.fishAudioBaseUrl
+            const ttsClient = new CloningTtsClient(
+                config.ttsCloningApiKey,
+                config.ttsCloningVoiceId,
+                config.ttsCloningBaseUrl
             );
 
-            // Image clients - use real OpenRouter as primary, DALL-E as fallback
-            const primaryImageClient = config.openrouterApiKey
-                ? new OpenRouterImageClient(
-                    config.openrouterApiKey,
+            // Image clients - use real MultiModel as primary, ImageGen as fallback
+            const primaryImageClient = config.multiModelImageApiKey
+                ? new MultiModelImageClient(
+                    config.multiModelImageApiKey,
                     config.openrouterModel,
                     config.openrouterBaseUrl
                 )
                 : undefined;
 
-            const fallbackImageClient = new OpenAIImageClient(
-                config.openaiApiKey,
+            const fallbackImageClient = new DalleImageClient(
+                config.llmApiKey,
                 'https://api.openai.com'
             );
 
-            const subtitlesClient = new OpenAISubtitlesClient(
-                config.openaiApiKey,
+            const subtitlesClient = new WhisperSubtitlesClient(
+                config.llmApiKey,
                 config.cloudinaryCloudName && config.cloudinaryApiKey
-                    ? new (await import('../../src/infrastructure/storage/CloudinaryStorageClient')).CloudinaryStorageClient(
+                    ? new (await import('../../src/infrastructure/storage/MediaStorageClient')).MediaStorageClient(
                         config.cloudinaryCloudName,
                         config.cloudinaryApiKey,
                         config.cloudinaryApiSecret
                     )
-                    : null as any, // Smoke test requires Cloudinary for subtitles
+                    : null as any, // Smoke test requires Media for subtitles
                 'https://api.openai.com'
             );
-            const videoRenderer = new ShortstackVideoRenderer(
-                config.shotstackApiKey,
+            const videoRenderer = new TimelineVideoRenderer(
+                config.timelineApiKey,
                 config.shotstackBaseUrl
             );
 

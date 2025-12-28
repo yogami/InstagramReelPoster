@@ -1,12 +1,12 @@
 import { IHookAndStructureService } from '../domain/ports/IHookAndStructureService';
 import { HookPlan, HookStyle } from '../domain/entities/Growth';
-import { ILLMClient, ReelPlan } from '../domain/ports/ILLMClient';
+import { ILlmClient, ReelPlan } from '../domain/ports/ILlmClient';
 
 /**
  * Service for optimizing reel hooks and structure for retention and discovery.
  */
 export class HookAndStructureService implements IHookAndStructureService {
-    constructor(private readonly llmClient: ILLMClient) { }
+    constructor(private readonly llmClient: ILlmClient) { }
 
     /**
      * Optimizes the reel structure and generates hooks.

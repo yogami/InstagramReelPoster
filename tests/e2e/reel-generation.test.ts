@@ -1,12 +1,12 @@
 import nock from 'nock';
 import { ReelOrchestrator, OrchestratorDependencies } from '../../src/application/ReelOrchestrator';
 import { JobManager } from '../../src/application/JobManager';
-import { OpenAITranscriptionClient } from '../../src/infrastructure/transcription/OpenAITranscriptionClient';
-import { OpenAILLMClient } from '../../src/infrastructure/llm/OpenAILLMClient';
-import { FishAudioTTSClient } from '../../src/infrastructure/tts/FishAudioTTSClient';
-import { OpenAIImageClient } from '../../src/infrastructure/images/OpenAIImageClient';
-import { OpenAISubtitlesClient } from '../../src/infrastructure/subtitles/OpenAISubtitlesClient';
-import { ShortstackVideoRenderer } from '../../src/infrastructure/video/ShortstackVideoRenderer';
+import { WhisperTranscriptionClient } from '../../src/infrastructure/transcription/WhisperTranscriptionClient';
+import { GptLlmClient } from '../../src/infrastructure/llm/GptLlmClient';
+import { CloningTtsClient } from '../../src/infrastructure/tts/CloningTtsClient';
+import { DalleImageClient } from '../../src/infrastructure/images/DalleImageClient';
+import { WhisperSubtitlesClient } from '../../src/infrastructure/subtitles/WhisperSubtitlesClient';
+import { TimelineVideoRenderer } from '../../src/infrastructure/video/TimelineVideoRenderer';
 import { InMemoryMusicCatalogClient } from '../../src/infrastructure/music/InMemoryMusicCatalogClient';
 import { MusicSelector } from '../../src/application/MusicSelector';
 import fs from 'fs';
@@ -36,7 +36,7 @@ describe('ReelOrchestrator E2E', () => {
             .reply(200, loadFixture('openai-transcription.json').text)
             .persist();
 
-        // Mock OpenAI LLM Plan request
+        // Mock Gpt LLM Plan request
         nock('https://api.openai.com')
             .post('/v1/chat/completions', body => /plan.*reel/i.test(body.messages[1].content))
             .reply(200, {
@@ -48,7 +48,7 @@ describe('ReelOrchestrator E2E', () => {
             })
             .persist();
 
-        // Mock OpenAI LLM Commentary request (Iterative: 3 calls)
+        // Mock Gpt LLM Commentary request (Iterative: 3 calls)
         const segmentsFixture = loadFixture('openai-segment-content.json');
         nock('https://api.openai.com')
             .post('/v1/chat/completions', body => /spoken commentary for SEGMENT/i.test(body.messages[1].content))
@@ -66,7 +66,7 @@ describe('ReelOrchestrator E2E', () => {
             })
             .persist();
 
-        // Mock OpenAI LLM Visuals request (1 call)
+        // Mock Gpt LLM Visuals request (1 call)
         nock('https://api.openai.com')
             .post('/v1/chat/completions', body => /visual prompts for an Instagram Reel/i.test(body.messages[1].content))
             .reply(200, {
@@ -82,7 +82,7 @@ describe('ReelOrchestrator E2E', () => {
             })
             .persist();
 
-        // Mock OpenAI LLM Adjust Commentary request
+        // Mock Gpt LLM Adjust Commentary request
         nock('https://api.openai.com')
             .post('/v1/chat/completions', body => /adjust.*commentaries/i.test(body.messages[1].content))
             .reply(200, {
@@ -103,18 +103,18 @@ describe('ReelOrchestrator E2E', () => {
 
         // 2. Setup Deps
         jobManager = new JobManager(10, 90);
-        const transcriptionClient = new OpenAITranscriptionClient('test-key', 'https://api.openai.com');
-        const llmClient = new OpenAILLMClient('test-key', 'gpt-4o', 'https://api.openai.com');
-        const ttsClient = new FishAudioTTSClient('test-key', 'test-voice-id', 'https://api.fish.audio');
-        const fallbackImageClient = new OpenAIImageClient('test-key', 'https://api.openai.com');
+        const transcriptionClient = new WhisperTranscriptionClient('test-key', 'https://api.openai.com');
+        const llmClient = new GptLlmClient('test-key', 'gpt-4o', 'https://api.openai.com');
+        const ttsClient = new CloningTtsClient('test-key', 'test-voice-id', 'https://api.fish.audio');
+        const fallbackImageClient = new DalleImageClient('test-key', 'https://api.openai.com');
 
         const mockStorageClient = {
             uploadRawContent: jest.fn().mockResolvedValue({ url: 'https://mock-storage.example.com/subtitles.srt' }),
             uploadImage: jest.fn().mockResolvedValue({ url: 'https://mock-storage.example.com/final-image.jpg' }),
         } as any;
 
-        const subtitlesClient = new OpenAISubtitlesClient('test-key', mockStorageClient, 'https://api.openai.com');
-        const videoRenderer = new ShortstackVideoRenderer('test-key', 'https://api.shotstack.io/stage');
+        const subtitlesClient = new WhisperSubtitlesClient('test-key', mockStorageClient, 'https://api.openai.com');
+        const videoRenderer = new TimelineVideoRenderer('test-key', 'https://api.shotstack.io/stage');
         const musicCatalog = new InMemoryMusicCatalogClient(path.join(__dirname, '../fixtures/responses/music-track.json'));
         const musicSelector = new MusicSelector(musicCatalog, null, null);
 
@@ -144,11 +144,11 @@ describe('ReelOrchestrator E2E', () => {
         expect(result.finalVideoUrl).toBe('https://mock-storage.example.com/final-video.mp4');
     });
 
-    it('should fall back to DALL-E when OpenRouter fails with text response', async () => {
-        const { OpenRouterImageClient } = require('../../src/infrastructure/images/OpenRouterImageClient');
-        const primaryImageClient = new OpenRouterImageClient('test-key', 'google/gemini-2.5-flash', 'https://api.openrouter.ai/api/v1');
+    it('should fall back to ImageGen when MultiModel fails with text response', async () => {
+        const { MultiModelImageClient } = require('../../src/infrastructure/images/MultiModelImageClient');
+        const primaryImageClient = new MultiModelImageClient('test-key', 'google/gemini-2.5-flash', 'https://api.openrouter.ai/api/v1');
 
-        // Simulate OpenRouter returning text model response
+        // Simulate MultiModel returning text model response
         nock('https://api.openrouter.ai')
             .post('/v1/chat/completions')
             .reply(200, {

@@ -22,7 +22,7 @@ export interface ImageGenerationOptions {
 
 /**
  * IImageClient - Port for image generation services.
- * Implementations: OpenAIImageClient
+ * Implementations: DalleImageClient
  */
 export interface IImageClient {
     /**

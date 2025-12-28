@@ -5,7 +5,7 @@
  * If user doesn't respond within timeout, auto-approves.
  */
 
-import { TelegramService } from '../presentation/services/TelegramService';
+import { ChatService } from '../presentation/services/ChatService';
 
 export type ApprovalCheckpoint = 'script' | 'visuals';
 export type ApprovalStatus = 'pending' | 'approved' | 'rejected' | 'timeout';
@@ -37,9 +37,9 @@ export const CHECKPOINT_TIMEOUTS: Record<ApprovalCheckpoint, number> = {
 
 export class ApprovalService {
     private pendingApprovals: Map<string, ApprovalRequest> = new Map();
-    private telegramService: TelegramService | null;
+    private telegramService: ChatService | null;
 
-    constructor(telegramService: TelegramService | null) {
+    constructor(telegramService: ChatService | null) {
         this.telegramService = telegramService;
     }
 

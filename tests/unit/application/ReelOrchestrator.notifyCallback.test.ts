@@ -39,7 +39,7 @@ describe('ReelOrchestrator.notifyCallback', () => {
             transcriptionClient: { transcribe: jest.fn() },
             llmClient: { planReel: jest.fn(), generateSegmentContent: jest.fn() },
             ttsClient: { synthesize: jest.fn() },
-            fallbackTTSClient: { synthesize: jest.fn() },
+            fallbackTtsClient: { synthesize: jest.fn() },
             primaryImageClient: { generateImage: jest.fn() },
             fallbackImageClient: { generateImage: jest.fn() },
             subtitlesClient: { generateSubtitles: jest.fn() },

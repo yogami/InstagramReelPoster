@@ -1,8 +1,8 @@
 import { CaptionService } from '../../../src/application/CaptionService';
-import { ILLMClient } from '../../../src/domain/ports/ILLMClient';
+import { ILlmClient } from '../../../src/domain/ports/ILlmClient';
 
 describe('CaptionService', () => {
-    let llmClient: jest.Mocked<ILLMClient>;
+    let llmClient: jest.Mocked<ILlmClient>;
     let service: CaptionService;
 
     beforeEach(() => {

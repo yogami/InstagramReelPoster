@@ -1,1 +1,1 @@
-export * from './OpenAISubtitlesClient';
+export * from './WhisperSubtitlesClient';
