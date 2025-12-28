@@ -136,10 +136,19 @@ def generate_video(
             "height": height,
         }
         
-    finally:
-        # Cleanup
-        import shutil
-        shutil.rmtree(output_dir, ignore_errors=True)
+@endpoint(
+    name="hunyuan-video-prewarm",
+    image=image,
+    cpu=4,
+    memory="16Gi",
+    timeout=3600,
+    volumes=[model_volume],
+)
+def prewarm():
+    """Pre-download models to volume."""
+    print("[HunyuanVideo] Starting prewarm download...")
+    download_models()
+    return {"status": "ready"}
 
 
 def download_models():
@@ -147,11 +156,12 @@ def download_models():
     os.makedirs("/models/ckpts", exist_ok=True)
     
     # Use huggingface-cli to download models
+    # Increased timeout to 1 hour as weights are ~30GB
     subprocess.run([
         "huggingface-cli", "download",
         "tencent/HunyuanVideo",
         "--local-dir", "/models/ckpts",
-    ], check=True, timeout=600)
+    ], check=True, timeout=3600)
     
     print("[HunyuanVideo] Models downloaded successfully")
 
