@@ -143,14 +143,11 @@ describe('ReelOrchestrator - Animated Video Flow', () => {
             isAnimatedVideoMode: true
         }));
 
-        // Verify image generation was SKIPPED
-        expect(mockDeps.primaryImageClient.generateImage).not.toHaveBeenCalled();
+        // Verify image generation was CALLED (Turbo Mode for DM reels)
+        expect(mockDeps.primaryImageClient.generateImage).toHaveBeenCalled();
 
-        // Verify animatedVideoClient was CALLED (multiple times for multi-clip)
-        // For 45s voiceover with 10s max clips = 5 clips
-        expect(mockDeps.animatedVideoClient.generateAnimatedVideo).toHaveBeenCalled();
-        const callCount = (mockDeps.animatedVideoClient.generateAnimatedVideo as jest.Mock).mock.calls.length;
-        expect(callCount).toBeGreaterThanOrEqual(1);
+        // Verify animatedVideoClient was NOT called (DM mode uses Turbo images)
+        expect(mockDeps.animatedVideoClient.generateAnimatedVideo).not.toHaveBeenCalled();
 
         // Verify storage upload was attempted for each clip
         expect(mockDeps.storageClient.uploadVideo).toHaveBeenCalled();

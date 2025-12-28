@@ -12,10 +12,8 @@ export class ImageStep implements PipelineStep {
     ) { }
 
     shouldSkip(context: JobContext): boolean {
-        // Skip if animated video mode AND not parable (parables use images for video)
-        const isParable = context.contentMode === 'parable';
-        const isAnimated = (context.isAnimatedMode || false) && !isParable;
-        return isAnimated;
+        // Skip if animated video mode. The AnimatedVideoStep will handle either Video (Hunyuan) or Turbo (Flux Images).
+        return context.isAnimatedMode || false;
     }
 
     async execute(context: JobContext): Promise<JobContext> {

@@ -105,8 +105,20 @@ def render_video(
         
         if animated_video_urls:
             for i, url in enumerate(animated_video_urls):
-                try: video_paths.append(download_file(url, f"{job_dir}/video_{i}.mp4"))
-                except: video_paths.append(black_img)
+                try: 
+                    clean_url = url.replace("turbo:", "")
+                    is_turbo = "turbo:" in url
+                    suffix = ".png" if is_turbo else ".mp4"
+                    path = download_file(clean_url, f"{job_dir}/video_{i}{suffix}")
+                    
+                    if is_turbo:
+                        # Add to image_paths for Ken Burns motion
+                        # Estimate duration or get from somewhere? For now use 10s blocks
+                        image_paths.append({'path': path, 'start': i*10, 'end': (i+1)*10})
+                    else:
+                        video_paths.append(path)
+                except: 
+                    video_paths.append(black_img)
         elif animated_video_url:
              try: video_paths.append(download_file(animated_video_url, f"{job_dir}/source_video.mp4"))
              except: pass

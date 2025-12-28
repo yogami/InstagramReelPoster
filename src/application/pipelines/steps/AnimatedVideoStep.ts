@@ -29,13 +29,12 @@ export class AnimatedVideoStep implements PipelineStep {
         // Let's refine based on context
         const { isAnimatedMode, contentMode, parableScriptPlan } = context;
         const isParable = contentMode === 'parable';
-
-        // Standard Animated
-        if (isAnimatedMode && !isParable) return false;
-
-        // Parable Animated (Multi-clip)
-        // We cast parableScriptPlan to known type or check properties
         const plan = parableScriptPlan as any;
+
+        // Run if explicitly animated
+        if (isAnimatedMode) return false;
+
+        // Run if parable and has beats (which require video generation)
         if (isParable && plan && plan.beats && plan.beats.length > 0) return false;
 
         return true;
@@ -118,10 +117,9 @@ export class AnimatedVideoStep implements PipelineStep {
             // Generate a high-quality Flux image instead of a heavy Video clip
             const imageUrl = await this.imageService.generateImage(options.theme, options.mood);
 
-            // To notify the renderer that this is an image that needs "Ken Burns" motion,
-            // we wrap it in a pseudo-URL or metadata structure.
-            // For now, we return the URL and let FFmpeg handle the "image to video" expansion if detected.
-            return imageUrl;
+            // To notify the renderer that this is an image that needs "Ken Burns" motion.
+            // We use a "turbo:" prefix that the Beam renderer will strip but use for logic.
+            return `turbo:${imageUrl}`;
         } catch (err) {
             console.error(`[AnimatedVideo] Turbo generation failed, falling back to Mock:`, err);
             return 'https://res.cloudinary.com/djol0rpn5/video/upload/v1734612999/samples/elephants.mp4';
