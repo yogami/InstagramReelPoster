@@ -34,95 +34,128 @@ export class MusicSelector {
 
     /**
      * Selects music using the fallback chain.
+     * Decomposed into helper methods for complexity ≤3.
      */
     async selectMusic(
         tags: string[],
         targetDurationSeconds: number,
         musicPrompt: string
     ): Promise<MusicSelectionResult | null> {
-        const query: MusicSearchQuery = {
+        const query = this.buildQuery(tags, targetDurationSeconds);
+
+        const result = await this.tryExternalCatalog(query, targetDurationSeconds)
+            ?? await this.tryInternalCatalog(query, targetDurationSeconds)
+            ?? await this.tryAIGeneration(musicPrompt, targetDurationSeconds);
+
+        if (!result) {
+            console.warn('No background music available. Video will be rendered without music.');
+        }
+        return result;
+    }
+
+    private buildQuery(tags: string[], targetDurationSeconds: number): MusicSearchQuery {
+        return {
             tags,
             minDurationSeconds: targetDurationSeconds * 0.7,
             maxDurationSeconds: targetDurationSeconds * 1.5,
             limit: 10,
         };
+    }
 
-        // 1. Try external catalog first (if configured)
-        if (this.externalCatalog) {
-            try {
-                const track = await this.findBestTrack(this.externalCatalog, query, targetDurationSeconds);
-                if (track) {
-                    return { track, source: 'catalog' };
-                }
-            } catch (error) {
-                console.warn('External catalog search failed:', error);
-            }
-        }
+    private async tryExternalCatalog(
+        query: MusicSearchQuery,
+        targetDuration: number
+    ): Promise<MusicSelectionResult | null> {
+        if (!this.externalCatalog) return null;
 
-        // 2. Try internal catalog (Multi-pass relaxation)
         try {
-            // Pass A: Best match (tags + duration)
-            let track = await this.findBestTrack(this.internalCatalog, query, targetDurationSeconds);
+            const track = await this.findBestTrack(this.externalCatalog, query, targetDuration);
+            return track ? { track, source: 'catalog' } : null;
+        } catch (error) {
+            console.warn('External catalog search failed:', error);
+            return null;
+        }
+    }
 
-            // Pass B: Tags match, any duration
-            if (!track && query.tags && query.tags.length > 0) {
-                console.log('No tracks matched both tags and duration, trying tags-only match');
-                const tagsOnlyQuery: MusicSearchQuery = { ...query, minDurationSeconds: undefined, maxDurationSeconds: undefined };
-                track = await this.findBestTrack(this.internalCatalog, tagsOnlyQuery, targetDurationSeconds);
-            }
-
-            // Pass C: Duration match only
-            if (!track && query.tags && query.tags.length > 0) {
-                console.log('No tracks matched with tags, trying duration-only match in internal catalog');
-                const durationOnlyQuery: MusicSearchQuery = { ...query, tags: [] };
-                track = await this.findBestTrack(this.internalCatalog, durationOnlyQuery, targetDurationSeconds);
-            }
-
-            // Pass D: Pick ANY track from catalog regardless of anything
-            if (!track) {
-                console.log('Relaxing all constraints, picking any track from internal catalog');
-                const anyTrackQuery: MusicSearchQuery = { limit: 1, tags: [] };
-                const tracks = await this.internalCatalog.searchTracks(anyTrackQuery);
-                if (tracks.length > 0) {
-                    track = tracks[0];
-                }
-            }
-
-            if (track) {
-                return { track, source: 'internal' };
-            }
+    private async tryInternalCatalog(
+        query: MusicSearchQuery,
+        targetDuration: number
+    ): Promise<MusicSelectionResult | null> {
+        try {
+            const track = await this.findInternalTrackWithRelaxation(query, targetDuration);
+            return track ? { track, source: 'internal' } : null;
         } catch (error) {
             console.warn('Internal catalog fallback chain failed:', error);
+            return null;
+        }
+    }
+
+    private async findInternalTrackWithRelaxation(
+        query: MusicSearchQuery,
+        targetDuration: number
+    ): Promise<Track | null> {
+        // Pass A: Best match (tags + duration)
+        let track = await this.findBestTrack(this.internalCatalog, query, targetDuration);
+        if (track) return track;
+
+        // Pass B: Tags match, any duration
+        if (query.tags?.length) {
+            console.log('No tracks matched both tags and duration, trying tags-only match');
+            track = await this.findBestTrack(
+                this.internalCatalog,
+                { ...query, minDurationSeconds: undefined, maxDurationSeconds: undefined },
+                targetDuration
+            );
+            if (track) return track;
         }
 
-        // 3. Fall back to AI generation
-        if (this.musicGenerator) {
-            try {
-                const request: MusicGenerationRequest = {
-                    descriptionPrompt: musicPrompt,
-                    durationSeconds: targetDurationSeconds,
-                    instrumental: true,
-                };
-                const track = await this.musicGenerator.generateMusic(request);
-                return { track, source: 'ai' };
-            } catch (error) {
-                console.error('AI music generation failed:', error);
+        // Pass C: Duration match only
+        if (query.tags?.length) {
+            console.log('No tracks matched with tags, trying duration-only match');
+            track = await this.findBestTrack(
+                this.internalCatalog,
+                { ...query, tags: [] },
+                targetDuration
+            );
+            if (track) return track;
+        }
 
-                // Catalog Safety Net (Absolute last resort before hardcoded)
-                try {
-                    const allTracks = await this.internalCatalog.searchTracks({ limit: 1, tags: [] });
-                    if (allTracks.length > 0) {
-                        console.log('Using last resort track from catalog after AI failure');
-                        return { track: allTracks[0], source: 'internal' };
-                    }
-                } catch (e) {
-                    // Ignore
-                }
+        // Pass D: Any track
+        console.log('Relaxing all constraints, picking any track from internal catalog');
+        const tracks = await this.internalCatalog.searchTracks({ limit: 1, tags: [] });
+        return tracks[0] ?? null;
+    }
+
+    private async tryAIGeneration(
+        musicPrompt: string,
+        targetDuration: number
+    ): Promise<MusicSelectionResult | null> {
+        if (!this.musicGenerator) return null;
+
+        try {
+            const request: MusicGenerationRequest = {
+                descriptionPrompt: musicPrompt,
+                durationSeconds: targetDuration,
+                instrumental: true,
+            };
+            const track = await this.musicGenerator.generateMusic(request);
+            return { track, source: 'ai' };
+        } catch (error) {
+            console.error('AI music generation failed:', error);
+            return this.tryLastResortCatalog();
+        }
+    }
+
+    private async tryLastResortCatalog(): Promise<MusicSelectionResult | null> {
+        try {
+            const tracks = await this.internalCatalog.searchTracks({ limit: 1, tags: [] });
+            if (tracks.length > 0) {
+                console.log('Using last resort track from catalog after AI failure');
+                return { track: tracks[0], source: 'internal' };
             }
+        } catch {
+            // Ignore
         }
-
-        // 4. No music available - return null (music is optional)
-        console.warn('No background music available. Video will be rendered without music.');
         return null;
     }
 

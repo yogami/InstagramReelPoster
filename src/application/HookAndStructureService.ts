@@ -79,35 +79,42 @@ export class HookAndStructureService implements IHookAndStructureService {
 
     /**
      * Classifies the hook style based on linguistic patterns.
+     * Uses data-driven pattern matching for complexity ≤3.
      */
     private classifyHookStyle(hook: string): HookStyle {
         const lowerHook = hook.toLowerCase();
+        return this.matchHookPattern(hook, lowerHook);
+    }
 
-        // Question pattern
-        if (hook.includes('?') || lowerHook.startsWith('why') || lowerHook.startsWith('what') ||
-            lowerHook.startsWith('how') || lowerHook.startsWith('when') || lowerHook.startsWith('do you')) {
-            return 'question';
-        }
+    private matchHookPattern(hook: string, lowerHook: string): HookStyle {
+        const patterns: Array<{ style: HookStyle; matcher: () => boolean }> = [
+            { style: 'question', matcher: () => this.isQuestion(hook, lowerHook) },
+            { style: 'call-out', matcher: () => this.isCallOut(lowerHook) },
+            { style: 'paradox', matcher: () => this.isParadox(lowerHook) },
+            { style: 'shocking-fact', matcher: () => this.isShockingFact(hook, lowerHook) },
+        ];
 
-        // Call-out pattern (addressing "you" directly)
-        if (lowerHook.startsWith('you') || lowerHook.includes('your ') || lowerHook.startsWith('stop ') ||
-            lowerHook.startsWith('listen')) {
-            return 'call-out';
-        }
+        const match = patterns.find(p => p.matcher());
+        return match?.style ?? 'statement';
+    }
 
-        // Paradox pattern (contradictions, "but" in first line)
-        if (lowerHook.includes(' but ') || lowerHook.includes('actually') ||
-            lowerHook.includes('the opposite') || lowerHook.includes('wrong')) {
-            return 'paradox';
-        }
+    private isQuestion(hook: string, lowerHook: string): boolean {
+        const questionStarters = ['why', 'what', 'how', 'when', 'do you'];
+        return hook.includes('?') || questionStarters.some(s => lowerHook.startsWith(s));
+    }
 
-        // Shocking fact pattern (numbers, percentages, absolutes)
-        if (/\d+%/.test(hook) || /^\d/.test(hook) || lowerHook.includes('never') ||
-            lowerHook.includes('always') || lowerHook.includes('every')) {
-            return 'shocking-fact';
-        }
+    private isCallOut(lowerHook: string): boolean {
+        const callOutStarters = ['you', 'stop ', 'listen'];
+        return callOutStarters.some(s => lowerHook.startsWith(s)) || lowerHook.includes('your ');
+    }
 
-        // Default to statement
-        return 'statement';
+    private isParadox(lowerHook: string): boolean {
+        const paradoxMarkers = [' but ', 'actually', 'the opposite', 'wrong'];
+        return paradoxMarkers.some(m => lowerHook.includes(m));
+    }
+
+    private isShockingFact(hook: string, lowerHook: string): boolean {
+        const absoluteWords = ['never', 'always', 'every'];
+        return /\d+%/.test(hook) || /^\d/.test(hook) || absoluteWords.some(w => lowerHook.includes(w));
     }
 }
