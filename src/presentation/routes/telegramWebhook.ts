@@ -246,7 +246,7 @@ async function processUpdate(
                 await telegramService.sendMessage(chatId, '📝 *Generating LinkedIn draft...*\n\nAnalyzing your thoughts...');
 
                 const config = getConfig();
-                const linkedInService = new GptLinkedInDraftService(config.openaiApiKey, config.openaiModel);
+                const linkedInService = new GptLinkedInDraftService(config.llmApiKey, config.llmModel);
                 const draftContent = await linkedInService.generateDraftContent(rawNote);
 
                 // Create full draft entity

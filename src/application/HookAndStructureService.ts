@@ -1,6 +1,6 @@
 import { IHookAndStructureService } from '../domain/ports/IHookAndStructureService';
 import { HookPlan, HookStyle } from '../domain/entities/Growth';
-import { ILlmClient, ReelPlan } from '../domain/ports/ILlmClient';
+import { ILlmClient, ReelPlan, SegmentContent } from '../domain/ports/ILlmClient';
 
 /**
  * Service for optimizing reel hooks and structure for retention and discovery.

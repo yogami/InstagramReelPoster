@@ -32,7 +32,12 @@ import { getPromptTemplate, getMusicStyle, detectCategoryFromKeywords } from '..
 import { SemanticAnalyzer } from '../infrastructure/analysis/SemanticAnalyzer';
 
 import { ITranscriptionClient } from '../domain/ports/ITranscriptionClient';
-import { ILlmClient, ReelPlan, SegmentContent } from '../domain/ports/ILlmClient';
+import {
+    ILlmClient,
+    ReelPlan,
+    SegmentContent,
+    PlanningConstraints,
+} from '../domain/ports/ILlmClient';
 import { ITtsClient } from '../domain/ports/ITtsClient';
 import { IImageClient } from '../domain/ports/IImageClient';
 import { ISubtitlesClient } from '../domain/ports/ISubtitlesClient';
@@ -393,10 +398,14 @@ export class ReelOrchestrator {
 
                     // Step 2b: Choose story source (if theme-only)
                     let sourceChoice = parableScriptPlan?.sourceChoice;
-                    if (!sourceChoice && parableIntent.sourceType === 'theme-only' && this.deps.llmClient.chooseParableSource) {
-                        sourceChoice = await this.deps.llmClient.chooseParableSource(parableIntent);
+                    if (!sourceChoice && parableIntent!.sourceType === 'theme-only' && this.deps.llmClient.chooseParableSource) {
+                        sourceChoice = await this.deps.llmClient.chooseParableSource(parableIntent!);
                         console.log(`[${jobId}] Parable source: culture="${sourceChoice.culture}", archetype="${sourceChoice.archetype}"`);
                     } else if (!sourceChoice) {
+                        // Ensure parableIntent is defined before accessing its properties
+                        if (!parableIntent) {
+                            throw new Error('Parable intent not defined for source choice fallback.');
+                        }
                         sourceChoice = {
                             culture: parableIntent.culturalPreference || 'generic-eastern',
                             archetype: 'sage',
@@ -407,8 +416,8 @@ export class ReelOrchestrator {
                     // Step 2c: Generate parable script
                     const targetDuration = Math.min(job.targetDurationRange.max, 40); // Parables target 25-40s
                     parableScriptPlan = await this.deps.llmClient.generateParableScript(
-                        parableIntent,
-                        sourceChoice,
+                        parableIntent!,
+                        sourceChoice!,
                         targetDuration
                     );
                     await this.deps.jobManager.updateJob(jobId, { parableScriptPlan });
@@ -424,12 +433,12 @@ export class ReelOrchestrator {
                     // Create a compatible plan object for downstream processing
                     plan = {
                         targetDurationSeconds: parableScriptPlan.beats.reduce((sum: number, b: ParableBeat) => sum + b.approxDurationSeconds, 0),
-                        segmentCount: parableScriptPlan.beats.length,
+                        segmentCount: parableScriptPlan!.beats.length,
                         musicTags: ['ambient', 'spiritual', 'meditative', 'eastern'],
-                        musicPrompt: `Ambient meditative music for a ${sourceChoice.culture} ${sourceChoice.archetype} story`,
+                        musicPrompt: `Ambient meditative music for a ${sourceChoice!.culture} ${sourceChoice!.archetype} story`,
                         mood: 'contemplative',
-                        summary: `A ${sourceChoice.archetype} story about ${parableIntent.coreTheme}`,
-                        mainCaption: parableIntent.moral
+                        summary: `A ${sourceChoice!.archetype} story about ${parableIntent!.coreTheme}`,
+                        mainCaption: parableIntent!.moral
                     };
 
                 } catch (err) {
@@ -536,14 +545,14 @@ export class ReelOrchestrator {
                 const isParablePreGenerated = contentMode === 'parable' && parableScriptPlan;
                 const isUserProvided = !!job.providedCommentary;
                 if (!isParablePreGenerated && !isUserProvided) {
-                    this.validateSegmentCount(segmentContent, plan.segmentCount, 'Initial Generation');
+                    this.validateSegmentCount(segmentContent!, plan.segmentCount, 'Initial Generation');
                 } else if (isUserProvided) {
                     console.log(`[${jobId}] Skipping segment validation for user-provided commentary`);
                 } else {
-                    console.log(`[${jobId}] Skipping segment validation for parable mode (${segmentContent.length} beats)`);
+                    console.log(`[${jobId}] Skipping segment validation for parable mode (${segmentContent!.length} beats)`);
                 }
 
-                segmentContent = await this.adjustCommentaryIfNeeded(plan, segmentContent);
+                segmentContent = await this.adjustCommentaryIfNeeded(plan, segmentContent!);
 
                 // VALIDATION: Ensure the adjustment step didn't truncate segments either.
                 // Skip for parable mode and user-provided commentary as well
@@ -1442,7 +1451,7 @@ export class ReelOrchestrator {
 
         // Prepare all assets (voiceover, music, images)
         const config = getConfig();
-        const promoVoiceId = job.voiceId || config.fishAudioPromoVoiceId;
+        const promoVoiceId = job.voiceId || config.ttsCloningPromoVoiceId || config.ttsCloningVoiceId;
         const assets = await this.preparePromoAssets({
             jobId,
             job,

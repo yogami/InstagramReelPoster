@@ -388,7 +388,7 @@ Respond with a JSON object:
      */
     private enforceWordLimits(segments: SegmentContent[], maxWords: number): SegmentContent[] {
         return segments.map((segment, index) => {
-            const words = segment.commentary.trim().split(/\s+/).filter(w => w.length > 0);
+            const words = segment.commentary.trim().split(/\s+/).filter((w: string) => w.length > 0);
             if (words.length <= maxWords) {
                 return segment;
             }
