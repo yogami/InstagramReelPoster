@@ -157,8 +157,8 @@ describe('TimelineVideoRenderer', () => {
 
             await renderer.render(manifest);
 
-            // Track 4 (index 3) is images
-            const imageTrack = capturedPayload.timeline.tracks[3];
+            // Track 1 (index 0) is images/visuals
+            const imageTrack = capturedPayload.timeline.tracks[0];
             expect(imageTrack.clips).toHaveLength(3);
             expect(imageTrack.clips[0].asset.src).toBe('https://example.com/img1.jpg');
         });
@@ -207,8 +207,8 @@ describe('TimelineVideoRenderer', () => {
 
             await renderer.render(manifest);
 
-            // Track 3 (index 2) is music
-            const musicTrack = capturedPayload.timeline.tracks[2];
+            // Track 2 (index 1) is music
+            const musicTrack = capturedPayload.timeline.tracks[1];
             expect(musicTrack.clips.length).toBe(3); // 45s / 20s = 3 clips needed
         });
 
@@ -234,18 +234,8 @@ describe('TimelineVideoRenderer', () => {
 
             await renderer.render(manifest);
 
-            // With subtitles and voiceover and music, tracks are: 
-            // 0: Captions, 1: Logo, 2: Voiceover, 3: Music, 4: Visuals
-            // Wait, let's check the order in the code.
-            /*
-            const tracks = [];
-            if (manifest.logoUrl) tracks.push({ clips: [logoClip] });
-            if (manifest.subtitlesUrl) tracks.push({ clips: [captionClip] });
-            tracks.push({ clips: [voiceoverClip] });
-            if (musicClips.length > 0) tracks.push({ clips: musicClips });
-            tracks.push(visualTrack);
-            */
-            const logoTrack = capturedPayload.timeline.tracks[0];
+            // 0: Visuals, 1: Music, 2: Voiceover, 3: Logo
+            const logoTrack = capturedPayload.timeline.tracks[3];
             expect(logoTrack.clips[0].asset.src).toBe('https://example.com/logo.png');
             expect(logoTrack.clips[0].position).toBe('topRight');
             expect(logoTrack.clips[0].start).toBe(10); // 15s duration - 5s

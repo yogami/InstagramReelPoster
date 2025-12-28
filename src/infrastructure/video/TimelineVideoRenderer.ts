@@ -298,10 +298,29 @@ export class TimelineVideoRenderer implements IVideoRenderer {
             }
         }
 
-        // Build tracks
+        // Build tracks in Bottom-to-Top render order
         const tracks: { clips: TimelineClip[] }[] = [];
 
-        // Track: Logo (top layer)
+        // Track 1: Visuals (Bottom Layer)
+        tracks.push({ clips: visualClips });
+
+        // Track 2: Background Music (if available)
+        if (musicClips.length > 0) {
+            tracks.push({ clips: musicClips });
+        }
+
+        // Track 3: Voiceover audio
+        tracks.push({ clips: [voiceoverClip] });
+
+        // Track 4: Branding/Contact Info Overlay
+        if (manifest.branding) {
+            const brandingTrack = this.createBrandingTrack(manifest);
+            if (brandingTrack) {
+                tracks.push(brandingTrack);
+            }
+        }
+
+        // Track 5: Logo (Top Layer)
         if (manifest.logoUrl) {
             const logoClip: TimelineClip = {
                 asset: {
@@ -329,31 +348,10 @@ export class TimelineVideoRenderer implements IVideoRenderer {
             tracks.push({ clips: [logoClip] });
         }
 
-        // Track: Captions/Subtitles (top layer)
+        // Track 6: Captions/Subtitles (Topmost Layer)
         if (manifest.subtitlesUrl) {
             tracks.push({ clips: [captionClip] });
         }
-
-        // Track: Voiceover audio
-        tracks.push({ clips: [voiceoverClip] });
-
-        // Track: Branding/Contact Info Overlay
-        if (manifest.branding) {
-            const brandingTrack = this.createBrandingTrack(manifest);
-            if (brandingTrack) {
-                tracks.push(brandingTrack);
-            }
-        }
-
-        // Add visual track (Bottom: Visuals)
-        const visualTrack = { clips: visualClips };
-
-        // Insert music track if available (between voiceover and images)
-        if (musicClips.length > 0) {
-            tracks.push({ clips: musicClips }); // Music is usually below voiceover
-        }
-
-        tracks.push(visualTrack);
 
         return {
             timeline: {

@@ -29,7 +29,7 @@ import {
     ScrapedMedia,
 } from '../domain/entities/WebsitePromo';
 import { IWebsiteScraperClient } from '../domain/ports/IWebsiteScraperClient';
-import { getPromptTemplate, getMusicStyle, detectCategoryFromKeywords } from '../infrastructure/llm/CategoryPrompts';
+import { getPromptTemplate, getMusicStyle, detectCategoryFromKeywords, getViralHookName } from '../infrastructure/llm/CategoryPrompts';
 import { SemanticAnalyzer } from '../infrastructure/analysis/SemanticAnalyzer';
 
 import { ITranscriptionClient } from '../domain/ports/ITranscriptionClient';
@@ -588,10 +588,12 @@ export class ReelOrchestrator {
         const completedJob = completeJob(await this.deps.jobManager.getJob(jobId) as ReelJob, finalVideoUrl, manifest);
         await this.deps.jobManager.updateJob(jobId, { status: 'completed', finalVideoUrl, manifest });
 
+        const hookName = getViralHookName(job.hookPlan?.chosenHook || job.promoScriptPlan?.hookType);
+
         if (completedJob.telegramChatId && this.deps.notificationClient) {
             await this.deps.notificationClient.sendNotification(
                 completedJob.telegramChatId,
-                `🎉 *Your website promo reel is ready!*\n\n🏪 ${businessName}\n📁 Category: ${category}\n\n${finalVideoUrl}`
+                `🎉 *Your website promo reel is ready!*\n\n🏪 ${businessName}\n📁 Category: ${category}\n🪝 Strategy: ${hookName}\n\n${finalVideoUrl}`
             );
         }
         await this.notifyCallback(completedJob);

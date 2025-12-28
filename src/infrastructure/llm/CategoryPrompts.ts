@@ -175,6 +175,15 @@ export function getRandomViralHook(): ViralHook {
 }
 
 /**
+ * Gets the display name of a viral hook by its ID.
+ */
+export function getViralHookName(id?: string): string {
+    if (!id) return 'Standard Promo';
+    const hook = VIRAL_HOOKS.find(h => h.id === id);
+    return hook ? hook.name : 'Custom Strategy';
+}
+
+/**
  * Gets the prompt template for a given category.
  */
 export function getPromptTemplate(category: BusinessCategory): CategoryPromptTemplate {
