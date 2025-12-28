@@ -9,7 +9,7 @@ jest.mock('../../../src/config', () => ({
     getConfig: jest.fn(() => ({
         speakingRateWps: 1.66,
         makeWebhookUrl: 'https://hook.make.com/test',
-        fishAudioPromoVoiceId: 'promo-voice-123',
+        ttsCloningPromoVoiceId: 'promo-voice-123',
         featureFlags: {
             personalCloneTrainingMode: false
         }
@@ -357,7 +357,7 @@ describe('ReelOrchestrator', () => {
             );
         });
 
-        test('should fall back to fishAudioPromoVoiceId from config if job.voiceId is missing', async () => {
+        test('should fall back to ttsCloningPromoVoiceId from config if job.voiceId is missing', async () => {
             await (orchestrator as any).renderPromoReel('job-promo', job, promoScript, 'service', 'Test Biz');
 
             expect((orchestrator as any).preparePromoAssets).toHaveBeenCalledWith(

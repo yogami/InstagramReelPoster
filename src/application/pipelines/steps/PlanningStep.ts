@@ -56,7 +56,7 @@ export class PlanningStep implements PipelineStep {
 
                 const parableScriptPlan = await this.llmClient.generateParableScript(
                     parableIntent,
-                    sourceChoice,
+                    sourceChoice!,
                     targetDuration
                 );
                 await this.jobManager.updateJob(jobId, { parableScriptPlan });
@@ -70,12 +70,12 @@ export class PlanningStep implements PipelineStep {
 
                 // 5. Create Plan
                 plan = {
-                    targetDurationSeconds: parableScriptPlan.beats.reduce((sum, b) => sum + b.approxDurationSeconds, 0),
+                    targetDurationSeconds: parableScriptPlan.beats.reduce((sum: number, b: ParableBeat) => sum + b.approxDurationSeconds, 0),
                     segmentCount: parableScriptPlan.beats.length,
                     musicTags: ['ambient', 'spiritual', 'meditative'],
-                    musicPrompt: `Ambient meditative music for a ${sourceChoice.culture} ${sourceChoice.archetype} story`,
+                    musicPrompt: `Ambient meditative music for a ${sourceChoice!.culture} ${sourceChoice!.archetype} story`,
                     mood: 'contemplative',
-                    summary: `A ${sourceChoice.archetype} story about ${parableIntent.coreTheme}`,
+                    summary: `A ${sourceChoice!.archetype} story about ${parableIntent.coreTheme}`,
                     mainCaption: parableIntent.moral
                 };
 
