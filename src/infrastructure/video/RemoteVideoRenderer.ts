@@ -16,7 +16,7 @@ export class RemoteVideoRenderer implements IVideoRenderer {
     constructor(
         apiKey: string,
         endpointUrl: string,
-        timeout: number = 1800000 // 30 minutes max for rendering (allows internal 9min cap to trigger first)
+        timeout: number = 600000 // 10 minutes max for rendering
     ) {
         if (!apiKey) {
             throw new Error('Remote API key is required');

@@ -15,13 +15,6 @@ export class RenderStep implements PipelineStep {
     async execute(context: JobContext): Promise<JobContext> {
         const { job, segments, voiceoverUrl, musicUrl, subtitlesUrl } = context;
 
-        if (context.isAnimatedMode && context.contentMode !== 'parable') {
-            if (context.finalVideoUrl) return context;
-            // Animated mode logic... likely needs different handling if it's purely video generation
-            // But if we have animatedVideoUrl, we might just be "uploading" or "done".
-            return context;
-        }
-
         if (context.finalVideoUrl) {
             return context;
         }
@@ -30,10 +23,9 @@ export class RenderStep implements PipelineStep {
 
         if (!voiceoverUrl) throw new Error('Voiceover URL required for rendering');
 
-        // Ensure segments exist (or we rely on animatedVideoUrl for manifest logic, but logic above skipped animated for now)
+        // Ensure segments exist (or we rely on animatedVideoUrl for manifest logic)
         if (!segments && !context.animatedVideoUrls && !context.animatedVideoUrl) {
             console.warn(`[${job.id}] No segments or video for rendering`);
-            // return context; // or failure?
         }
 
         const manifest = createReelManifest({

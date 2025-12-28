@@ -21,6 +21,7 @@ image = Image(
     python_packages=[
         "requests",
         "Pillow",
+        "cloudinary",
     ],
     commands=[
         "apt-get update && apt-get install -y ffmpeg fontconfig",

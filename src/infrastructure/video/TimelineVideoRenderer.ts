@@ -163,18 +163,22 @@ export class TimelineVideoRenderer implements IVideoRenderer {
             visualClips = [];
 
             for (let i = 0; i < videos.length; i++) {
+                const url = videos[i];
+                const isTurbo = url.startsWith('turbo:');
+                const cleanUrl = url.replace('turbo:', '');
                 const start = i * singleDuration;
                 const length = singleDuration;
 
                 visualClips.push({
                     asset: {
-                        type: 'video',
-                        src: videos[i],
-                        volume: 0,
+                        type: isTurbo ? 'image' : 'video',
+                        src: cleanUrl,
+                        volume: isTurbo ? undefined : 0,
                     },
                     start: start,
                     length: length,
                     fit: 'cover',
+                    effect: isTurbo ? 'zoomIn' : undefined,
                 });
             }
         } else if (manifest.animatedVideoUrl) {
