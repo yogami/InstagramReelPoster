@@ -31,6 +31,7 @@ import { ChatService } from './services/ChatService';
 import { ChatNotificationClient } from '../infrastructure/notifications/ChatNotificationClient';
 import { IVideoRenderer } from '../domain/ports/IVideoRenderer';
 import { IImageClient } from '../domain/ports/IImageClient';
+import { IAnimatedVideoClient } from '../domain/ports/IAnimatedVideoClient';
 
 import { StandardTtsClient } from '../infrastructure/tts/StandardTtsClient';
 import { XttsClient } from '../infrastructure/tts/XttsClient';
@@ -237,43 +238,56 @@ function createVideoRenderer(config: Config, cloudinaryClient: MediaStorageClien
 
 function createAnimatedVideoClient(config: Config) {
     const mock = new MockAnimatedVideoClient();
+    const beamTimeout = 600000; // 10 minutes is enough/fair for Beam H100s
 
-    // Prioritize Remote Video (Hunyuan/Mochi on Beam.cloud)
+    // 1. Prepare the MultiModel (Kling-2) as the high-quality fallback
+    let klingFallback: IAnimatedVideoClient = mock;
+    if (config.multiModelApiKey) {
+        klingFallback = new MultiModelVideoClient(
+            config.multiModelApiKey,
+            config.multiModelVideoBaseUrl,
+            config.multiModelVideoModel
+        );
+        // Ensure Kling also has a mock safety net
+        klingFallback = new FallbackVideoClient(klingFallback, mock, 'Kling-KieAI', 'Mock');
+    }
+
+    // 2. Prioritize Remote Video (Hunyuan/Mochi on Beam.cloud)
     if (config.remoteVideoEnabled && config.fluxApiKey) {
         const hunyuanUrl = config.remoteVideoEndpointUrl;
         const mochiUrl = config.remoteMochiEndpointUrl;
 
-        // Both available: Hunyuan -> Mochi -> Mock
+        // Chain structure: Hunyuan -> (Mochi) -> Kling -> Mock
+
         if (hunyuanUrl && mochiUrl) {
-            const hunyuan = new HunyuanVideoClient(config.fluxApiKey, hunyuanUrl, 1500000);
-            const mochi = new MochiVideoClient(config.fluxApiKey, mochiUrl, 1500000);
-            const mochiFallback = new FallbackVideoClient(mochi, mock, 'Mochi', 'Mock');
-            console.log('✅ Video generation: Hunyuan (primary) → Mochi (fallback) → Mock (safety)');
-            return new FallbackVideoClient(hunyuan, mochiFallback, 'Hunyuan', 'Mochi-Mock');
+            const hunyuan = new HunyuanVideoClient(config.fluxApiKey, hunyuanUrl, beamTimeout);
+            const mochi = new MochiVideoClient(config.fluxApiKey, mochiUrl, beamTimeout);
+
+            const mochiChain = new FallbackVideoClient(mochi, klingFallback, 'Mochi', 'Kling-Mock');
+            console.log('✅ Video generation: Hunyuan (primary) → Mochi (fallback) → Kling (reliable) → Mock (safety)');
+            return new FallbackVideoClient(hunyuan, mochiChain, 'Hunyuan', 'Mochi-Kling-Mock');
         }
 
-        // Only Hunyuan: Hunyuan -> Mock
         if (hunyuanUrl) {
-            const hunyuan = new HunyuanVideoClient(config.fluxApiKey, hunyuanUrl, 1500000);
-            console.log('✅ Video generation: Hunyuan (primary) → Mock (fallback)');
-            return new FallbackVideoClient(hunyuan, mock, 'Hunyuan', 'Mock');
+            const hunyuan = new HunyuanVideoClient(config.fluxApiKey, hunyuanUrl, beamTimeout);
+            console.log('✅ Video generation: Hunyuan (primary) → Kling (reliable) → Mock (safety)');
+            return new FallbackVideoClient(hunyuan, klingFallback, 'Hunyuan', 'Kling-Mock');
         }
 
-        // Only Mochi: Mochi -> Mock
         if (mochiUrl) {
-            const mochi = new MochiVideoClient(config.fluxApiKey, mochiUrl, 1500000);
-            console.log('✅ Video generation: Mochi (primary) → Mock (fallback)');
-            return new FallbackVideoClient(mochi, mock, 'Mochi', 'Mock');
+            const mochi = new MochiVideoClient(config.fluxApiKey, mochiUrl, beamTimeout);
+            console.log('✅ Video generation: Mochi (primary) → Kling (reliable) → Mock (safety)');
+            return new FallbackVideoClient(mochi, klingFallback, 'Mochi', 'Kling-Mock');
         }
     }
 
-    // If Remote is disabled or missing endpoints, use MultiModel if available, else Mock
+    // 3. If Beam is disabled or missing endpoints, just use Kling
     if (config.multiModelApiKey) {
-        console.log('✅ Video generation: MultiModel (primary)');
-        return new MultiModelVideoClient(config.multiModelApiKey, config.multiModelVideoBaseUrl, config.multiModelVideoModel);
+        console.log('✅ Video generation: Kling (primary) → Mock (fallback)');
+        return klingFallback;
     }
 
-    console.log('✅ Video generation: Mock (primary)');
+    console.log('⚠️  Video generation: Mock only (no providers configured)');
     return mock;
 }
 

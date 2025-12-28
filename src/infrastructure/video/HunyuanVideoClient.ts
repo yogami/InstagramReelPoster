@@ -18,7 +18,7 @@ export class HunyuanVideoClient implements IAnimatedVideoClient {
     constructor(
         apiKey: string,
         endpointUrl: string,
-        timeout: number = 1500000 // 25 minutes max for video generation
+        timeout: number = 600000 // 10 minutes max (enough for cold start)
     ) {
         if (!apiKey) {
             throw new Error('Beam.cloud API key is required for HunyuanVideo');
