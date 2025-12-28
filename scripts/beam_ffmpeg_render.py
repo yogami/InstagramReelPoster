@@ -61,6 +61,7 @@ def render_video(
     
     try:
         print(f"[FFmpeg] Job {job_id}: Target Renderer V7 (Audio Fixes)")
+        print(f"[FFmpeg] Incoming Music URL: {music_url}")
         
         # Download voiceover
         try:

@@ -1234,6 +1234,7 @@ export class ReelOrchestrator {
         const manifest = createReelManifest({
             durationSeconds: assets.voiceoverDuration,
             voiceoverUrl: assets.voiceoverUrl,
+            musicUrl: assets.musicUrl,
             musicDurationSeconds: assets.musicDurationSeconds,
             segments: assets.segmentsWithImages,
             subtitlesUrl: '', // Disabled for promo
