@@ -181,6 +181,8 @@ export interface PromoSceneContent {
 export interface PromoScriptPlan {
     /** Core message/tagline for the business */
     coreMessage: string;
+    /** The viral hook strategy used (e.g., 'curiosity-gap', 'pattern-interrupt') */
+    hookType?: string;
     /** Detected or provided business category */
     category: BusinessCategory;
     /** Business name */

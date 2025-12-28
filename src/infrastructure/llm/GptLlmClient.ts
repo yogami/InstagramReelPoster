@@ -20,6 +20,12 @@ import {
     PromoSceneContent,
 } from '../../domain/entities/WebsitePromo';
 import {
+    getPromptTemplate,
+    detectCategoryFromKeywords,
+    getMusicStyle,
+    getRandomViralHook,
+} from './CategoryPrompts';
+import {
     REEL_MODE_DETECTION_PROMPT,
 } from './Prompts';
 import { GptService } from './GptService';
@@ -307,6 +313,10 @@ STYLE RULES:
 4. FOCUS ON THE "WHY": Why does this business exist in the neighborhood? What is the soul of the work?
 5. SHOW, DON'T SELL: Describe results and vibe over sales features.`;
 
+        // Select a viral hook strategy
+        const viralHook = getRandomViralHook();
+        const hookInstruction = `virality_strategy: ${viralHook.name} (${viralHook.description})`;
+
         const prompt = `Create a 17-second Instagram Reel promo script for "${businessName}".
         
 CRITICAL: The script (narration, caption, coreMessage) MUST be in ${targetLanguage}.
@@ -321,9 +331,11 @@ ${siteDNAContext}
 INSPIRATION (Use these themes but REWRITE with the ${culturalVoice}):
 - Core Themes: ${template.showcase}
 - Desired Visual Sentiment: ${template.visuals}
+- **VIRAL STRATEGY**: ${hookInstruction}
 
 STRUCTURE (17s Total):
-1. THE TRUTH HOOK (4s): Lead with a sharp, grounded perspective or a common local problem.
+${viralHook.structureInstruction}
+   - VISUAL INSTRUCTION: ${viralHook.visualInstruction}
 2. THE SOUL (8s): Show the craftsmanship or the solved reality. Use the Site DNA.
 3. THE DIRECT CTA (5s): A clear, non-pushy invitation.
    - VISUAL INSTRUCTION: The image prompt for this scene MUST describe a clean, uncluttered background (e.g., negative space, blurred background, or clean wall) suitable for overlaying contact info text.
@@ -368,6 +380,7 @@ Return JSON:
             musicStyle: result.musicStyle,
             caption: result.caption,
             language,
+            hookType: viralHook.id,
             compliance: {
                 source: 'public-website',
                 consent: true,

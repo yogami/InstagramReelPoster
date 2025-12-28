@@ -114,6 +114,67 @@ export function detectCategoryFromKeywords(keywords: string[]): {
 }
 
 /**
+ * Structure of a viral psychological hook.
+ */
+export interface ViralHook {
+    id: string;
+    name: string;
+    description: string;
+    structureInstruction: string;
+    visualInstruction: string;
+}
+
+/**
+ * "Nuclear ReelBerlin" Viral Hooks.
+ * 5 psychological triggers to minimize skip rate.
+ */
+export const VIRAL_HOOKS: ViralHook[] = [
+    {
+        id: 'curiosity-gap',
+        name: 'The Curiosity Gap',
+        description: 'Open a loop that the viewer MUST watch to close. (Zeigefinger Effect)',
+        structureInstruction: '1. CURIOSITY HOOK (4s): Start with a specific statement about what makes this place different, but DO NOT reveal the answer immediately. "Why THIS cafe beats chains..."',
+        visualInstruction: 'Visual: A normal scene that SUDDENLY freezes or zooms in on a detail, creating a "Wait, what?" moment.'
+    },
+    {
+        id: 'pattern-interrupt',
+        name: 'Pattern Interrupt',
+        description: 'Startle the brain with immediate sensory dissonance.',
+        structureInstruction: '1. PATTERN INTERRUPT (3s): Immediate visual/audio shock. A sudden cloud of steam, a slam on the counter, or a dissonant chord resolving to harmony.',
+        visualInstruction: 'Visual: SUDDEN steam explosion from cup OR barista hand SLAMS counter. High contrast movement.'
+    },
+    {
+        id: 'underdog-reversal',
+        name: 'Underdog Reversal',
+        description: 'The hero s journey pattern: Failure -> Success.',
+        structureInstruction: '1. UNDERDOG HOOK (5s): Show a relatable failure followed by mastery. "Failed 3x -> THIS pour changed everything."',
+        visualInstruction: 'Visual: A split screen or sequence: "Burnt batch / Spilled milk" (FAIL) -> "Perfect roast / Latte art" (WIN).'
+    },
+    {
+        id: 'social-proof-friction',
+        name: 'Social Proof Friction',
+        description: 'Challenge the viewer to judge standard vs. excellence.',
+        structureInstruction: '1. JUDGMENT HOOK (4s): Pause the scroll with a challenge. "Swipe if you settle for average. Stay if you want Berlin s best."',
+        visualInstruction: 'Visual: Dark pattern overlay text: "Swipe to judge" or "Skip if not the best" with a forced pause moment.'
+    },
+    {
+        id: 'fomo-loop',
+        name: 'The FOMO Loop',
+        description: 'Urgency + seamless looping mechanism.',
+        structureInstruction: '1. FOMO HOOK (4s): Immediate scarcity. "Last 3 tables for Friday..." or "Winter menu ends tomorrow."',
+        visualInstruction: 'Visual: A "SOLD OUT" sign flipping or a calendar date circling rapidly. High urgency.'
+    }
+];
+
+/**
+ * Selects a random viral hook strategy.
+ */
+export function getRandomViralHook(): ViralHook {
+    const randomIndex = Math.floor(Math.random() * VIRAL_HOOKS.length);
+    return VIRAL_HOOKS[randomIndex];
+}
+
+/**
  * Gets the prompt template for a given category.
  */
 export function getPromptTemplate(category: BusinessCategory): CategoryPromptTemplate {
