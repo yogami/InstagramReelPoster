@@ -22,12 +22,13 @@ export class PlanningStep implements PipelineStep {
 
         let plan: ReelPlan;
         let segmentContent: SegmentContent[] | undefined;
+        let parableScriptPlan: any = context.parableScriptPlan || job.parableScriptPlan;
 
         if (contentMode === 'parable') {
             console.log(`[${jobId}] Planning PARABLE...`);
             try {
                 // 1. Extract Intent
-                let parableIntent = job.parableIntent;
+                let parableIntent = job.parableIntent || (context as any).parableIntent;
                 const planningSource = job.providedCommentary || transcript!;
                 if (!parableIntent && this.llmClient.extractParableIntent) {
                     parableIntent = await this.llmClient.extractParableIntent(planningSource);
@@ -54,7 +55,7 @@ export class PlanningStep implements PipelineStep {
                 const targetDuration = Math.min(job.targetDurationRange.max, 45);
                 if (!this.llmClient.generateParableScript) throw new Error('LLM Client does not support parable scripting');
 
-                const parableScriptPlan = await this.llmClient.generateParableScript(
+                parableScriptPlan = await this.llmClient.generateParableScript(
                     parableIntent,
                     sourceChoice!,
                     targetDuration
@@ -106,7 +107,7 @@ export class PlanningStep implements PipelineStep {
             ...context,
             plan,
             segmentContent: segmentContent || context.segmentContent,
-            parableScriptPlan: (context as any).parableScriptPlan || (job as any).parableScriptPlan
+            parableScriptPlan
         };
     }
 }
