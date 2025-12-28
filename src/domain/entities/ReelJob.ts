@@ -66,6 +66,13 @@ export interface ReelJobInput {
     language?: string;
     /** Optional voice ID for TTS synthesis */
     voiceId?: string;
+    /** 
+     * Optional user-provided commentary to override LLM generation.
+     * When provided, this text will be used as the voiceover instead of AI-generated commentary.
+     * Useful for songs, poems, prayers, or any pre-written text the user wants to narrate.
+     * Will be truncated/adjusted to fit the target video duration if it exceeds the limit.
+     */
+    providedCommentary?: string;
 }
 
 /**
@@ -168,6 +175,8 @@ export interface ReelJob {
     forceMode?: ForceMode;
     /** Language for the reel */
     language?: string;
+    /** User-provided commentary (overrides LLM generation) */
+    providedCommentary?: string;
 
     /** Timestamps */
     createdAt: Date;

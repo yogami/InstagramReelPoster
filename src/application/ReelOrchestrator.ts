@@ -361,8 +361,26 @@ export class ReelOrchestrator {
             if (!segments || segments.length === 0 || !segments[0].commentary) {
                 await this.updateJobStatus(jobId, 'generating_commentary', 'Writing commentary...');
 
-                // Use pre-generated segment content from parable pipeline if available
-                if (!segmentContent) {
+                // CHECK: User-provided commentary override (songs, poems, prayers, etc.)
+                if (job.providedCommentary) {
+                    console.log(`[${jobId}] Using user-provided commentary (${job.providedCommentary.length} chars)`);
+
+                    // Adjust commentary to fit target duration if needed
+                    const adjustedCommentary = this.adjustProvidedCommentaryForDuration(
+                        job.providedCommentary,
+                        plan.targetDurationSeconds
+                    );
+
+                    // Create a single segment with the user's text
+                    segmentContent = [{
+                        commentary: adjustedCommentary,
+                        imagePrompt: `Visual representation of: ${adjustedCommentary.substring(0, 100)}`,
+                        caption: adjustedCommentary.substring(0, 150)
+                    }];
+
+                    console.log(`[${jobId}] User commentary adjusted to ${adjustedCommentary.length} chars`);
+                } else if (!segmentContent) {
+                    // Use pre-generated segment content from parable pipeline if available
                     segmentContent = await this.deps.llmClient.generateSegmentContent(plan, transcript);
                 }
 
@@ -384,9 +402,13 @@ export class ReelOrchestrator {
                 // VALIDATION: Ensure the LLM returned exactly the number of segments we planned for.
                 // Skip validation for parable mode since segments are pre-generated with 4 beats
                 // and plan.segmentCount is already set correctly from parableScriptPlan
+                // Also skip for user-provided commentary (always 1 segment)
                 const isParablePreGenerated = contentMode === 'parable' && parableScriptPlan;
-                if (!isParablePreGenerated) {
+                const isUserProvided = !!job.providedCommentary;
+                if (!isParablePreGenerated && !isUserProvided) {
                     this.validateSegmentCount(segmentContent, plan.segmentCount, 'Initial Generation');
+                } else if (isUserProvided) {
+                    console.log(`[${jobId}] Skipping segment validation for user-provided commentary`);
                 } else {
                     console.log(`[${jobId}] Skipping segment validation for parable mode (${segmentContent.length} beats)`);
                 }
@@ -394,8 +416,8 @@ export class ReelOrchestrator {
                 segmentContent = await this.adjustCommentaryIfNeeded(plan, segmentContent);
 
                 // VALIDATION: Ensure the adjustment step didn't truncate segments either.
-                // Skip for parable mode as well
-                if (!isParablePreGenerated) {
+                // Skip for parable mode and user-provided commentary as well
+                if (!isParablePreGenerated && !isUserProvided) {
                     this.validateSegmentCount(segmentContent, plan.segmentCount, 'Adjustment Phase');
                 }
 
@@ -977,19 +999,50 @@ export class ReelOrchestrator {
         if (error.includes('OpenAI') || error.includes('API key')) {
             return 'There was an issue connecting to our AI services. Please try again in a moment.';
         }
-        if (error.includes('music') || error.includes('track')) {
-            return 'I could not find suitable background music. Please try again.';
+        return 'Something went wrong. Please try again.';
+    }
+
+    /**
+     * Adjusts user-provided commentary to fit the target video duration.
+     * Truncates at sentence boundaries to maintain coherence.
+     * Uses speaking rate of ~1.66 words per second (100 wpm).
+     */
+    private adjustProvidedCommentaryForDuration(commentary: string, targetDurationSeconds: number): string {
+        const config = getConfig();
+        const speakingRateWps = config.speakingRateWps || 1.66; // words per second
+        const maxWords = Math.floor(targetDurationSeconds * speakingRateWps * 0.95); // 95% for safety margin
+
+        const words = commentary.trim().split(/\s+/);
+
+        // If under limit, return as-is
+        if (words.length <= maxWords) {
+            return commentary.trim();
         }
-        if (error.includes('image') || error.includes('DALL-E')) {
-            return 'I had trouble generating images for your reel. Please try again.';
+
+        console.log(`[ProvidedCommentary] Text too long: ${words.length} words > ${maxWords} limit. Truncating...`);
+
+        // Truncate and find last sentence boundary
+        const truncatedWords = words.slice(0, maxWords);
+        let truncatedText = truncatedWords.join(' ');
+
+        // Try to end at a sentence boundary (., !, ?)
+        const lastSentenceEnd = Math.max(
+            truncatedText.lastIndexOf('.'),
+            truncatedText.lastIndexOf('!'),
+            truncatedText.lastIndexOf('?')
+        );
+
+        // Only use sentence boundary if it's in the last 30% of text (don't cut too much)
+        const minUsablePosition = truncatedText.length * 0.7;
+        if (lastSentenceEnd > minUsablePosition) {
+            truncatedText = truncatedText.substring(0, lastSentenceEnd + 1);
+        } else {
+            // Add ellipsis if we couldn't find a good sentence boundary
+            truncatedText = truncatedText + '...';
         }
-        if (error.includes('render') || error.includes('video')) {
-            return 'The video rendering failed. Please try again.';
-        }
-        if (error.includes('duration') || error.includes('too short') || error.includes('too long')) {
-            return 'Your voice note is either too short or too long. Please keep it between 10-90 seconds.';
-        }
-        return 'An unexpected error occurred. Our team has been notified.';
+
+        console.log(`[ProvidedCommentary] Truncated to ${truncatedText.split(/\s+/).length} words`);
+        return truncatedText;
     }
 
     /**

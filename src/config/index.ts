@@ -217,9 +217,9 @@ export function loadConfig(): Config {
         beamcloudEndpointUrl: getEnvVar('BEAMCLOUD_ENDPOINT_URL', 'https://app.beam.cloud/endpoint/flux1-image'),
         beamcloudEnabled: getEnvVarBoolean('BEAMCLOUD_ENABLED', false),
 
-        // Beam.cloud (Primary Video Generation)
+        // Beam.cloud (Primary Video Generation - preferred over Kie.ai due to cost/credits)
         beamcloudVideoEndpointUrl: getEnvVar('BEAMCLOUD_VIDEO_ENDPOINT_URL', ''),
-        beamcloudVideoEnabled: getEnvVarBoolean('BEAMCLOUD_VIDEO_ENABLED', false),
+        beamcloudVideoEnabled: getEnvVarBoolean('BEAMCLOUD_VIDEO_ENABLED', true), // Default to true - Beam.cloud is primary
 
         // Beam.cloud (FFmpeg Video Rendering)
         beamcloudRenderEndpointUrl: getEnvVar('BEAMCLOUD_RENDER_ENDPOINT_URL', ''),
