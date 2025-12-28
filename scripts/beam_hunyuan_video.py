@@ -82,7 +82,7 @@ def generate_video(
             "--prompt", prompt,
             "--video-size", str(height), str(width),  # Note: height first for HunyuanVideo
             "--video-length", str(num_frames),
-            "--infer-steps", "50",  # Quality vs speed tradeoff
+            "--infer-steps", "30",  # Quality vs speed tradeoff (30 is sweet spot for speed and quality)
             "--save-path", output_dir,
             "--model-base", "/models/ckpts",  # Use cached models
             "--dit-weight", "/models/ckpts/hunyuan-video-t2v-720p/transformers/mp_rank_00_model_states.pt",
