@@ -18,7 +18,7 @@ export class HunyuanVideoClient implements IAnimatedVideoClient {
     constructor(
         apiKey: string,
         endpointUrl: string,
-        timeout: number = 1800000 // 30 minutes max for video generation
+        timeout: number = 1500000 // 25 minutes max for video generation
     ) {
         if (!apiKey) {
             throw new Error('Beam.cloud API key is required for HunyuanVideo');
@@ -80,26 +80,28 @@ export class HunyuanVideoClient implements IAnimatedVideoClient {
      * Builds a detailed prompt from the video options.
      */
     private buildPrompt(options: AnimatedVideoOptions): string {
+        let theme = options.theme || '';
+        let storyline = options.storyline || '';
+
+        // Clean common LLM instruction artifacts
+        const artifacts = [
+            'Visual representation of:',
+            'A scene showing:',
+            'Cinematic shot of:',
+            'In this scene,'
+        ];
+
+        for (const artifact of artifacts) {
+            theme = theme.replace(new RegExp(artifact, 'gi'), '').trim();
+            storyline = storyline.replace(new RegExp(artifact, 'gi'), '').trim();
+        }
+
         const parts: string[] = [];
+        if (theme) parts.push(theme);
+        if (storyline && storyline !== theme) parts.push(storyline);
+        if (options.mood) parts.push(`Mood: ${options.mood}`);
 
-        // Add theme
-        if (options.theme) {
-            parts.push(options.theme);
-        }
-
-        // Add storyline
-        if (options.storyline) {
-            parts.push(options.storyline);
-        }
-
-        // Add mood
-        if (options.mood) {
-            parts.push(`Mood: ${options.mood}`);
-        }
-
-        // Add quality hints for better generation
         parts.push('High quality, cinematic, smooth motion, 4K, professional video');
-
         return parts.join('. ');
     }
 

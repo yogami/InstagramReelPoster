@@ -49,7 +49,8 @@ export class MediaStorageClient {
                 publicId: result.public_id,
             };
         } catch (error) {
-            const message = error instanceof Error ? error.message : 'Unknown error';
+            console.error('[Cloudinary] Detailed Error:', error);
+            const message = error instanceof Error ? error.message : JSON.stringify(error) || 'Unknown error';
             throw new Error(`Media upload failed: ${message}`);
         }
     }

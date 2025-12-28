@@ -16,7 +16,7 @@ export class MockAnimatedVideoClient implements IAnimatedVideoClient {
         await new Promise(resolve => setTimeout(resolve, 100));
 
         return {
-            videoUrl: `https://example.com/mock-animated-video-${options.durationSeconds}s.mp4`,
+            videoUrl: `https://res.cloudinary.com/demo/video/upload/w_1280,h_720,c_fill/dog.mp4`,
             durationSeconds: options.durationSeconds,
         };
     }

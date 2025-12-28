@@ -40,7 +40,7 @@ export class CommentaryStep implements PipelineStep {
             // Create a single segment with the user's text
             segmentContent = [{
                 commentary: adjustedCommentary,
-                imagePrompt: `Visual representation of: ${adjustedCommentary.substring(0, 100)}`,
+                imagePrompt: adjustedCommentary.substring(0, 300),
                 caption: adjustedCommentary.substring(0, 150)
             }];
 
