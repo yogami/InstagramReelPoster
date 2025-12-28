@@ -272,8 +272,18 @@ def build_ffmpeg_command(
         img_outs = []
         for i, img in enumerate(image_paths):
             dur = max(img['end'] - img['start'], 0.1)
+            # Duration in frames (at 24 fps)
+            num_frames = int(dur * 24)
             cmd.extend(['-loop', '1', '-t', str(dur), '-i', img['path']])
-            filter_complex.append(f'[{v_start+i}:v]scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1,format=yuv420p[im{i}]')
+            
+            # Application of Ken Burns (Zoom/Pan) effect
+            # We scale up first to 1280x2276 to have margin for zooming/panning
+            zoom_cmd = (
+                f"[{v_start+i}:v]scale=1280:2276:force_original_aspect_ratio=increase,crop=1280:2276,"
+                f"zoompan=z='min(zoom+0.0015,1.5)':d={num_frames}:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=1080x1920,"
+                f"format=yuv420p[im{i}]"
+            )
+            filter_complex.append(zoom_cmd)
             img_outs.append(f'[im{i}]')
         filter_complex.append(f'{"".join(img_outs)}concat=n={len(image_paths)}:v=1:a=0[vbase]')
     

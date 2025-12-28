@@ -37,7 +37,7 @@ cache_volume = Volume(name="hunyuan-video-cache", mount_path="/cache")
     cpu=8,
     timeout=1800,  # 30 minutes max
     volumes=[model_volume, cache_volume],
-    keep_warm_seconds=300,  # Keep warm for 5 min to reduce cold starts
+    keep_warm_seconds=3600,  # Keep warm for 1 hour to ensure zero-latency for production sessions
     secrets=["CLOUDINARY_URL"],
 )
 def generate_video(
@@ -50,54 +50,17 @@ def generate_video(
 ) -> dict:
     """
     Generate a video using HunyuanVideo.
-    
-    Args:
-        prompt: Text description of the video to generate
-        duration_seconds: Video length (default 5s, max ~5s for reasonable render time)
-        width: Video width (720 recommended for portrait reels)
-        height: Video height (1280 recommended for portrait reels)
-        fps: Frames per second (24 default)
-        seed: Random seed for reproducibility
-        
-    Returns:
-        dict with video_url and generation metadata
     """
     job_id = str(uuid.uuid4())[:8]
     output_dir = f"/cache/generation_{job_id}"
     os.makedirs(output_dir, exist_ok=True)
     
     try:
-        print(f"[HunyuanVideo] Job {job_id}: Starting generation...")
-        print(f"[HunyuanVideo] Prompt: {prompt[:100]}...")
-        print(f"[HunyuanVideo] Resolution: {width}x{height}, Duration: {duration_seconds}s")
-        
-        # Calculate frame count from duration
-        # HunyuanVideo uses 129 frames for ~5s at 24fps
-        num_frames = min(int(duration_seconds * fps), 129)  # Max 129 frames
-        
-        # Build inference command
-        # Using the sample_video.py script from HunyuanVideo repo
-        cmd = [
-            "python3", "/workspace/HunyuanVideo/sample_video.py",
-            "--prompt", prompt,
-            "--video-size", str(height), str(width),  # Note: height first for HunyuanVideo
-            "--video-length", str(num_frames),
-            "--infer-steps", "30",  # Quality vs speed tradeoff (30 is sweet spot for speed and quality)
-            "--save-path", output_dir,
-            "--model-base", "/models/ckpts",  # Use cached models
-            "--dit-weight", "/models/ckpts/hunyuan-video-t2v-720p/transformers/mp_rank_00_model_states.pt",
-            "--use-fp8",  # Use FP8 quantization for faster inference
-        ]
-        
-        if seed is not None:
-            cmd.extend(["--seed", str(seed)])
-        
-        print(f"[HunyuanVideo] Running: {' '.join(cmd[:5])}...")
-        
-        # Check if models are downloaded, if not download them
+        # Check if models are available. If not, FAIL FAST instead of hanging for 15 minutes.
         if not os.path.exists("/models/ckpts/hunyuan-video-t2v-720p"):
-            print("[HunyuanVideo] Downloading model weights (first run only)...")
-            download_models()
+            raise Exception("Model weights missing. Please run the 'prewarm' endpoint first to cache 30GB models to the persistent volume.")
+
+        print(f"[HunyuanVideo] Job {job_id}: Starting generation...")
         
         result = subprocess.run(
             cmd,
@@ -136,6 +99,11 @@ def generate_video(
             "height": height,
         }
         
+    finally:
+        # Cleanup
+        import shutil
+        shutil.rmtree(output_dir, ignore_errors=True)
+
 @endpoint(
     name="hunyuan-video-prewarm",
     image=image,

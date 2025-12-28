@@ -55,7 +55,12 @@ export function createStandardPipeline(deps: PipelineDependencies): PipelineStep
 
     // 8.5 Animated Video
     if (deps.animatedVideoClient) {
-        steps.push(new AnimatedVideoStep(deps.animatedVideoClient, deps.jobManager, deps.storageClient));
+        steps.push(new AnimatedVideoStep(
+            deps.animatedVideoClient,
+            deps.jobManager,
+            deps.imageGenerationService,
+            deps.storageClient
+        ));
     }
 
     // 9. Subtitles (New step)

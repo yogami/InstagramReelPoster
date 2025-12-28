@@ -101,8 +101,17 @@ export class HunyuanVideoClient implements IAnimatedVideoClient {
         if (storyline && storyline !== theme) parts.push(storyline);
         if (options.mood) parts.push(`Mood: ${options.mood}`);
 
-        parts.push('High quality, cinematic, smooth motion, 4K, professional video');
-        return parts.join('. ');
+        // Quality and Style Injector
+        parts.push('High quality, cinematic, smooth motion, 4K, professional video, high detail');
+
+        const finalPrompt = parts.join('. ');
+
+        // Final sanity check: if the prompt is basically just meta-noise, add a generic high-quality subject
+        if (finalPrompt.length < 50 || finalPrompt.includes("Don't change") || finalPrompt.includes("interpreted based")) {
+            return `Cinematic atmosphere, ${options.mood || 'dramatic'} lighting, artistic high quality video. ${finalPrompt}`;
+        }
+
+        return finalPrompt;
     }
 
     /**
