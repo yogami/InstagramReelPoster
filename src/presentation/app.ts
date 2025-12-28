@@ -241,8 +241,8 @@ function createAnimatedVideoClient(config: Config) {
 
     if (config.beamcloudVideoEnabled && config.beamcloudApiKey && config.beamcloudVideoEndpointUrl) {
         const beamVideoClient = new BeamcloudVideoClient(config.beamcloudApiKey, config.beamcloudVideoEndpointUrl);
-        console.log('✅ Video generation: Beam.cloud Mochi (primary) → Kie.ai (fallback)');
-        return new FallbackVideoClient(beamVideoClient, kieVideoClient, 'Beam.cloud Mochi', 'Kie.ai');
+        console.log('✅ Video generation: Beam.cloud Hunyuan (primary) → Kie.ai (fallback)');
+        return new FallbackVideoClient(beamVideoClient, kieVideoClient, 'Beam.cloud Hunyuan', 'Kie.ai');
     }
     console.log('✅ Video generation: Kie.ai (primary)');
     return kieVideoClient;
