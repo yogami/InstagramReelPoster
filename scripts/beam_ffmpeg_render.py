@@ -1,14 +1,10 @@
 """
 FFmpeg Video Rendering Endpoint for Beam.cloud
 
-Composites video from images + voiceover + music + subtitles using FFmpeg.
-Features:
-- Slide Generation for Unified Conclusion (Logo, Address, Hours, Contact)
-- Smart Audio Mixing (Music Ducking)
-- Duration Matching (Extends video if audio is longer)
-
-Deploy with:
-    beam deploy beam_ffmpeg_render.py:render_video
+Updates (V7):
+- Fixed missing music bug by switching amix duration to 'first'.
+- Added Cinematic Ducking (Sidechain Compression): Music volume dips when voiceover is active.
+- Refined audio pipeline with better stream selection and normalization.
 """
 
 from beam import endpoint, Image, Volume
@@ -24,11 +20,10 @@ image = Image(
     python_version="python3.10",
     python_packages=[
         "requests",
-        "Pillow",  # For generating slides
+        "Pillow",
     ],
     commands=[
         "apt-get update && apt-get install -y ffmpeg fontconfig",
-        # Install some basic fonts
         "mkdir -p /usr/share/fonts/truetype/custom",
         "wget -O /usr/share/fonts/truetype/custom/Arial.ttf https://github.com/matomo-org/travis-scripts/raw/master/fonts/Arial.ttf",
         "fc-cache -f -v"
@@ -58,23 +53,20 @@ def render_video(
     logo_url: str = None,
     logo_position: str = None,
     music_duration_seconds: float = None,
-    branding: dict = None,  # {logoUrl, businessName, address, hours, phone, email}
+    branding: dict = None,
 ) -> dict:
-    """
-    Render a video using FFmpeg with slide generation support.
-    """
     job_id = str(uuid.uuid4())[:8]
     job_dir = f"/cache/render_{job_id}"
     os.makedirs(job_dir, exist_ok=True)
     
     try:
-        print(f"[FFmpeg] Job {job_id}: Processing...")
+        print(f"[FFmpeg] Job {job_id}: Target Renderer V7 (Audio Fixes)")
         
         # Download voiceover
         try:
             voiceover_path = download_file(voiceover_url, f"{job_dir}/voiceover.mp3")
             voiceover_duration = get_duration(voiceover_path)
-            print(f"[FFmpeg] Voiceover duration: {voiceover_duration}s")
+            print(f"[FFmpeg] Voiceover downloaded. Duration: {voiceover_duration}s")
         except Exception as e:
             raise Exception(f"Failed to download or parse voiceover: {e}")
             
@@ -83,6 +75,7 @@ def render_video(
         if music_url:
             try:
                 music_path = download_file(music_url, f"{job_dir}/music.mp3")
+                print(f"[FFmpeg] Music downloaded from {music_url[:50]}...")
             except Exception as e:
                 print(f"[FFmpeg] Warning: Music download failed: {e}")
         
@@ -101,68 +94,43 @@ def render_video(
              try:
                 logo_path = download_file(primary_logo_url, f"{job_dir}/logo.png")
              except: 
-                print(f"[FFmpeg] Could not download logo from {primary_logo_url}")
+                print(f"[FFmpeg] Could not download logo")
 
-        # Download visual assets
         video_paths = []
         image_paths = []
-        
-        # Create a blank black placeholder
         black_img = f"{job_dir}/black.png"
         from PIL import Image as PILImage
         PILImage.new('RGB', (1080, 1920), color='black').save(black_img)
         
         if animated_video_urls:
             for i, url in enumerate(animated_video_urls):
-                try:
-                    video_paths.append(download_file(url, f"{job_dir}/video_{i}.mp4"))
-                except:
-                    video_paths.append(black_img) # Fallback to black for missing video in array
+                try: video_paths.append(download_file(url, f"{job_dir}/video_{i}.mp4"))
+                except: video_paths.append(black_img)
         elif animated_video_url:
-             try:
-                video_paths.append(download_file(animated_video_url, f"{job_dir}/source_video.mp4"))
+             try: video_paths.append(download_file(animated_video_url, f"{job_dir}/source_video.mp4"))
              except: pass
         elif segments:
             for i, seg in enumerate(segments):
-                try:
-                    path = download_file(seg['image_url'], f"{job_dir}/image_{i}.png")
-                except:
-                    path = black_img
-                
-                image_paths.append({
-                    'path': path,
-                    'start': seg['start'],
-                    'end': seg['end'],
-                })
+                try: path = download_file(seg['image_url'], f"{job_dir}/image_{i}.png")
+                except: path = black_img
+                image_paths.append({'path': path, 'start': seg['start'], 'end': seg['end']})
         
-        # Generate Unified Conclusion Slide
+        # Unified Conclusion Slide
         if branding:
             conclusion_slide_path = f"{job_dir}/conclusion_slide.png"
             create_conclusion_slide(branding, conclusion_slide_path, logo_path)
-            
-            # Use 5s for the conclusion slide
             conc_dur = 5.0
             last_end = image_paths[-1]['end'] if image_paths else 0
-            
-            image_paths.append({
-                'path': conclusion_slide_path,
-                'start': last_end,
-                'end': last_end + conc_dur
-            })
+            image_paths.append({'path': conclusion_slide_path, 'start': last_end, 'end': last_end + conc_dur})
 
         # OVERSHOOT FIX
         total_visual_dur = image_paths[-1]['end'] if image_paths else 0
         if total_visual_dur < voiceover_duration:
              needed = voiceover_duration - total_visual_dur + 0.5
-             if image_paths:
-                 image_paths[-1]['end'] += needed
+             if image_paths: image_paths[-1]['end'] += needed
              total_visual_dur = image_paths[-1]['end'] if image_paths else 0
 
-        print(f"[FFmpeg] Final visual duration: {total_visual_dur}s")
-
         output_path = f"{job_dir}/output.mp4"
-        
-        # Build FFmpeg command
         cmd = build_ffmpeg_command(
             voiceover_path=voiceover_path,
             voiceover_duration=voiceover_duration,
@@ -176,12 +144,12 @@ def render_video(
             output_path=output_path,
         )
         
-        print(f"[FFmpeg] Job {job_id}: Executing FFmpeg...")
+        print(f"[FFmpeg] Executing command...")
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
         
         if result.returncode != 0:
             print(f"[FFmpeg] ERROR: {result.stderr[-2000:]}")
-            raise Exception(f"FFmpeg failed with exit code {result.returncode}")
+            raise Exception(f"FFmpeg failed")
         
         cloudinary_url = os.environ.get("CLOUDINARY_URL")
         if cloudinary_url:
@@ -189,42 +157,28 @@ def render_video(
         else:
             video_url = file_to_data_uri(output_path)
         
-        return {
-            "video_url": video_url,
-            "render_id": job_id,
-        }
+        return {"video_url": video_url, "render_id": job_id}
     finally:
         import shutil
         shutil.rmtree(job_dir, ignore_errors=True)
 
 
 def get_duration(file_path: str) -> float:
-    try:
-        cmd = [
-            'ffprobe', '-v', 'error', '-show_entries', 'format=duration', 
-            '-of', 'default=noprint_wrappers=1:nokey=1', file_path
-        ]
-        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-        return float(result.stdout.strip())
-    except Exception as e:
-        return 30.0
+    cmd = ['ffprobe', '-v', 'error', '-show_entries', 'format=duration', '-of', 'default=noprint_wrappers=1:nokey=1', file_path]
+    result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+    return float(result.stdout.strip())
 
 def create_conclusion_slide(branding: dict, output_path: str, logo_path: str):
     from PIL import Image, ImageDraw, ImageFont
     W, H = 1080, 1920
-    # Background: Slate dark theme
     img = Image.new('RGB', (W, H), color='#0f172a')
     draw = ImageDraw.Draw(img)
-    
     try:
         title_font = ImageFont.truetype("/usr/share/fonts/truetype/custom/Arial.ttf", 95)
         info_font = ImageFont.truetype("/usr/share/fonts/truetype/custom/Arial.ttf", 50)
         label_font = ImageFont.truetype("/usr/share/fonts/truetype/custom/Arial.ttf", 40)
-    except:
-        title_font = info_font = label_font = ImageFont.load_default()
-    
+    except: title_font = info_font = label_font = ImageFont.load_default()
     y = 300
-    # 1. Logo
     if logo_path and os.path.exists(logo_path):
         try:
             logo = Image.open(logo_path).convert("RGBA")
@@ -232,55 +186,34 @@ def create_conclusion_slide(branding: dict, output_path: str, logo_path: str):
             img.paste(logo, (int((W-logo.size[0])/2), y), logo)
             y += logo.size[1] + 80
         except: pass
-    
-    # 2. Business Name
     name = branding.get('businessName', 'Visit Us')
     draw.text((W/2, y), name.upper(), font=title_font, fill='#f8fafc', anchor="mm")
     y += 150
-
-    # Draw a small gold separator
     draw.rectangle([W/2 - 100, y - 40, W/2 + 100, y - 35], fill='#fbbf24')
-    
     def draw_section(label, content, current_y):
         if not content: return current_y
         draw.text((W/2, current_y), label, font=label_font, fill='#94a3b8', anchor="mm")
         current_y += 60
-        lines = wrap_text(content, info_font, 950)
+        words = content.split(); lines = []; current = []
+        for word in words:
+            current.append(word)
+            try: w = info_font.getlength(' '.join(current))
+            except: w = len(' '.join(current)) * 25
+            if w > 950:
+                if len(current) == 1: lines.append(current.pop()); current = []
+                else: last = current.pop(); lines.append(' '.join(current)); current = [last]
+        if current: lines.append(' '.join(current))
         for line in lines:
             draw.text((W/2, current_y), line, font=info_font, fill='#e2e8f0', anchor="mm")
             current_y += 70
         return current_y + 60
-
-    # 3. Address
     y = draw_section("LOCATION", branding.get('address'), y)
-    
-    # 4. Hours
     y = draw_section("OPENING HOURS", branding.get('hours'), y)
-    
-    # 5. Contact info (Phone / Email / Website if available)
     contact_parts = []
     if branding.get('phone'): contact_parts.append(branding.get('phone'))
     if branding.get('email'): contact_parts.append(branding.get('email'))
-    
-    if contact_parts:
-        y = draw_section("CONTACT", " | ".join(contact_parts), y)
-
+    if contact_parts: y = draw_section("CONTACT", " | ".join(contact_parts), y)
     img.save(output_path)
-
-def wrap_text(text, font, max_width):
-    lines = []
-    if not text: return lines
-    words = text.split()
-    current = []
-    for word in words:
-        current.append(word)
-        try: w = font.getlength(' '.join(current))
-        except: w = len(' '.join(current)) * 25
-        if w > max_width:
-            if len(current) == 1: lines.append(current.pop()); current = []
-            else: last = current.pop(); lines.append(' '.join(current)); current = [last]
-    if current: lines.append(' '.join(current))
-    return lines
 
 def download_file(url: str, dest: str) -> str:
     if not url: raise ValueError("URL is empty")
@@ -305,16 +238,18 @@ def build_ffmpeg_command(
     total_duration: float,
     output_path: str,
 ) -> list:
-    cmd = ['ffmpeg', '-y']
+    cmd = ['ffmpeg', '-y', '-hide_banner', '-loglevel', 'info']
     filter_complex = []
     
-    cmd.extend(['-i', voiceover_path]) # 0
-    if music_path:
-        cmd.extend(['-stream_loop', '-1', '-i', music_path]) # 1
-        a_idx = 2
-    else:
-        a_idx = 1
+    # Input 0: Voiceover
+    cmd.extend(['-i', voiceover_path])
     
+    a_idx = 1
+    if music_path:
+        # Input 1: Music (Looped)
+        cmd.extend(['-stream_loop', '-1', '-i', music_path])
+        a_idx = 2
+
     v_start = a_idx
     if video_paths:
         if len(video_paths) == 1:
@@ -338,23 +273,34 @@ def build_ffmpeg_command(
     
     v_tag = 'vbase'
     if subtitles_path:
-        # Burn subtitles only on the first part of the video if possible, but simpler to just burn all.
         filter_complex.append(f"[{v_tag}]subtitles={subtitles_path}:force_style='FontName=Arial,FontSize=24,PrimaryColour=&H00FFFFFF,BackColour=&H80000000,BorderStyle=3,Outline=1,Shadow=0,MarginV=60'[vburned]")
         v_tag = 'vburned'
     
-    # Audio Remastered v5 fix
-    filter_complex.append(f'[0:a:0]aresample=44100,pan=stereo|c0=c0|c1=c1[vo_ready]')
+    # AUDIO MIXING (V7 ULTIMATE)
+    # 0:a = Voiceover, 1:a = Music
+    
+    # Standardize VO
+    filter_complex.append(f'[0:a]aresample=44100,pan=stereo|c0=c0|c1=c1,volume=2.0[vo_standard]')
+    
     if music_path:
-        filter_complex.append(f'[1:a:0]aresample=44100,pan=stereo|c0=c0|c1=c1,volume=0.45[bg_ready]')
-        filter_complex.append(f'[vo_ready][bg_ready]amix=inputs=2:duration=longest:dropout_transition=2[a_mixed]')
+        # Standardize Music and apply initial volume
+        filter_complex.append(f'[1:a]aresample=44100,pan=stereo|c0=c0|c1=c1,volume=0.4[bg_standard]')
+        
+        # DUCKING: Reduce music volume when voiceover is detected.
+        # Sidechain compress: [music] [vo] sidechaincompress [outcome]
+        filter_complex.append(f'[bg_standard][vo_standard]sidechaincompress=threshold=0.1:ratio=4:attack=50:release=500[bg_ducked]')
+        
+        # MIX: 'duration=first' ensures we stop when Voiceover ends (most stable)
+        # dropout_transition=2 avoids clicking at the end if streams differ slightly
+        filter_complex.append(f'[vo_standard][bg_ducked]amix=inputs=2:duration=first:dropout_transition=2[a_mixed]')
         a_tag = 'a_mixed'
     else:
-        a_tag = 'vo_ready'
+        a_tag = 'vo_standard'
         
     cmd.extend(['-filter_complex', ';'.join(filter_complex)])
     cmd.extend(['-map', f'[{v_tag}]', '-map', f'[{a_tag}]'])
     cmd.extend(['-t', str(total_duration)])
-    cmd.extend(['-c:v', 'libx264', '-c:a', 'aac', '-ac', '2', '-pix_fmt', 'yuv420p', '-movflags', '+faststart'])
+    cmd.extend(['-c:v', 'libx264', '-c:a', 'aac', '-b:a', '192k', '-ac', '2', '-pix_fmt', 'yuv420p', '-movflags', '+faststart'])
     cmd.append(output_path)
     return cmd
 
