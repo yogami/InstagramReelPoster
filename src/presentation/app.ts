@@ -29,6 +29,7 @@ import { WebsiteScraperClient } from '../infrastructure/scraper/WebsiteScraperCl
 import { TelegramService } from './services/TelegramService';
 import { TelegramNotificationClient } from '../infrastructure/notifications/TelegramNotificationClient';
 import { IVideoRenderer } from '../domain/ports/IVideoRenderer';
+import { IImageClient } from '../domain/ports/IImageClient';
 
 import { OpenAITTSClient } from '../infrastructure/tts/OpenAITTSClient';
 import { XTTSTTSClient } from '../infrastructure/tts/XTTSTTSClient';
@@ -102,175 +103,31 @@ function createDependencies(config: Config): {
     growthInsightsService: GrowthInsightsService;
     cloudinaryClient: CloudinaryStorageClient | null;
 } {
-    // Cloudinary storage client
-    const cloudinaryClient = config.cloudinaryCloudName && config.cloudinaryApiKey
-        ? new CloudinaryStorageClient(
-            config.cloudinaryCloudName,
-            config.cloudinaryApiKey,
-            config.cloudinaryApiSecret
-        )
-        : null;
-
-    if (cloudinaryClient) {
-        console.log('✅ Cloudinary storage configured');
-    } else {
-        console.log('⚠️  Cloudinary not configured. Warning: Subtitles and FFmpeg rendering require cloud storage.');
-    }
-
-    // Infrastructure clients - OpenAI for transcription/LLM, Fish Audio for TTS, OpenRouter for images  
-    // Use OpenAI Whisper (now enhanced with local FFmpeg compression for large files)
-    const transcriptionClient = new OpenAITranscriptionClient(config.openaiApiKey);
-
-    // LLM Client Selection (Personal Clone feature flag)
-    const llmClient = config.featureFlags.usePersonalCloneLLM
-        ? (() => {
-            console.log('🧠 Using Local LLM (Personal Clone mode)');
-            return new LocalLLMClient(
-                config.personalClone.localLLMUrl,
-                'llama3.2',
-                config.personalClone.systemPrompt
-            );
-        })()
-        : new OpenAILLMClient(config.openaiApiKey, config.openaiModel);
-
-    // TTS Client Selection (Personal Clone feature flag)
-    const ttsClient = config.featureFlags.usePersonalCloneTTS
-        ? (() => {
-            console.log('🎙️ Using XTTS Local TTS (Personal Clone mode)');
-            return new XTTSTTSClient(config.personalClone.xttsServerUrl);
-        })()
-        : new FishAudioTTSClient(
-            config.fishAudioApiKey,
-            config.fishAudioVoiceId,
-            config.fishAudioBaseUrl
-        );
-    // Image clients - OpenRouter is now REQUIRED (no more DALL-E)
-    if (!config.openrouterApiKey) {
-        throw new Error('OPENROUTER_API_KEY is required for image generation');
-    }
-
-    // Create OpenRouter client (always needed as fallback)
-    const openRouterClient = new OpenRouterImageClient(
-        config.openrouterApiKey,
-        config.openrouterModel,
-        config.openrouterBaseUrl
-    );
-
-    // Use Beam.cloud FLUX1 as primary when enabled, with OpenRouter as fallback
-    let imageClient;
-    if (config.beamcloudEnabled && config.beamcloudApiKey && config.beamcloudEndpointUrl) {
-        const beamClient = new BeamcloudImageClient(
-            config.beamcloudApiKey,
-            config.beamcloudEndpointUrl
-        );
-        imageClient = new FallbackImageClient(beamClient, openRouterClient, 'Beam.cloud FLUX1', 'OpenRouter');
-        console.log('✅ Image generation: Beam.cloud FLUX1 (primary) → OpenRouter (fallback)');
-    } else {
-        imageClient = openRouterClient;
-        console.log('✅ Image generation: OpenRouter (primary)');
-    }
-
-    // Fallback Image Client (Pixabay = Free, OpenRouter = Paid)
-    const fallbackImageClient = config.pixabayApiKey
-        ? new PixabayImageClient(config.pixabayApiKey)
-        : imageClient;
-
-    // Use same OpenRouter client for both primary and fallback
-    const subtitlesClient = new OpenAISubtitlesClient(config.openaiApiKey, cloudinaryClient!);
+    const cloudinaryClient = createCloudinaryClient(config);
+    const llmClient = createLLMClient(config);
+    const ttsClient = createTTSClient(config);
     const fallbackTTSClient = new OpenAITTSClient(config.openaiApiKey);
+    const { primaryImageClient, fallbackImageClient } = createImageClients(config);
+    const transcriptionClient = new OpenAITranscriptionClient(config.openaiApiKey);
+    const subtitlesClient = new OpenAISubtitlesClient(config.openaiApiKey, cloudinaryClient!);
+    const videoRenderer = createVideoRenderer(config, cloudinaryClient);
+    const animatedVideoClient = createAnimatedVideoClient(config);
+    const musicSelector = createMusicSelector(config);
+    const jobManager = new JobManager(config.minReelSeconds, config.maxReelSeconds, config.redisUrl);
+    const notificationClient = createNotificationClient(config);
+    const websiteScraperClient = new WebsiteScraperClient();
 
-    // Video Renderer Selection
-    let videoRenderer: IVideoRenderer;
-
-    if (config.videoRenderer === 'ffmpeg') {
-        // Local FFmpeg (legacy/dev mode)
-        if (!cloudinaryClient) {
-            throw new Error('FFmpeg renderer requires Cloudinary configuration');
-        }
-        console.log('🎥 Using FFmpeg Video Renderer (Local)');
-        videoRenderer = new FFmpegVideoRenderer(cloudinaryClient);
-    } else {
-        // Cloud Renderers
-        const shotstackRenderer = new ShortstackVideoRenderer(
-            config.shotstackApiKey,
-            config.shotstackBaseUrl
-        );
-
-        if (config.beamcloudRenderEnabled && config.beamcloudApiKey && config.beamcloudRenderEndpointUrl) {
-            const beamRenderer = new BeamcloudVideoRenderer(
-                config.beamcloudApiKey,
-                config.beamcloudRenderEndpointUrl
-            );
-            videoRenderer = new FallbackVideoRenderer(beamRenderer, shotstackRenderer, 'Beam.cloud FFmpeg', 'Shotstack');
-            console.log('🎥 Video rendering: Beam.cloud FFmpeg (primary) → Shotstack (fallback)');
-        } else {
-            videoRenderer = shotstackRenderer;
-            console.log('🎥 Video rendering: Shotstack (primary)');
-        }
-    }
-
-    // Music clients
-    const internalMusicCatalog = new InMemoryMusicCatalogClient(config.internalMusicCatalogPath);
-
-    // External catalog (Optional - Not used for now)
-    const externalMusicCatalog = null;
-
-    // Kie.ai music generator (if configured)
-    const musicGenerator = config.kieApiKey
-        ? new KieMusicGeneratorClient(config.kieApiKey, config.kieApiBaseUrl)
-        : null;
-
-    const musicSelector = new MusicSelector(
-        internalMusicCatalog,
-        externalMusicCatalog,
-        musicGenerator
-    );
-
-    // Application layer
-    const jobManager = new JobManager(
-        config.minReelSeconds,
-        config.maxReelSeconds,
-        config.redisUrl
-    );
-
-    // Notification client (optional)
-    const telegramService = config.telegramBotToken
-        ? new TelegramService(config.telegramBotToken)
-        : null;
-    const notificationClient = telegramService
-        ? new TelegramNotificationClient(telegramService)
-        : undefined;
-
-    // Animated Video Client - Beam.cloud (primary) with Kie.ai (fallback)
-    let animatedVideoClient;
-    const kieVideoClient = config.kieApiKey
-        ? new KieVideoClient(config.kieApiKey, config.kieVideoBaseUrl, config.kieVideoModel)
-        : new MockAnimatedVideoClient();
-
-    if (config.beamcloudVideoEnabled && config.beamcloudApiKey && config.beamcloudVideoEndpointUrl) {
-        const beamVideoClient = new BeamcloudVideoClient(
-            config.beamcloudApiKey,
-            config.beamcloudVideoEndpointUrl
-        );
-        animatedVideoClient = new FallbackVideoClient(beamVideoClient, kieVideoClient, 'Beam.cloud Mochi', 'Kie.ai');
-        console.log('✅ Video generation: Beam.cloud Mochi (primary) → Kie.ai (fallback)');
-    } else {
-        animatedVideoClient = kieVideoClient;
-        console.log('✅ Video generation: Kie.ai (primary)');
-    }
-
-    // Phase 2: Growth Layer Services
+    // Growth Layer Services
     const hookAndStructureService = new HookAndStructureService(llmClient);
     const captionService = new CaptionService(llmClient);
     const growthInsightsService = new GrowthInsightsService();
-    const websiteScraperClient = new WebsiteScraperClient();
 
     const deps: OrchestratorDependencies = {
         transcriptionClient,
         llmClient,
         ttsClient,
-        primaryImageClient: imageClient,
-        fallbackImageClient: fallbackImageClient,
+        primaryImageClient,
+        fallbackImageClient,
         subtitlesClient,
         videoRenderer,
         animatedVideoClient,
@@ -290,6 +147,116 @@ function createDependencies(config: Config): {
     console.log(`📡 Callback configured: Header = ${deps.callbackHeader}, Token = ${deps.callbackToken ? (deps.callbackToken.substring(0, 5) + '...') : 'None'} `);
 
     const orchestrator = new ReelOrchestrator(deps);
-
     return { jobManager, orchestrator, growthInsightsService, cloudinaryClient };
+}
+
+// --- Helper Functions ---
+
+function createCloudinaryClient(config: Config): CloudinaryStorageClient | null {
+    if (config.cloudinaryCloudName && config.cloudinaryApiKey) {
+        console.log('✅ Cloudinary storage configured');
+        return new CloudinaryStorageClient(
+            config.cloudinaryCloudName,
+            config.cloudinaryApiKey,
+            config.cloudinaryApiSecret
+        );
+    }
+    console.log('⚠️  Cloudinary not configured.');
+    return null;
+}
+
+function createLLMClient(config: Config) {
+    if (config.featureFlags.usePersonalCloneLLM) {
+        console.log('🧠 Using Local LLM (Personal Clone mode)');
+        return new LocalLLMClient(
+            config.personalClone.localLLMUrl,
+            'llama3.2',
+            config.personalClone.systemPrompt
+        );
+    }
+    return new OpenAILLMClient(config.openaiApiKey, config.openaiModel);
+}
+
+function createTTSClient(config: Config) {
+    if (config.featureFlags.usePersonalCloneTTS) {
+        console.log('🎙️ Using XTTS Local TTS (Personal Clone mode)');
+        return new XTTSTTSClient(config.personalClone.xttsServerUrl);
+    }
+    return new FishAudioTTSClient(
+        config.fishAudioApiKey,
+        config.fishAudioVoiceId,
+        config.fishAudioBaseUrl
+    );
+}
+
+function createImageClients(config: Config): { primaryImageClient: IImageClient; fallbackImageClient: IImageClient } {
+    if (!config.openrouterApiKey) {
+        throw new Error('OPENROUTER_API_KEY is required for image generation');
+    }
+
+    const openRouterClient = new OpenRouterImageClient(
+        config.openrouterApiKey,
+        config.openrouterModel,
+        config.openrouterBaseUrl
+    );
+
+    let primaryImageClient: IImageClient;
+    if (config.beamcloudEnabled && config.beamcloudApiKey && config.beamcloudEndpointUrl) {
+        const beamClient = new BeamcloudImageClient(config.beamcloudApiKey, config.beamcloudEndpointUrl);
+        primaryImageClient = new FallbackImageClient(beamClient, openRouterClient, 'Beam.cloud FLUX1', 'OpenRouter');
+        console.log('✅ Image generation: Beam.cloud FLUX1 (primary) → OpenRouter (fallback)');
+    } else {
+        primaryImageClient = openRouterClient;
+        console.log('✅ Image generation: OpenRouter (primary)');
+    }
+
+    const fallbackImageClient = config.pixabayApiKey
+        ? new PixabayImageClient(config.pixabayApiKey)
+        : primaryImageClient;
+
+    return { primaryImageClient, fallbackImageClient };
+}
+
+function createVideoRenderer(config: Config, cloudinaryClient: CloudinaryStorageClient | null): IVideoRenderer {
+    if (config.videoRenderer === 'ffmpeg') {
+        if (!cloudinaryClient) throw new Error('FFmpeg renderer requires Cloudinary configuration');
+        console.log('🎬 Using FFmpeg Video Renderer (Local)');
+        return new FFmpegVideoRenderer(cloudinaryClient);
+    }
+
+    const shotstackRenderer = new ShortstackVideoRenderer(config.shotstackApiKey, config.shotstackBaseUrl);
+    if (config.beamcloudRenderEnabled && config.beamcloudApiKey && config.beamcloudRenderEndpointUrl) {
+        const beamRenderer = new BeamcloudVideoRenderer(config.beamcloudApiKey, config.beamcloudRenderEndpointUrl);
+        console.log('🎬 Video rendering: Beam.cloud FFmpeg (primary) → Shotstack (fallback)');
+        return new FallbackVideoRenderer(beamRenderer, shotstackRenderer, 'Beam.cloud FFmpeg', 'Shotstack');
+    }
+    console.log('🎬 Video rendering: Shotstack (primary)');
+    return shotstackRenderer;
+}
+
+function createAnimatedVideoClient(config: Config) {
+    const kieVideoClient = config.kieApiKey
+        ? new KieVideoClient(config.kieApiKey, config.kieVideoBaseUrl, config.kieVideoModel)
+        : new MockAnimatedVideoClient();
+
+    if (config.beamcloudVideoEnabled && config.beamcloudApiKey && config.beamcloudVideoEndpointUrl) {
+        const beamVideoClient = new BeamcloudVideoClient(config.beamcloudApiKey, config.beamcloudVideoEndpointUrl);
+        console.log('✅ Video generation: Beam.cloud Mochi (primary) → Kie.ai (fallback)');
+        return new FallbackVideoClient(beamVideoClient, kieVideoClient, 'Beam.cloud Mochi', 'Kie.ai');
+    }
+    console.log('✅ Video generation: Kie.ai (primary)');
+    return kieVideoClient;
+}
+
+function createMusicSelector(config: Config) {
+    const internalMusicCatalog = new InMemoryMusicCatalogClient(config.internalMusicCatalogPath);
+    const musicGenerator = config.kieApiKey
+        ? new KieMusicGeneratorClient(config.kieApiKey, config.kieApiBaseUrl)
+        : null;
+    return new MusicSelector(internalMusicCatalog, null, musicGenerator);
+}
+
+function createNotificationClient(config: Config) {
+    const telegramService = config.telegramBotToken ? new TelegramService(config.telegramBotToken) : null;
+    return telegramService ? new TelegramNotificationClient(telegramService) : undefined;
 }
