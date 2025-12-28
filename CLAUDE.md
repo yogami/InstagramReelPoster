@@ -17,6 +17,38 @@ When in Planning Mode, always use the peer-planner approach:
   - Zero linter errors/warnings
   - Small classes/methods (split if >1 responsibility)
 
+## Boy Scout Rule (Software Craftsmanship)
+**"Always leave the code better than you found it."** – Robert C. Martin (Uncle Bob)
+
+**Core Principle:** Every time you touch code, improve it—even if you didn’t write it. This applies to:
+
+1. **For Every Change You Make:**
+   - Improve at least one thing beyond your immediate task
+   - Fix nearby code smells, unclear names, or missing types
+   - Add missing tests for code you had to understand
+   - Simplify complex conditions you had to decipher
+
+2. **Refactoring is Not Optional:**
+   - If you see complexity ≤3 violations, reduce them
+   - If you see untested code, add characterization tests
+   - If you see unclear naming, rename for clarity
+   - If you see magic numbers, extract to constants
+
+3. **Coverage is a Ratchet:**
+   - Coverage should only go UP, never down
+   - Before refactoring legacy code: scaffold 100% characterization tests
+   - After refactoring: verify coverage maintained or improved
+
+4. **Technical Debt Paydown:**
+   - Track debt in code comments with `// TODO:` or `// DEBT:`
+   - Each PR should pay down at least one debt item
+   - Never add debt without a tracking comment
+
+5. **The 15% Rule:**
+   - Allocate ~15% of each task to cleanup work
+   - If fixing a bug, also fix one related issue
+   - If adding a feature, also simplify one nearby function
+
 ## Prompt Engineering Standards (Treat Prompts as Code)
 **Apply to ALL prompt changes/modifications:**
 
