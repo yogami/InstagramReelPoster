@@ -16,6 +16,37 @@ export class ImageGenerationService {
     ) { }
 
     /**
+     * Generates a single image with fallback and storage.
+     */
+    async generateImage(prompt: string, mood?: string): Promise<string> {
+        const fullPrompt = mood ? `${prompt} Mood: ${mood}` : prompt;
+        let imageUrl: string;
+
+        try {
+            const result = await this.primaryClient.generateImage(fullPrompt);
+            imageUrl = result.imageUrl;
+        } catch (err) {
+            console.warn(`Primary image client failed, falling back:`, err);
+            const result = await this.fallbackClient.generateImage(fullPrompt);
+            imageUrl = result.imageUrl;
+        }
+
+        if (this.storageClient) {
+            try {
+                const uploadResult = await this.storageClient.uploadImage(imageUrl, {
+                    folder: 'instagram-reels/turbo-frames',
+                    publicId: `turbo_${Date.now()}`
+                });
+                imageUrl = uploadResult.url;
+            } catch (err) {
+                console.warn(`Failed to persist turbo frame to Cloudinary:`, err);
+            }
+        }
+
+        return imageUrl;
+    }
+
+    /**
      * Generates images for all segments with fallback support.
      */
     async generateForSegments(segments: Segment[], jobId: string): Promise<Segment[]> {
