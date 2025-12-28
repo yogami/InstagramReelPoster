@@ -116,7 +116,7 @@ export class AnimatedVideoStep implements PipelineStep {
             console.log(`[AnimatedVideo] Generating Turbo Clip (Image-based): ${options.theme.substring(0, 50)}...`);
 
             // Generate a high-quality Flux image instead of a heavy Video clip
-            const imageUrl = await this.imageService.generateImage(options.theme, options.mood);
+            const imageUrl = await this.imageService.generateAndStoreImage(options.theme, options.mood);
 
             // To notify the renderer that this is an image that needs "Ken Burns" motion,
             // we wrap it in a pseudo-URL or metadata structure.
