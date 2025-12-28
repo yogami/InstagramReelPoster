@@ -72,6 +72,18 @@ export interface OrchestratorDependencies {
     notificationClient?: INotificationClient;
 }
 
+/** Options for preparePromoAssets method. */
+interface PreparePromoAssetsOptions {
+    jobId: string;
+    job: ReelJob;
+    segmentContent: SegmentContent[];
+    fullCommentary: string;
+    targetDuration: number;
+    category: BusinessCategory;
+    promoScript?: PromoScriptPlan;
+    voiceId?: string;
+}
+
 /**
  * ReelOrchestrator coordinates the full reel generation workflow.
  */
@@ -1232,7 +1244,16 @@ export class ReelOrchestrator {
         // Prepare all assets (voiceover, music, images)
         const config = getConfig();
         const promoVoiceId = job.voiceId || config.fishAudioPromoVoiceId;
-        const assets = await this.preparePromoAssets(jobId, job, segmentContent, fullCommentary, targetDuration, category, promoScript, promoVoiceId);
+        const assets = await this.preparePromoAssets({
+            jobId,
+            job,
+            segmentContent,
+            fullCommentary,
+            targetDuration,
+            category,
+            promoScript,
+            voiceId: promoVoiceId
+        });
 
         // Build manifest
         const manifest = createReelManifest({
@@ -1261,16 +1282,9 @@ export class ReelOrchestrator {
         }));
     }
 
-    private async preparePromoAssets(
-        jobId: string,
-        job: ReelJob,
-        segmentContent: SegmentContent[],
-        fullCommentary: string,
-        targetDuration: number,
-        category: BusinessCategory,
-        promoScript?: PromoScriptPlan,
-        voiceId?: string
-    ) {
+    private async preparePromoAssets(options: PreparePromoAssetsOptions) {
+        const { jobId, job, segmentContent, fullCommentary, targetDuration, category, promoScript, voiceId } = options;
+
         // Synthesize voiceover
         await this.updateJobStatus(jobId, 'synthesizing_voiceover', 'Creating voiceover...');
         const { voiceoverUrl, voiceoverDuration } = await this.synthesizeWithAdjustment(fullCommentary, targetDuration, voiceId);

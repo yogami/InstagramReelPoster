@@ -344,14 +344,11 @@ describe('ReelOrchestrator', () => {
             await (orchestrator as any).renderPromoReel('job-promo', promoJob, promoScript, 'service', 'Test Biz');
 
             expect((orchestrator as any).preparePromoAssets).toHaveBeenCalledWith(
-                expect.anything(),
-                expect.anything(),
-                expect.anything(),
-                expect.anything(),
-                expect.anything(),
-                'service',
-                promoScript,
-                'custom-voice-999'
+                expect.objectContaining({
+                    category: 'service',
+                    promoScript,
+                    voiceId: 'custom-voice-999'
+                })
             );
         });
 
@@ -359,14 +356,11 @@ describe('ReelOrchestrator', () => {
             await (orchestrator as any).renderPromoReel('job-promo', job, promoScript, 'service', 'Test Biz');
 
             expect((orchestrator as any).preparePromoAssets).toHaveBeenCalledWith(
-                expect.anything(),
-                expect.anything(),
-                expect.anything(),
-                expect.anything(),
-                expect.anything(),
-                'service',
-                promoScript,
-                'promo-voice-123'
+                expect.objectContaining({
+                    category: 'service',
+                    promoScript,
+                    voiceId: 'promo-voice-123'
+                })
             );
         });
         test('should pass musicUrl and other assets to the manifest', async () => {
