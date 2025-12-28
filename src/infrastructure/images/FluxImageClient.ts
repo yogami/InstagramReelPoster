@@ -13,7 +13,7 @@ export class FluxImageClient implements IImageClient {
     constructor(
         apiKey: string,
         endpointUrl: string,
-        timeout: number = 120000 // FLUX can take 30-60s
+        timeout: number = 180000 // FLUX can take 30-60s, increased for cold starts
     ) {
         if (!apiKey) {
             throw new Error('Flux API key is required');

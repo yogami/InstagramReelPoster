@@ -84,8 +84,10 @@ export function createReelManifest(params: {
 
     // Validate segments if provided
     if (hasSegments && params.segments) {
+        const isAnimated = !!params.animatedVideoUrl || (params.animatedVideoUrls && params.animatedVideoUrls.length > 0);
+
         for (const segment of params.segments) {
-            if (!segment.imageUrl) {
+            if (!segment.imageUrl && !isAnimated) {
                 throw new Error(`Segment ${segment.index} is missing imageUrl`);
             }
         }
@@ -94,7 +96,7 @@ export function createReelManifest(params: {
             index: seg.index,
             start: seg.startSeconds,
             end: seg.endSeconds,
-            imageUrl: seg.imageUrl!,
+            imageUrl: seg.imageUrl || '', // Allow empty if animated
             caption: seg.caption,
         }));
     }

@@ -31,10 +31,24 @@ export class ContentModeStep implements PipelineStep {
             contentMode = 'direct-message';
             console.log(`[${context.jobId}] Content Mode: DIRECT-MESSAGE (forced)`);
         } else if (this.llmClient.detectContentMode) {
-            const combinedText = `${context.job.description || ''}\n${context.transcript || ''}`.trim();
-            const result = await this.llmClient.detectContentMode(combinedText);
-            contentMode = result.contentMode;
-            console.log(`[${context.jobId}] Content Mode: ${contentMode.toUpperCase()} (detected)`);
+            const combinedText = `${context.job.description || ''}\n${context.transcript || ''}`.toLowerCase().trim();
+
+            // Heuristic upgrade: If they explicitly ask for an "animation video" or "full video", push to parable
+            const isComplexVideoRequested = (
+                combinedText.includes('animation video') ||
+                combinedText.includes('full video') ||
+                combinedText.includes('story video') ||
+                combinedText.includes('cinematic video')
+            );
+
+            if (isComplexVideoRequested) {
+                contentMode = 'parable';
+                console.log(`[${context.jobId}] Content Mode: PARABLE (heuristic: animation video requested)`);
+            } else {
+                const result = await this.llmClient.detectContentMode(combinedText);
+                contentMode = result.contentMode;
+                console.log(`[${context.jobId}] Content Mode: ${contentMode.toUpperCase()} (detected)`);
+            }
         }
 
         await this.jobManager.updateJob(context.jobId, { contentMode });
