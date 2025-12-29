@@ -41,6 +41,12 @@ export const CATEGORY_PROMPTS: Record<BusinessCategory, CategoryPromptTemplate> 
         cta: "Create your masterpiece here",
         visuals: "studio setup, artist working, mood lighting, finished work, creative energy",
     },
+    spiritual: {
+        hook: "Still searching for peace in the noise?",
+        showcase: "Ancient wisdom, modern psychology, deep self-inquiry",
+        cta: "Start your journey within",
+        visuals: "Minimalist zen garden, incense smoke, meditator in silhouette, sacred geometry, morning mist",
+    },
 };
 
 /**
@@ -53,6 +59,7 @@ export const CATEGORY_KEYWORDS: Record<BusinessCategory, string[]> = {
     restaurant: ['restaurant', 'dining', 'menu', 'chef', 'cuisine', 'food', 'dishes', 'kitchen', 'brunch', 'dinner'],
     studio: ['studio', 'creative', 'photography', 'art', 'design', 'recording', 'music', 'dance', 'tattoo'],
     service: ['service', 'professional', 'expert', 'consultation', 'booking', 'appointment', 'therapist', 'consultant'],
+    spiritual: ['meditation', 'wellness', 'spiritual', 'healing', 'yoga', 'mindfulness', 'retreat', 'insight', 'wisdom'],
 };
 
 /**
@@ -63,8 +70,9 @@ export const CATEGORY_MUSIC_STYLES: Record<BusinessCategory, string> = {
     gym: 'energetic-motivational',
     shop: 'upbeat-indie',
     service: 'professional-ambient',
-    restaurant: 'berlin-techno-minimal',  // Perplexity: -32% skip rate vs jazz
+    restaurant: 'berlin-techno-minimal',
     studio: 'creative-electronic',
+    spiritual: 'deep-ambient-flute-sitar',
 };
 
 /**
@@ -83,6 +91,7 @@ export function detectCategoryFromKeywords(keywords: string[]): {
         service: 0,
         restaurant: 0,
         studio: 0,
+        spiritual: 0,
     };
 
     const normalizedKeywords = keywords.map(kw => kw.toLowerCase());

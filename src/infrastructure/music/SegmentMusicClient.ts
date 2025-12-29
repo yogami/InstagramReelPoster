@@ -137,10 +137,11 @@ export class SegmentMusicClient implements IMusicGeneratorClient {
         const base = `Create ambient, atmospheric music. Style: ${userPrompt}. 
 Requirements:
 - Ambient / drone / soundscape texture
-- Eastern instruments where possible (flute, bells, bowls, sitar)
+- Eastern instruments ONLY (Flute, Sitar, Tanpura, Meditation Bells)
+- ABSOLUTELY NO Bhangra, NO high-energy drums, NO party vibes
 - Very low or no percussion
 - Avoid piano and heavy Western harmony
-- Meditation-friendly, subtle and evolving`;
+- Meditation-friendly, subtle, and deeply calming`;
 
         return base;
     }

@@ -16,7 +16,8 @@ export type BusinessCategory =
     | 'shop'
     | 'service'
     | 'restaurant'
-    | 'studio';
+    | 'studio'
+    | 'spiritual';
 
 /**
  * Site DNA - Psychological analysis of business website.
@@ -221,13 +222,10 @@ export interface PromoScriptPlan {
     logoPosition?: 'beginning' | 'end' | 'overlay';
 }
 
-/**
- * Type guard for BusinessCategory.
- */
 export function isBusinessCategory(value: unknown): value is BusinessCategory {
     return (
         typeof value === 'string' &&
-        ['cafe', 'gym', 'shop', 'service', 'restaurant', 'studio'].includes(value)
+        ['cafe', 'gym', 'shop', 'service', 'restaurant', 'studio', 'spiritual'].includes(value)
     );
 }
 
