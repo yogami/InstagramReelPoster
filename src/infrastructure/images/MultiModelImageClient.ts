@@ -27,7 +27,7 @@ export class MultiModelImageClient implements IImageClient {
     }
 
     async generateImage(prompt: string): Promise<{ imageUrl: string }> {
-        // Simple, clean prompt focus. Avoid heavy "Sequential" context which confuses smaller models.
+        // Simple, clean prompt focus.
         const finalPrompt = `${prompt}. Style: Cinematic, high quality, 8k, photorealistic. Aspect Ratio: 9:16 Vertical.`;
 
         try {
@@ -41,9 +41,6 @@ export class MultiModelImageClient implements IImageClient {
                         role: 'user',
                         content: finalPrompt
                     }],
-                    // Required for image models on MultiModel
-                    // @ts-ignore
-                    modalities: ['image'],
                 },
                 {
                     headers: {
@@ -52,7 +49,7 @@ export class MultiModelImageClient implements IImageClient {
                         'HTTP-Referer': 'https://github.com/yogami/InstagramReelPoster',
                         'X-Title': 'Instagram Reel Poster',
                     },
-                    timeout: 60000,
+                    timeout: 90000,
                 }
             );
 

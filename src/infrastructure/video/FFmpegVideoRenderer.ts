@@ -232,7 +232,12 @@ export class FFmpegVideoRenderer implements IVideoRenderer {
 
             cmd.outputOptions([
                 '-c:v libx264',
+                '-preset fast',
+                '-crf 23', // Balanced quality/size (18 is higher quality, 28 is lower)
+                '-maxrate 2.5M', // Limit bitrate to 2.5Mbps
+                '-bufsize 5M',
                 '-c:a aac',
+                '-b:a 128k',
                 '-pix_fmt yuv420p',
                 '-shortest',
                 '-movflags +faststart'

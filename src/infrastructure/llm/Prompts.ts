@@ -216,23 +216,25 @@ ZOOM EFFECT OPTIONS:
 - ken_burns_right: Slow pan right (discovery)
 - static: No movement (for text-heavy or still moments)
 
-Respond as JSON array (SAME ORDER as input):
-[
-  {
-    "imagePrompt": "[scene], moody cinematic lighting, high contrast, ultra-detailed, photorealistic, 9:16 vertical",
-    "caption": "...",
-    "continuityTags": {
-      "location": "...",
-      "timeOfDay": "...",
-      "dominantColor": "...",
-      "heroProp": "...",
-      "wardrobeDetail": "...",
-      "zoomEffect": "slow_zoom_in|slow_zoom_out|ken_burns_left|ken_burns_right|static",
-      "captionPosition": "bottom_center|top_left|center"
-    }
-  },
-  ...
-]`;
+Respond as a JSON object with a 'visuals' key containing the array:
+{
+  "visuals": [
+    {
+      "imagePrompt": "[scene], moody cinematic lighting, high contrast, ultra-detailed, photorealistic, 9:16 vertical",
+      "caption": "...",
+      "continuityTags": {
+        "location": "...",
+        "timeOfDay": "...",
+        "dominantColor": "...",
+        "heroProp": "...",
+        "wardrobeDetail": "...",
+        "zoomEffect": "slow_zoom_in|slow_zoom_out|ken_burns_left|ken_burns_right|static",
+        "captionPosition": "bottom_center|top_left|center"
+      }
+    },
+    ...
+  ]
+}`;
 
 export const PARABLE_SCRIPT_PROMPT = `Generate a micro-parable for short-form video.
 

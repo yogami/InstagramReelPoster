@@ -36,22 +36,102 @@ export class MediaStorageClient {
             resourceType?: 'image' | 'video' | 'raw' | 'auto';
         } = {}
     ): Promise<{ url: string; publicId: string }> {
+        const resourceType = options.resourceType || 'auto';
+        const isRemote = url.startsWith('http');
+        const folder = options.folder || 'instagram-reels';
+
         try {
-            const result = await cloudinary.uploader.upload(url, {
-                folder: options.folder || 'instagram-reels',
-                public_id: options.publicId,
-                resource_type: options.resourceType || 'auto',
-                overwrite: true,
+            // Case 1: Local file path
+            if (!isRemote) {
+                console.log(`[MediaStorage] Local file detected, using chunked upload for robustness: ${url}`);
+                const result = (await cloudinary.uploader.upload_large(url, {
+                    folder,
+                    public_id: options.publicId,
+                    resource_type: resourceType,
+                    chunk_size: 6000000, // 6MB chunks
+                    overwrite: true,
+                })) as any;
+
+                return {
+                    url: result.secure_url,
+                    publicId: result.public_id,
+                };
+            }
+
+            // Case 2: Remote URL
+            // Try regular upload first (most efficient server-side fetch)
+            try {
+                const result = await cloudinary.uploader.upload(url, {
+                    folder,
+                    public_id: options.publicId,
+                    resource_type: resourceType,
+                    overwrite: true,
+                });
+
+                return {
+                    url: result.secure_url,
+                    publicId: result.public_id,
+                };
+            } catch (error: any) {
+                // If it fails due to size (100MB limit for some tiers) or timeout, download and chunk-upload
+                const isSizeError = error.message?.includes('too large') || error.http_code === 400;
+                if (isSizeError && (resourceType === 'video' || resourceType === 'auto')) {
+                    console.warn(`[MediaStorage] Remote video too large for direct fetch (>${(104857600 / 1024 / 1024).toFixed(0)}MB). Attempting local buffer + chunked upload...`);
+                    return await this.downloadAndUploadLarge(url, folder, options.publicId, resourceType);
+                }
+                throw error;
+            }
+        } catch (error) {
+            console.error('[Cloudinary] Detailed Error:', error);
+            const message = error instanceof Error ? error.message : JSON.stringify(error) || 'Unknown error';
+            throw new Error(`Media upload failed: ${message}`);
+        }
+    }
+
+    /**
+     * Downloads a remote file and uploads it in chunks to bypass server-side fetch limits.
+     */
+    private async downloadAndUploadLarge(
+        url: string,
+        folder: string,
+        publicId?: string,
+        resourceType: any = 'video'
+    ): Promise<{ url: string; publicId: string }> {
+        const tempDir = os.tmpdir();
+        const tempPath = path.join(tempDir, `large_asset_${Date.now()}.mp4`);
+
+        try {
+            console.log(`[MediaStorage] Buffering large remote asset to: ${tempPath}`);
+            const response = await axios({
+                url,
+                method: 'GET',
+                responseType: 'stream',
+                timeout: 300000 // 5 minutes for large downloads
             });
+
+            const writer = fs.createWriteStream(tempPath);
+            response.data.pipe(writer);
+
+            await new Promise((resolve, reject) => {
+                writer.on('finish', resolve);
+                writer.on('error', reject);
+            });
+
+            const result = (await cloudinary.uploader.upload_large(tempPath, {
+                folder,
+                public_id: publicId,
+                resource_type: resourceType,
+                chunk_size: 6000000,
+            })) as any;
 
             return {
                 url: result.secure_url,
                 publicId: result.public_id,
             };
-        } catch (error) {
-            console.error('[Cloudinary] Detailed Error:', error);
-            const message = error instanceof Error ? error.message : JSON.stringify(error) || 'Unknown error';
-            throw new Error(`Media upload failed: ${message}`);
+        } finally {
+            if (fs.existsSync(tempPath)) {
+                fs.unlinkSync(tempPath);
+            }
         }
     }
 

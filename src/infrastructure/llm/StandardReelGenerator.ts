@@ -98,7 +98,7 @@ export class StandardReelGenerator {
         const wordsPerSegment = Math.round((secondsPerSegment - 0.5) * config.speakingRateWps * safetyMargin);
         const hardCapPerSegment = Math.floor((secondsPerSegment - 0.2) * config.speakingRateWps);
 
-        console.log(`[StandardReel] Step 1: Generating commentary for ${plan.segmentCount} segments (Target: ${wordsPerSegment} words)`);
+        console.log(`[StandardReel v1.1] Generating for ${plan.segmentCount} segments (Target: ${wordsPerSegment} words)`);
 
         // Step 1: Generate Commentary
         const commentaries = await this.generateCommentary(plan, transcript, wordsPerSegment, hardCapPerSegment);
@@ -163,9 +163,9 @@ export class StandardReelGenerator {
                 const response = await this.openAI.chatCompletion(prompt, CHALLENGING_VIEW_SYSTEM_PROMPT, { jsonMode: true });
                 const parsed = this.openAI.parseJSON<{ commentary: string }>(response);
 
-                if (!parsed || !parsed.commentary) {
-                    console.warn(`[StandardReel] Segment ${i}: Invalid response, using fallback.`);
-                    results.push({ commentary: `Segment ${i} content.` });
+                if (!parsed || !parsed.commentary || parsed.commentary.trim().length < 2) {
+                    console.warn(`[StandardReel] Segment ${i}: Invalid or empty response, using fallback.`);
+                    results.push({ commentary: `${plan.summary} - Part ${i}` });
                 } else {
                     results.push({ commentary: parsed.commentary });
                     console.log(`[StandardReel] Generated segment ${i}/${plan.segmentCount}: "${parsed.commentary.substring(0, 50)}..."`);
@@ -237,35 +237,56 @@ export class StandardReelGenerator {
             .replace('{{segmentCount}}', plan.segmentCount.toString())
             .replace('{{commentaries}}', commentaryText);
 
-        const response = await this.openAI.chatCompletion(prompt, CHALLENGING_VIEW_SYSTEM_PROMPT, { jsonMode: true });
-        const parsed = this.openAI.parseJSON<{
-            imagePrompt: string;
-            caption: string;
-            continuityTags: {
-                location: string;
-                timeOfDay: string;
-                dominantColor: string;
-                heroProp: string;
-                wardrobeDetail: string;
-            }
-        }[]>(response);
+        try {
+            const response = await this.openAI.chatCompletion(prompt, CHALLENGING_VIEW_SYSTEM_PROMPT, { jsonMode: true });
+            const data = this.openAI.parseJSON<any>(response);
 
-        if (!Array.isArray(parsed)) {
-            // Fallback if structure is weird
-            return commentaries.map(() => ({
-                imagePrompt: 'Abstract spiritual background, cinematic lighting',
-                caption: 'Focus',
+            let visuals: any[] = [];
+            if (Array.isArray(data)) {
+                visuals = data;
+            } else if (data && typeof data === 'object') {
+                visuals = data.visuals || data.segments || data.data || Object.values(data).find(v => Array.isArray(v)) || [];
+            }
+
+            if (visuals.length === 0) {
+                console.warn('[StandardReel] Visual generation returned empty or invalid structure, using fallback');
+                return this.createFallbackVisuals(plan, commentaries);
+            }
+
+            // Ensure we have exactly the right count
+            if (visuals.length < commentaries.length) {
+                const last = visuals[visuals.length - 1];
+                while (visuals.length < commentaries.length) visuals.push({ ...last });
+            }
+
+            return visuals.slice(0, commentaries.length);
+        } catch (error) {
+            console.error('[StandardReel] Visual generation failed:', error);
+            return this.createFallbackVisuals(plan, commentaries);
+        }
+    }
+
+    /**
+     * Creates meaningful fallback visuals based on the commentary when LLM fails.
+     */
+    private createFallbackVisuals(plan: ReelPlan, commentaries: { commentary: string }[]): any[] {
+        return commentaries.map((c) => {
+            // Extract a punchy caption from the commentary (first 7-10 words)
+            const words = c.commentary.split(/\s+/).filter(w => w.length > 0);
+            const caption = words.slice(0, 7).join(' ').replace(/[.,!?;]$/, '') + (words.length > 7 ? '...' : '');
+
+            return {
+                imagePrompt: `${plan.summary}, ${plan.mood} cinematic lighting, high quality photorealistic, 9:16 vertical`,
+                caption: caption || 'Insight', // Changed 'Focus' to 'Insight'
                 continuityTags: {
-                    location: 'abstract void',
-                    timeOfDay: 'timeless',
+                    location: 'cinematic setting',
+                    timeOfDay: 'dramatic',
                     dominantColor: 'neutral',
                     heroProp: 'none',
                     wardrobeDetail: 'none'
                 }
-            }));
-        }
-
-        return parsed;
+            };
+        });
     }
 
     /**
