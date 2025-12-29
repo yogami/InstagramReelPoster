@@ -274,11 +274,18 @@ export class WebsiteScraperClient implements IWebsiteScraperClient {
     private parseHtml(html: string, sourceUrl: string): WebsiteAnalysis {
         const $ = cheerio.load(html);
 
-        // Remove known junk/interstitial/popup elements from the DOM before text extraction
-        $('script, style, noscript, iframe, nav, footer, aside, button, input, textarea, select').remove();
+        // EXTRACTION: Perform contact info extraction BEFORE removing elements
+        // This ensures footer and nav data is preserved for address/phone/email
+        const bodyTextRaw = this.cleanText($('body').text());
+        const bodyTextLower = bodyTextRaw.toLowerCase();
 
-        // Target common popup/consent/modal classes and IDs
-        // This effectively ignores popups that are present in the HTML
+        const address = this.detectAddress(bodyTextRaw);
+        const openingHours = this.detectOpeningHours(bodyTextRaw);
+        const phone = this.detectPhone(bodyTextRaw);
+        const email = this.detectEmail(bodyTextRaw, html);
+
+        // CLEANING: Now remove junk/interstitial/popup elements for theme/keyword extraction
+        $('script, style, noscript, iframe, nav, footer, aside, button, input, textarea, select').remove();
         $('[class*="modal"], [id*="modal"], [class*="popup"], [id*="popup"], [class*="cookie"], [id*="cookie"], [class*="consent"], [id*="consent"], [class*="overlay"], [id*="overlay"], [class*="banner"], [id*="banner"], .privacy-policy, .terms-service').remove();
 
         const title = this.cleanText($('title').text() || '');
@@ -292,27 +299,21 @@ export class WebsiteScraperClient implements IWebsiteScraperClient {
         );
 
         const ogSiteName = this.cleanText($('meta[property="og:site_name"]').attr('content') || '');
-
         const heroText = h1Text || title;
 
-        // Text extraction strategy: Focus on core content areas if possible
+        // Text extraction strategy: Focus on core content areas after cleaning
         const contentSelector = $('main').length ? 'main' : ($('article').length ? 'article' : 'body');
-        const bodyTextRaw = this.cleanText($(contentSelector).text());
-        const bodyTextLower = bodyTextRaw.toLowerCase();
+        const cleanBodyTextLower = this.cleanText($(contentSelector).text()).toLowerCase();
 
         // Detect if this is likely an intermediate/bot-check page
-        if (this.isIntermediatePage(bodyTextLower, title.toLowerCase())) {
+        if (this.isIntermediatePage(cleanBodyTextLower, title.toLowerCase())) {
             console.log(`[Scraper] Warning: Potential intermediate/redirect page detected for ${sourceUrl}`);
         }
 
-        const keywords = this.extractKeywords(bodyTextLower);
+        const keywords = this.extractKeywords(cleanBodyTextLower);
         const detectedBusinessName = this.detectBusinessName(ogSiteName, title, heroText);
-        const detectedLocation = this.detectLocation(bodyTextLower);
+        const detectedLocation = this.detectLocation(cleanBodyTextLower);
         const logoUrl = this.detectLogo(html, sourceUrl);
-        const address = this.detectAddress(bodyTextRaw);
-        const openingHours = this.detectOpeningHours(bodyTextRaw);
-        const phone = this.detectPhone(bodyTextRaw);
-        const email = this.detectEmail(bodyTextRaw, html);
 
         return {
             heroText,
@@ -395,18 +396,24 @@ export class WebsiteScraperClient implements IWebsiteScraperClient {
      * Detects business name from various sources.
      */
     private detectBusinessName(ogSiteName: string, title: string, heroText: string): string | undefined {
-        if (ogSiteName) {
+        // Filter out generic titles like "Home", "Index", "Welcome"
+        const genericNames = ['home', 'index', 'welcome', 'berlin', 'default', 'website'];
+        const isGeneric = (name: string) => genericNames.includes(name.toLowerCase().trim());
+
+        if (ogSiteName && !isGeneric(ogSiteName)) {
             return ogSiteName;
         }
 
         if (title) {
+            // Priority: Take the first part of title usually before a separator
             const parts = title.split(/[|\-–—]/);
-            if (parts.length > 0) {
-                return parts[0].trim();
+            const candidate = parts[0].trim();
+            if (candidate && !isGeneric(candidate) && candidate.length > 2) {
+                return candidate;
             }
         }
 
-        if (heroText && heroText.length < 50) {
+        if (heroText && heroText.length < 40 && !isGeneric(heroText)) {
             return heroText;
         }
 
@@ -585,7 +592,6 @@ export class WebsiteScraperClient implements IWebsiteScraperClient {
      */
     private detectAddress(text: string): string | undefined {
         // Look for pattern: <Street> <Number>, <Zip> <City>
-        // Regex for detecting German-style address snippet
         // Example: "Friedrichstr. 123, 10117 Berlin"
         const addressPattern = /([A-ZÄÖÜ][a-zäöüß\s.-]+\s\d+[a-z]?,\s*\d{5}\s*[A-ZÄÖÜ][a-zäöüß]+)/;
         const match = text.match(addressPattern);
@@ -593,10 +599,16 @@ export class WebsiteScraperClient implements IWebsiteScraperClient {
             return match[1];
         }
 
-        // Fallback: Look for "Address:" label
-        const labelMatch = text.match(/(?:address|anschrift|standort)[:\s]+([^.]+)/i);
-        if (labelMatch) {
-            return labelMatch[1].substring(0, 100).trim();
+        // Fallback: Look for labels (English, German)
+        const labels = [/address[:\s]+/i, /anschrift[:\s]+/i, /standort[:\s]+/i, /adresse[:\s]+/i];
+        for (const label of labels) {
+            const labelMatch = text.match(label);
+            if (labelMatch) {
+                const start = labelMatch.index! + labelMatch[0].length;
+                const snippet = text.substring(start, start + 100).trim();
+                const clean = snippet.split(/[.!]/)[0].trim();
+                if (clean.length > 5) return clean;
+            }
         }
 
         return undefined;
@@ -606,12 +618,15 @@ export class WebsiteScraperClient implements IWebsiteScraperClient {
      * Detects opening hours.
      */
     private detectOpeningHours(text: string): string | undefined {
-        // Look for "Opening Hours" or "Öffnungszeiten" block
-        const startMatch = text.match(/(?:opening hours|öffnungszeiten)[:\s]*/i);
-        if (startMatch) {
-            const index = startMatch.index! + startMatch[0].length;
-            // Grab next 150 chars as it might contain multiple days
-            return text.substring(index, index + 150).split(/[.!]/)[0].trim();
+        const labels = [/opening hours[:\s]*/i, /öffnungszeiten[:\s]*/i, /business hours[:\s]*/i, /zeiten[:\s]*/i];
+        for (const label of labels) {
+            const labelMatch = text.match(label);
+            if (labelMatch) {
+                const start = labelMatch.index! + labelMatch[0].length;
+                const snippet = text.substring(start, start + 150).trim();
+                const clean = snippet.split(/[.!]/)[0].trim();
+                if (clean.length > 3) return clean;
+            }
         }
         return undefined;
     }
@@ -620,16 +635,27 @@ export class WebsiteScraperClient implements IWebsiteScraperClient {
      * Detects phone number from text.
      */
     private detectPhone(text: string): string | undefined {
-        // Support common formats: +49..., 030..., (030)...
+        // Look for labels first (higher confidence)
+        const labels = [/phone[:\s]*/i, /tel[:\s]*/i, /telefon[:\s]*/i, /mobil[:\s]*/i, /call[:\s]*/i];
+        for (const label of labels) {
+            const labelMatch = text.match(label);
+            if (labelMatch) {
+                const start = labelMatch.index! + labelMatch[0].length;
+                const snippet = text.substring(start, start + 30).trim();
+                const phoneMatch = snippet.match(/(?:\+?\d{1,3}[-. \s]?)?\(?\d{2,5}\)?[-. \s]?\d{3,10}[-. \s]?\d{0,5}/);
+                if (phoneMatch) {
+                    const cleaned = phoneMatch[0].replace(/[^\d+]/g, '');
+                    if (cleaned.length >= 8) return phoneMatch[0].trim();
+                }
+            }
+        }
+
+        // Raw pattern match fallback
         const phonePattern = /(?:\+?\d{1,3}[-. \s]?)?\(?\d{2,5}\)?[-. \s]?\d{3,10}[-. \s]?\d{0,5}/;
         const matches = text.match(phonePattern);
-
-        // Filter out matches that are too short to be real phones
         if (matches) {
             const cleaned = matches[0].replace(/[^\d+]/g, '');
-            if (cleaned.length >= 8) {
-                return matches[0].trim();
-            }
+            if (cleaned.length >= 8) return matches[0].trim();
         }
         return undefined;
     }

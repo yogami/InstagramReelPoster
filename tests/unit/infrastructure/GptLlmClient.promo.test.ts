@@ -27,6 +27,7 @@ describe('GptLlmClient.generatePromoScript', () => {
             heroText: 'Best Coffee in Berlin',
             metaDescription: 'Artisanal roastery in Kreuzberg',
             keywords: ['coffee', 'cafe'],
+            address: 'Friedrichstr. 123, 10117 Berlin',
             sourceUrl: 'https://example-cafe.com',
             siteDNA: {
                 painScore: 5,
@@ -93,8 +94,13 @@ describe('GptLlmClient.generatePromoScript', () => {
             console.log(`Verified Hook: ${usedHook.name}`);
             expect(capturedPrompt).toContain(`virality_strategy: ${usedHook.name}`);
             expect(capturedPrompt).toContain(usedHook.structureInstruction);
-            // Visual instructions might be substring matched or exactly matched depending on logic
             expect(capturedPrompt).toContain(usedHook.visualInstruction);
+
+            // Verify contact info is passed
+            expect(capturedPrompt).toContain('CONTACT INFO: Address: Friedrichstr. 123');
+
+            // Verify No Text rule is present
+            expect(capturedPrompt).toContain('DO NOT include any text, phone numbers');
         } else {
             throw new Error('Could not capture prompt or identify used hook');
         }

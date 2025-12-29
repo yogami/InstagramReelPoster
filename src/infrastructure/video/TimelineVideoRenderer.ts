@@ -396,17 +396,17 @@ export class TimelineVideoRenderer implements IVideoRenderer {
             .contact-card {
                 font-family: 'Montserrat', sans-serif;
                 color: #FFFFFF;
-                background-color: rgba(0, 0, 0, 0.85);
-                padding: 40px;
-                border-radius: 20px;
+                background-color: rgba(5, 5, 5, 0.96);
+                padding: 50px;
+                border-radius: 30px;
                 text-align: center;
                 display: flex;
                 flex-direction: column;
                 justify-content: center;
                 align-items: center;
-                width: 80%;
-                border: 2px solid rgba(255, 255, 255, 0.2);
-                box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+                width: 90%;
+                border: 2px solid rgba(255, 255, 255, 0.3);
+                box-shadow: 0 20px 50px rgba(0,0,0,0.8);
             }
             h1 {
                 font-size: 42px;

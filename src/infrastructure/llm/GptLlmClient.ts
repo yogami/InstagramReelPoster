@@ -321,11 +321,12 @@ STYLE RULES:
         
 CRITICAL: The script (narration, caption, coreMessage) MUST be in ${targetLanguage}.
 
-BUSINESS CONTEXT:
+BUSINESS CONTEXT (THE ONLY SOURCE OF TRUTH):
 - Category: ${category}
 - Location: ${analysis.detectedLocation || 'Berlin'}
 - Website Description: ${analysis.metaDescription}
 - Hero Message: ${analysis.heroText}
+- CONTACT INFO: Address: ${analysis.address || 'N/A'}, Phone: ${analysis.phone || 'N/A'}, Email: ${analysis.email || 'N/A'}, Hours: ${analysis.openingHours || 'N/A'}
 ${siteDNAContext}
 
 INSPIRATION (Use these themes but REWRITE with the ${culturalVoice}):
@@ -338,7 +339,8 @@ ${viralHook.structureInstruction}
    - VISUAL INSTRUCTION: ${viralHook.visualInstruction}
 2. THE SOUL (8s): Show the craftsmanship or the solved reality. Use the Site DNA.
 3. THE DIRECT CTA (5s): A clear, non-pushy invitation.
-   - VISUAL INSTRUCTION: The image prompt for this scene MUST describe a clean, uncluttered background (e.g., negative space, blurred background, or clean wall) suitable for overlaying contact info text.
+   - VISUAL INSTRUCTION: The image prompt for this scene MUST describe a clean, uncluttered background (e.g., negative space, blurred background, or clean wall). 
+   - **CRITICAL**: DO NOT include any text, phone numbers, email addresses, or business names in the \`imagePrompt\`. All text will be added as a technical overlay. Any text in the image will be considered a FAILURE.
 
 Each scene needs:
 - duration: seconds for this scene (Target 17s total)
