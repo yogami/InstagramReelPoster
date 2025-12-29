@@ -114,8 +114,22 @@ export class MediaStorageClient {
 
             await new Promise((resolve, reject) => {
                 writer.on('finish', resolve);
-                writer.on('error', reject);
+                writer.on('error', (err) => {
+                    writer.close();
+                    reject(err);
+                });
+                writer.on('close', resolve);
             });
+
+            // Ensure file handle is released and FS is synced
+            await new Promise(resolve => setTimeout(resolve, 500));
+
+            if (!fs.existsSync(tempPath)) {
+                throw new Error(`File was not created at ${tempPath}`);
+            }
+
+            const stats = fs.statSync(tempPath);
+            console.log(`[MediaStorage] File ready for chunked upload (${(stats.size / 1024 / 1024).toFixed(2)} MB)`);
 
             const result = (await cloudinary.uploader.upload_large(tempPath, {
                 folder,
@@ -128,9 +142,16 @@ export class MediaStorageClient {
                 url: result.secure_url,
                 publicId: result.public_id,
             };
+        } catch (error) {
+            console.error(`[MediaStorage] downloadAndUploadLarge failed:`, error);
+            throw error;
         } finally {
-            if (fs.existsSync(tempPath)) {
-                fs.unlinkSync(tempPath);
+            try {
+                if (fs.existsSync(tempPath)) {
+                    fs.unlinkSync(tempPath);
+                }
+            } catch (cleanupError) {
+                console.warn(`[MediaStorage] Cleanup failed for ${tempPath}:`, cleanupError);
             }
         }
     }
