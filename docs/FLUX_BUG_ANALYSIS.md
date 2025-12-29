@@ -15,29 +15,48 @@ Flux image generation failing in production with 400 error and empty response bo
 - **Result**: ✅ SUCCESS - Generated image in 23.2s locally
 - Endpoint used: `https://sdxl-turbo-v3-9c4ba01-v1.app.beam.cloud`
 
-## Root Cause Identified
+## Root Cause Analysis - Updated
 
-**The Flux API works perfectly. The issue is environment configuration.**
-
-### Problem
-Production (Railway) is using the **default fallback endpoint** from code:
-```typescript
-fluxEndpointUrl: getEnvVar('BEAMCLOUD_ENDPOINT_URL', 'https://app.beam.cloud/endpoint/flux1-image'),
+**Production environment variables are CORRECT:**
+```
+BEAMCLOUD_ENDPOINT_URL="https://sdxl-turbo-v3-9c4ba01-v1.app.beam.cloud"
+BEAMCLOUD_ENABLED="true"
 ```
 
-The default `https://app.beam.cloud/endpoint/flux1-image` **does not exist** and returns 400.
+### New Hypothesis
 
-### Correct Endpoint
-```
-https://sdxl-turbo-v3-9c4ba01-v1.app.beam.cloud
+The error `Could not extract image from Flux response: ""` suggests:
+1. The API call succeeds (200 status)
+2. But the response body is empty or in an unexpected format
+
+### Possible Causes
+
+1. **Beam.cloud cold start timeout**: The endpoint might timeout during cold start, returning empty response
+2. **Response format change**: Beam.cloud might have changed the response format
+3. **Network/proxy issue**: Railway's network might be interfering with the response
+
+### Expected Response Format (Confirmed Working Locally)
+```json
+{
+  "image_base64": "data:image/png;base64,...",
+  "width": 1024,
+  "height": 1792
+}
 ```
 
-## Solution
+## Solution - Enhanced Diagnostics
 
-Set the `BEAMCLOUD_ENDPOINT_URL` environment variable in Railway to:
-```
-https://sdxl-turbo-v3-9c4ba01-v1.app.beam.cloud
-```
+Added detailed response logging to capture:
+- Response status code
+- Data type
+- Available keys
+- Response preview
+
+This will help identify the exact issue in production logs.
+
+## Next Deployment
+
+The enhanced logging will show us exactly what Beam.cloud is returning in production.
 
 ## Verification
 

@@ -53,6 +53,14 @@ export class FluxImageClient implements IImageClient {
 
             const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
 
+            // Log response structure for debugging
+            console.log(`[Flux FLUX1] Response received:`, {
+                status: response.status,
+                dataType: typeof response.data,
+                dataKeys: response.data ? Object.keys(response.data) : [],
+                dataPreview: JSON.stringify(response.data).substring(0, 200)
+            });
+
             // Extract image from response - support multiple formats
             const imageUrl = this.extractImageUrl(response.data);
 
