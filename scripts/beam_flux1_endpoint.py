@@ -29,6 +29,28 @@ image = Image(
 # Cache model weights to avoid re-downloading
 model_volume = Volume(name="flux1-model-cache", mount_path="/cache")
 
+import torch
+from diffusers import FluxPipeline
+from PIL import Image as PILImage
+import base64
+from io import BytesIO
+import os
+
+# Global Load - Happens once per container
+print(f"[FLUX1] Initializing container & loading model...")
+os.environ["HF_HOME"] = "/cache"
+os.environ["TRANSFORMERS_CACHE"] = "/cache"
+
+# Load FLUX.1-schnell (fast, ~5s per image)
+pipe = FluxPipeline.from_pretrained(
+    "black-forest-labs/FLUX.1-schnell",
+    torch_dtype=torch.bfloat16,
+    cache_dir="/cache"
+)
+# Move to CUDA immediately
+pipe = pipe.to("cuda")
+print(f"[FLUX1] Model loaded successfully")
+
 
 @endpoint(
     name="flux1-image",
@@ -60,16 +82,7 @@ def generate_image(
     Returns:
         dict with 'image_base64' containing data URI
     """
-    import torch
-    from diffusers import FluxPipeline
-    from PIL import Image as PILImage
-    import base64
-    from io import BytesIO
-    import os
-    
-    # Set cache directory
-    os.environ["HF_HOME"] = "/cache"
-    os.environ["TRANSFORMERS_CACHE"] = "/cache"
+    # Imports are global now
     
     # Determine resolution based on aspect ratio and quality
     if aspect_ratio == "9:16":
@@ -79,30 +92,18 @@ def generate_image(
     else:  # 1:1 square
         width, height = (1024, 1024) if quality == "hd" else (768, 768)
     
-    print(f"[FLUX1] Loading model...")
-    
-    # Load FLUX.1-schnell (fast, ~5s per image)
-    pipe = FluxPipeline.from_pretrained(
-        "black-forest-labs/FLUX.1-schnell",
-        torch_dtype=torch.bfloat16,
-        cache_dir="/cache"
-    )
-    pipe = pipe.to("cuda")
-    
-    # Optional: Enable memory optimizations for smaller GPUs
-    pipe.enable_model_cpu_offload()
-    
     print(f"[FLUX1] Generating image: '{prompt[:100]}...'")
     
     # Generate image
-    result = pipe(
-        prompt=prompt,
-        width=width,
-        height=height,
-        num_inference_steps=num_inference_steps,
-        guidance_scale=guidance_scale,
-        generator=torch.Generator("cuda").manual_seed(42),
-    )
+    with torch.inference_mode():
+        result = pipe(
+            prompt=prompt,
+            width=width,
+            height=height,
+            num_inference_steps=num_inference_steps,
+            guidance_scale=guidance_scale,
+            generator=torch.Generator("cuda").manual_seed(42),
+        )
     
     image = result.images[0]
     

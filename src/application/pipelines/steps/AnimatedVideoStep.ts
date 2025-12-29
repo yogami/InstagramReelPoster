@@ -56,22 +56,23 @@ export class AnimatedVideoStep implements PipelineStep {
         const plan = parableScriptPlan as any;
 
         const maxClipDuration = 10;
-        const clipPromises: Promise<string>[] = [];
+        const videoUrls: string[] = [];
 
         if (isParable && plan && plan.beats && plan.beats.length > 0) {
-            // PARABLE MODE: Real AI Video (High Quality, Sequential/Parallel)
+            // PARABLE MODE: Real AI Video (High Quality, Sequential)
             console.log(`[${jobId}] Parable mode: Queueing ${plan.beats.length} real video clips...`);
 
             for (let i = 0; i < plan.beats.length; i++) {
                 const beat = plan.beats[i];
                 const beatDuration = Math.min(beat.approxDurationSeconds || 10, maxClipDuration);
 
-                clipPromises.push(this.generateClip({
+                const url = await this.generateClip({
                     durationSeconds: beatDuration,
                     theme: beat.textOnScreen || beat.narration.substring(0, 100),
                     storyline: beat.narration,
                     mood: beat.role === 'moral' ? 'inspiring' : beat.role === 'turn' ? 'dramatic' : 'contemplative',
-                }, `parable_${jobId}_beat${i + 1}`));
+                }, `parable_${jobId}_beat${i + 1}`);
+                videoUrls.push(url);
             }
         } else {
             // DIRECT-MESSAGE MODE: "Turbo Video" (Fast Flux Images + AI Motion)
@@ -80,7 +81,7 @@ export class AnimatedVideoStep implements PipelineStep {
             const clipsNeeded = Math.ceil(duration / maxClipDuration);
             const clipDuration = duration / clipsNeeded;
 
-            console.log(`[${jobId}] Direct-Message mode: Using "Turbo Video" for sub-30s generation...`);
+            console.log(`[${jobId}] Direct-Message mode: Using "Turbo Video" for sub-30s generation (Sequential)...`);
 
             const segments = context.segments || [];
 
@@ -92,16 +93,19 @@ export class AnimatedVideoStep implements PipelineStep {
                 const prompt = relevantSegment ? relevantSegment.imagePrompt : job.transcript?.substring(0, 200);
 
                 // Use generateTurboClip which creates a high-quality Image with metadata for the renderer to apply motion
-                clipPromises.push(this.generateTurboClip({
+                const url = await this.generateTurboClip({
                     durationSeconds: clipDuration,
                     theme: prompt || 'Abstract interpretation',
                     mood: job.moodOverrides?.[0] || 'cinematic'
-                }, `turbo_${jobId}_clip${i + 1}`));
+                }, `turbo_${jobId}_clip${i + 1}`);
+                videoUrls.push(url);
+
+                // Small delay to prevent rate limits/concurrency issues
+                if (i < clipsNeeded - 1) {
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                }
             }
         }
-
-        // Wait for all clips in parallel
-        const videoUrls = await Promise.all(clipPromises);
 
         await this.jobManager.updateJob(jobId, {
             animatedVideoUrls: videoUrls
