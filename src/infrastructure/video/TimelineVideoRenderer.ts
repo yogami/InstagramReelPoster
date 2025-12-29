@@ -320,12 +320,22 @@ export class TimelineVideoRenderer implements IVideoRenderer {
             }
         }
 
-        // Track 5: Logo (Top Layer)
+        // Track 5: Logo (Top Layer) - Use HTML to prevent upscaling blur
         if (manifest.logoUrl) {
             const logoClip: TimelineClip = {
                 asset: {
-                    type: 'image',
-                    src: manifest.logoUrl,
+                    type: 'html',
+                    html: `<img src="${manifest.logoUrl}" class="logo">`,
+                    css: `
+                        .logo {
+                            max-width: 150px;
+                            max-height: 150px;
+                            object-fit: contain;
+                            display: block;
+                        }
+                    `,
+                    width: 1080,
+                    height: 1920
                 },
                 start: manifest.logoPosition === 'end'
                     ? Math.max(0, manifest.durationSeconds - 5)
@@ -343,7 +353,7 @@ export class TimelineVideoRenderer implements IVideoRenderer {
                     out: 'fade'
                 },
                 fit: 'contain',
-                scale: 0.2
+                scale: 0.15  // Small scale since HTML canvas is 1080x1920
             };
             tracks.push({ clips: [logoClip] });
         }
