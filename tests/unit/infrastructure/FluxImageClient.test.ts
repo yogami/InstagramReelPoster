@@ -154,7 +154,7 @@ describe('FluxImageClient', () => {
             (axios.isAxiosError as unknown as jest.Mock) = jest.fn().mockReturnValue(true);
 
             await expect(client.generateImage('Test'))
-                .rejects.toThrow('Flux image generation failed: Model loading failed');
+                .rejects.toThrow('Flux image generation failed (undefined): Model loading failed');
         });
 
         test('should throw if no image can be extracted', async () => {

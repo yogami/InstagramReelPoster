@@ -13,7 +13,7 @@ jest.mock('../../src/config', () => ({
 }));
 
 describe('Restaurant Reel Manifest Verification', () => {
-    it('should generate overlay tracks correctly for restaurant pivot', () => {
+    it('should generate overlay tracks correctly for restaurant pivot', async () => {
         console.log('🚀 Verifying Restaurant Manifest Overlay Generation...');
 
         // 1. Mock Manifest with Restaurant Data
@@ -52,7 +52,7 @@ describe('Restaurant Reel Manifest Verification', () => {
         const renderer = new TimelineVideoRenderer({} as any, {} as any); // Mocks
 
         // Access private method
-        const timelineEdit = (renderer as any).mapManifestToTimelineEdit(manifest);
+        const timelineEdit = await (renderer as any).mapManifestToTimelineEdit(manifest);
 
         console.log('✅ Timeline Edit Generated');
 
@@ -61,7 +61,10 @@ describe('Restaurant Reel Manifest Verification', () => {
         expect(tracks.length).toBeGreaterThan(4);
 
         // Verification Logic
-        const overlayTrack = tracks.find((t: any) => t.clips.some((c: any) => c.asset.type === 'html' || (c.asset.src && c.asset.src.includes('qrserver'))));
+        const overlayTrack = tracks.find((t: any) => t.clips.some((c: any) =>
+            (c.asset.type === 'html' && c.asset.html && c.asset.html.includes('background: rgba(0,0,0,0.85)')) ||
+            (c.asset.src && c.asset.src.includes('qrserver'))
+        ));
 
         expect(overlayTrack).toBeDefined();
         if (overlayTrack) {

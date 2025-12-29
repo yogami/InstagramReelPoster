@@ -9,7 +9,7 @@ After deployment, you'll get an endpoint URL like:
     https://app.beam.cloud/endpoint/flux1-image
 """
 
-from beam import endpoint, Image, Volume
+from beta9 import endpoint, Image, Volume
 
 # Use a pre-built image with CUDA and PyTorch
 image = Image(

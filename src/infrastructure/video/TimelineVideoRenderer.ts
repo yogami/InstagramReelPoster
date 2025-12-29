@@ -4,7 +4,7 @@ import * as QRCode from 'qrcode';
 /* eslint-disable complexity */
 /* eslint-disable max-lines-per-function */
 import { IVideoRenderer, RenderResult } from '../../domain/ports/IVideoRenderer';
-import { ReelManifest } from '../../domain/entities/ReelManifest';
+import { ReelManifest, ManifestSegment } from '../../domain/entities/ReelManifest';
 
 /**
  * Timeline Edit API Types
@@ -118,6 +118,10 @@ interface TimelineOutput {
     aspectRatio?: '16:9' | '9:16' | '1:1' | '4:5' | '4:3';
     fps?: number;
     quality?: 'low' | 'medium' | 'high';
+    subtitles?: {
+        format: 'srt' | 'vtt';
+        src: string;
+    }[];
 }
 
 /**
@@ -393,7 +397,15 @@ export class TimelineVideoRenderer implements IVideoRenderer {
             tracks.push({ clips: [logoClip] });
         }
 
-        // Track 6: Captions/Subtitles
+        // Track 6: High-Impact Segment Captions (Overlays)
+        if (manifest.segments) {
+            const segmentCaptionTrack = this.createSegmentCaptionTrack(manifest.segments, visualEndTime);
+            if (segmentCaptionTrack.clips.length > 0) {
+                tracks.push(segmentCaptionTrack);
+            }
+        }
+
+        // Track 7: Global Subtitles (Lower priority, smaller text)
         if (manifest.subtitlesUrl) {
             tracks.push({ clips: [captionClip] });
         }
@@ -411,6 +423,61 @@ export class TimelineVideoRenderer implements IVideoRenderer {
                 quality: 'high',
             },
         };
+    }
+
+    /**
+     * Creates a track for big, bold on-screen text overlays from segment captions.
+     */
+    private createSegmentCaptionTrack(segments: ManifestSegment[], visualEndTime: number): TimelineTrack {
+        const clips: TimelineClip[] = segments
+            .filter(seg => seg.caption && seg.caption.trim().length > 0 && seg.start < visualEndTime)
+            .map(seg => {
+                const end = Math.min(seg.end, visualEndTime);
+                const length = Math.max(0, end - seg.start);
+
+                if (length <= 0) return null;
+
+                // High-Impact Style for Instagram
+                return {
+                    asset: {
+                        type: 'html' as const,
+                        html: `<p class="segment-caption">${seg.caption!.toUpperCase()}</p>`,
+                        css: `
+                            @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@900&display=swap');
+                            .segment-caption {
+                                font-family: 'Montserrat', sans-serif;
+                                font-weight: 900;
+                                font-size: 64px;
+                                color: #FFFFFF;
+                                text-align: center;
+                                text-transform: uppercase;
+                                -webkit-text-stroke: 4px #000000;
+                                text-shadow: 8px 8px 0px rgba(0,0,0,0.5);
+                                line-height: 1.1;
+                                background: linear-gradient(to right, #FFD700, #FFA500);
+                                -webkit-background-clip: text;
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                                height: 100vh;
+                                width: 100vw;
+                                margin: 0;
+                                padding: 80px;
+                            }
+                        `,
+                    },
+                    start: seg.start,
+                    length: length,
+                    position: 'center',
+                    transition: {
+                        in: 'zoom' as const,
+                        out: 'fade' as const
+                    }
+                };
+            })
+            .filter(Boolean) as TimelineClip[];
+
+        return { clips };
     }
 
     /**

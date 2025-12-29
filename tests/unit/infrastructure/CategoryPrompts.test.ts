@@ -131,7 +131,7 @@ describe('CategoryPrompts', () => {
         it('should return music style for each category', () => {
             expect(getMusicStyle('cafe')).toBe('warm-acoustic-local');
             expect(getMusicStyle('gym')).toBe('energetic-motivational');
-            expect(getMusicStyle('restaurant')).toBe('sophisticated-lounge');
+            expect(getMusicStyle('restaurant')).toBe('berlin-techno-minimal');
         });
 
         it('should have music styles for all categories', () => {

@@ -21,7 +21,7 @@ describe('MultiModelImageClient', () => {
 
         test('should use default model if not provided', () => {
             const client = new MultiModelImageClient('test-api-key');
-            expect((client as any).model).toBe('black-forest-labs/FLUX.1-schnell-Free');
+            expect((client as any).model).toBe('google/gemini-2.0-flash-thinking-exp-1219:free');
         });
 
         test('should use custom model if provided', () => {
@@ -135,7 +135,7 @@ describe('MultiModelImageClient', () => {
             expect(mockedAxios.post).toHaveBeenCalledWith(
                 'https://openrouter.ai/api/v1/chat/completions',
                 expect.objectContaining({
-                    model: 'black-forest-labs/FLUX.1-schnell-Free',
+                    model: 'google/gemini-2.0-flash-thinking-exp-1219:free',
                     modalities: ['image']
                 }),
                 expect.objectContaining({
