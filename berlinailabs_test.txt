@@ -1,0 +1,89 @@
+[dotenv@17.2.3] injecting env (44) from .env -- tip: ⚙️  write to custom object with { processEnv: myObject }
+🚀 Generating reel for berlinailabs.de...
+
+✅ Cloudinary storage configured
+✅ Image generation: Flux (primary) → MultiModel (fallback)
+🎬 Video rendering: Timeline (primary)
+✅ Video generation: Hunyuan (primary) → Kling (reliable) → Mock (safety)
+Loaded 1 jobs from disk
+🕷️ Using Enhanced Playwright Scraper
+📡 Callback configured: Header = yami-instgram-carousel-api-key, Token = reels... 
+Job ID: job_630c10d8
+[job_630c10d8] Website Promo: Scraping https://berlinailabs.de
+[job_630c10d8] planning: Analyzing business website...
+[EnhancedScraper] Starting hybrid scrape for https://berlinailabs.de
+[EnhancedScraper] HTTP scraper found comprehensive info, done
+[job_630c10d8] Website scraped: hero="KI-Lösungen für die Zukunft Ihres Business", painScore=0, trustSignals=0
+[job_630c10d8] Category provided by user: service
+[job_630c10d8] generating_commentary: Creating promotional script...
+[job_630c10d8] Promo script generated: "Einfache KI für deinen Alltag." with 3 scenes
+[job_630c10d8] synthesizing_voiceover: Creating voiceover...
+[TTS] Attempting synthesis with primary client (Fish Audio)... (Voice: 88b18e0d81474a0ca08e2ea6f9df5ff4)
+[Voice Cloning] Synthesizing with voice ID: 716594c03801446bb87a964a1c2a5895
+[TTS] Applying speed adjustment (0.95x) to hit target 17s (current: 16.19s)...
+[Voice Cloning] Synthesizing with voice ID: 716594c03801446bb87a964a1c2a5895
+[Voiceover] Uploading base64 audio to Cloudinary...
+[Voiceover] Uploaded successfully: https://res.cloudinary.com/djol0rpn5/video/upload/v1767021374/instagram-reels/voiceovers/voiceover_1767021373982.mp3
+[job_630c10d8] selecting_music: Selecting background music...
+Loading music catalog from: /Users/user1000/gitprojects/InstagramReelPoster/assets/music_catalog.json
+[job_630c10d8] Uploading logo to Cloudinary for reliable rendering: https://berlinailabs.de/logo.svg
+[MediaResolver] Scene 1 (hook): Using scraped image from https://berlinailabs.de
+[MediaResolver] Scene 2 (showcase): Will use AI generation (gap fill)
+[MediaResolver] Scene 3 (cta): Will use AI generation (gap fill)
+[MediaResolver] Summary: 0 user, 1 scraped, 2 AI-generated
+Generating images with priority sourcing for 3 segments...
+[job_630c10d8] Segment 1: Using pre-resolved media
+[job_630c10d8] generating_images: Creating visual 2 of 3 (AI)...
+[Flux FLUX1] Generating image...
+[Flux FLUX1] Response received: {
+  status: 200,
+  dataType: 'object',
+  dataKeys: [ 'image_base64', 'width', 'height' ],
+  dataPreview: '{"image_base64":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAkAAAAQACAIAAACGcHE3AAEAAElEQVR42nT9WbMty3EmiLl7ROYa93jmOwCXBEgCZFVXs6qa1cUqk/pHyGRqPemtf2dbmx71JJmsu2aSIIE7nHHvvdbKzHD/9OAx5b4QQOKee84+a'
+}
+[Flux FLUX1] Image generated in 29.6s
+[job_630c10d8] generating_images: Creating visual 3 of 3 (AI)...
+[Flux FLUX1] Generating image...
+[Flux FLUX1] Response received: {
+  status: 200,
+  dataType: 'object',
+  dataKeys: [ 'image_base64', 'width', 'height' ],
+  dataPreview: '{"image_base64":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAkAAAAQACAIAAACGcHE3AAEAAElEQVR42pT9244lybIthtkwj5i3zKysa6+1L4c8PCIFAXoUQEDvEvQheuXfCpD0IBECRIoU91mruyqvc0a4DT34zdwjstdW73N6dXdVzYwZ4eFuN'
+}
+[Flux FLUX1] Image generated in 5.9s
+Waiting 2s for asset propagation...
+[job_630c10d8] Promo assets prepared: 3 segments, 17.0s voiceover
+[Manifest] Before rendering: {
+  duration: 17,
+  segmentCount: 3,
+  segments: [
+    { start: 0, end: 5.666666666666667 },
+    { start: 5.666666666666667, end: 11.333333333333334 },
+    { start: 11.333333333333334, end: 17 }
+  ],
+  hasBranding: true,
+  branding: {
+    logoUrl: 'https://res.cloudinary.com/djol0rpn5/image/upload/v1767021375/instagram-reels/branding/job_630c10d8/logo_1767021375309.svg',
+    businessName: 'Berlin AI Labs',
+    address: 'oder E-Mail-Adressen) erhoben werden, erfolgt dies, soweit möglich, stets auf freiwilliger Basis',
+    hours: undefined,
+    phone: '+49 176 146 19',
+    email: 'sales@berlinailabs.de',
+    qrCodeUrl: 'https://berlinailabs.de'
+  }
+}
+[Timeline] Fetching logo for base64 conversion: https://res.cloudinary.com/djol0rpn5/image/upload/v1767021375/instagram-reels/branding/job_630c10d8/logo_1767021375309.svg
+[Timeline] Logo converted to base64 (1.2 KB)
+[Timeline] Generating QR code for: https://berlinailabs.de
+[Timeline] QR code generated (2.9 KB)
+[Timeline] Request payload size: 11.25 KB
+[Timeline] Render started: ca7b4acf-67c6-40a1-9b35-8b221ae71d6a
+[Timeline] Render ca7b4acf-67c6-40a1-9b35-8b221ae71d6a status: fetching
+[Timeline] Render ca7b4acf-67c6-40a1-9b35-8b221ae71d6a status: rendering
+[Timeline] Render ca7b4acf-67c6-40a1-9b35-8b221ae71d6a status: rendering
+[Timeline] Render ca7b4acf-67c6-40a1-9b35-8b221ae71d6a status: rendering
+[Timeline] Render ca7b4acf-67c6-40a1-9b35-8b221ae71d6a status: rendering
+[Timeline] Render ca7b4acf-67c6-40a1-9b35-8b221ae71d6a status: done
+
+✅ Completed in 104.3s
+📹 Video URL: https://res.cloudinary.com/djol0rpn5/video/upload/v1767021456/instagram-reels/final-videos/promo_job_630c10d8_1767021452588.mp4

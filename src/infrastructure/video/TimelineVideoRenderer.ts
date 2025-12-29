@@ -639,15 +639,15 @@ export class TimelineVideoRenderer implements IVideoRenderer {
 
             .contact-line {
                 font-family: 'Montserrat', sans-serif;
-                font-size: 28px;
+                font-size: 24px;
                 font-weight: 700;
                 color: #FFFFFF;
                 background: rgba(255,255,255,0.1);
                 padding: 12px 20px;
                 border-radius: 12px;
-                white-space: nowrap;
-                overflow: hidden;
-                text-overflow: ellipsis;
+                word-wrap: break-word;
+                overflow-wrap: break-word;
+                line-height: 1.3;
             }
 
             .logo-corner {
