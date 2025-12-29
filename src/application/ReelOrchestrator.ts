@@ -550,7 +550,9 @@ export class ReelOrchestrator {
         businessName: string
     ): Promise<ReelJob> {
         await this.deps.jobManager.updateStatus(jobId, 'building_manifest', 'Preparing final video...');
-        const websiteAnalysis = job.websiteAnalysis;
+        // Re-fetch job to ensure we have the latest websiteAnalysis (e.g. updated logo URL or contact info from subpages)
+        const updatedJob = await this.deps.jobManager.getJob(jobId);
+        const websiteAnalysis = updatedJob?.websiteAnalysis || job.websiteAnalysis;
 
         // Populate branding for Info Slides if we have data
         if (websiteAnalysis) {

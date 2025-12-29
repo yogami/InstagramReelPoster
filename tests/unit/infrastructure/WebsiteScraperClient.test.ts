@@ -141,6 +141,18 @@ describe('WebsiteScraperClient', () => {
             expect(result.phone).toContain('49 30 12345678');
         });
 
+        it('should find contact info on subpages if missing from main page', async () => {
+            nock('https://subpage-contact.de')
+                .get('/')
+                .reply(200, '<html><body><h1>Welcome</h1></body></html>')
+                .get('/contact')
+                .reply(200, '<html><body><p>Email: info@subpage.de</p></body></html>');
+
+            const result = await client.scrapeWebsite('https://subpage-contact.de/', { includeSubpages: true });
+
+            expect(result.email).toBe('info@subpage.de');
+        });
+
         it('should extract business name from og:site_name', async () => {
             nock('https://fancy-restaurant.de')
                 .get('/')

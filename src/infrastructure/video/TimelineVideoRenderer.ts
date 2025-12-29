@@ -383,7 +383,7 @@ export class TimelineVideoRenderer implements IVideoRenderer {
         if (b.phone) details.push(`📞 ${b.phone}`);
         if (b.email && details.length < 3) details.push(`✉️ ${b.email}`);
 
-        if (details.length === 0) return null;
+        if (details.length === 0 && !b.logoUrl && !b.businessName) return null;
 
         const html = `
             <div class="contact-card">

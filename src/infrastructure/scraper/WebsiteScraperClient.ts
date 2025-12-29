@@ -75,24 +75,41 @@ export class WebsiteScraperClient implements IWebsiteScraperClient {
         const base = new URL(baseUrl);
         const baseOrigin = base.origin;
 
-        const subpagePromises = [
-            this.scrapeSubpage(`${baseOrigin}/about`),
-            this.scrapeSubpage(`${baseOrigin}/pricing`),
-            this.scrapeSubpage(`${baseOrigin}/testimonials`),
+        const pages = [
+            { path: '/about', type: 'about' },
+            { path: '/pricing', type: 'pricing' },
+            { path: '/testimonials', type: 'testimonials' },
+            { path: '/contact', type: 'contact' },
+            { path: '/impressum', type: 'contact' },
+            { path: '/contact-us', type: 'contact' },
         ];
 
-        const [aboutHtml, pricingHtml, testimonialsHtml] = await Promise.all(subpagePromises);
+        for (const page of pages) {
+            const subpageUrl = `${baseOrigin}${page.path}`;
+            const html = await this.scrapeSubpage(subpageUrl);
+            if (!html) continue;
 
-        if (aboutHtml) {
-            analysis.aboutContent = this.extractBodyText(aboutHtml);
-        }
+            const text = this.extractBodyText(html);
 
-        if (pricingHtml) {
-            analysis.pricingContent = this.extractPricingContent(pricingHtml);
-        }
+            // 1. Update domain-specific content if not already set robustly
+            if (page.type === 'about' && !analysis.aboutContent) {
+                analysis.aboutContent = text;
+            }
+            if (page.type === 'pricing' && !analysis.pricingContent) {
+                analysis.pricingContent = this.extractPricingContent(html);
+            }
+            if (page.type === 'testimonials' && !analysis.testimonialsContent) {
+                analysis.testimonialsContent = this.extractTestimonials(html);
+            }
 
-        if (testimonialsHtml) {
-            analysis.testimonialsContent = this.extractTestimonials(testimonialsHtml);
+            // 2. Fill missing contact info from subpages (high priority for promo)
+            if (!analysis.email) analysis.email = this.detectEmail(text, html);
+            if (!analysis.phone) analysis.phone = this.detectPhone(text);
+            if (!analysis.address) analysis.address = this.detectAddress(text);
+            if (!analysis.openingHours) analysis.openingHours = this.detectOpeningHours(text);
+            if (!analysis.logoUrl) {
+                analysis.logoUrl = this.detectLogo(html, subpageUrl);
+            }
         }
     }
 
@@ -593,7 +610,7 @@ export class WebsiteScraperClient implements IWebsiteScraperClient {
     private detectAddress(text: string): string | undefined {
         // Look for pattern: <Street> <Number>, <Zip> <City>
         // Example: "Friedrichstr. 123, 10117 Berlin"
-        const addressPattern = /([A-ZÄÖÜ][a-zäöüß\s.-]+\s\d+[a-z]?,\s*\d{5}\s*[A-ZÄÖÜ][a-zäöüß]+)/;
+        const addressPattern = /([A-ZÄÖÜ][a-zäöüß\s.-]+\s\d+[a-z]?,?\s*\d{5}\s*[A-ZÄÖÜ][a-zäöüß\s-]+)/;
         const match = text.match(addressPattern);
         if (match) {
             return match[1];
