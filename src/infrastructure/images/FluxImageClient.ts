@@ -61,9 +61,17 @@ export class FluxImageClient implements IImageClient {
             return { imageUrl };
         } catch (error) {
             if (axios.isAxiosError(error)) {
-                const message = error.response?.data?.error || error.response?.data?.message || error.message;
-                console.error(`[Flux FLUX1] Generation failed:`, error.response?.data || error.message);
-                throw new Error(`Flux image generation failed: ${message}`);
+                const status = error.response?.status;
+                const responseData = error.response?.data;
+                const message = responseData?.error || responseData?.message || error.message;
+
+                console.error(`[Flux FLUX1] Generation failed (${status}):`, {
+                    message,
+                    raw: JSON.stringify(responseData || {}).substring(0, 500),
+                    code: error.code
+                });
+
+                throw new Error(`Flux image generation failed (${status}): ${message || 'Empty response'}`);
             }
             throw error;
         }

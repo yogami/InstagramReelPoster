@@ -15,7 +15,7 @@ export class MultiModelImageClient implements IImageClient {
 
     constructor(
         apiKey: string,
-        model: string = 'black-forest-labs/FLUX.1-schnell-Free',
+        model: string = 'google/gemini-2.0-flash-thinking-exp-1219:free',
         baseUrl: string = 'https://openrouter.ai/api/v1'
     ) {
         if (!apiKey) {
