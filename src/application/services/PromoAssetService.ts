@@ -9,8 +9,9 @@ import { SegmentContent } from '../../domain/ports/ILlmClient';
 import { PromoScriptPlan, PromoSceneContent, ScrapedMedia, BusinessCategory } from '../../domain/entities/WebsitePromo';
 import { getMusicStyle } from '../../infrastructure/llm/CategoryPrompts';
 import { getConfig } from '../../config';
-import { calculateSpeedAdjustment, calculateSegmentTimings } from '../../domain/services/DurationCalculator';
+import { calculateSpeedAdjustment, calculateSegmentTimings, truncateToFitDuration } from '../../domain/services/DurationCalculator';
 import { createSegment } from '../../domain/entities/Segment';
+import { IImageVerificationClient } from '../../domain/ports/IImageVerificationClient';
 
 export interface PreparePromoAssetsOptions {
     jobId: string;
@@ -31,6 +32,7 @@ export interface PromoAssetServiceDependencies {
     fallbackImageClient: IImageClient;
     storageClient?: MediaStorageClient;
     musicSelector: MusicSelector;
+    imageVerificationClient?: IImageVerificationClient;
 }
 
 export class PromoAssetService {
@@ -70,8 +72,10 @@ export class PromoAssetService {
             scrapedMedia
         );
 
-        // Generate images only for scenes needing AI (gap fill)
-        const segmentsWithImages = await this.generateImagesWithPriority(segments, resolvedMedia, jobId);
+        // Generate images only for scenes needing AI (gap fill), with CTA verification
+        const segmentsWithImages = await this.generateImagesWithPriority(
+            segments, resolvedMedia, jobId, promoScript?.scenes
+        );
         await this.deps.jobManager.updateJob(jobId, { segments: segmentsWithImages });
 
         console.log(`[${jobId}] Promo assets prepared: ${segmentsWithImages.length} segments, ${voiceoverDuration.toFixed(1)}s voiceover`);
@@ -91,13 +95,19 @@ export class PromoAssetService {
         targetDuration: number,
         voiceId?: string
     ): Promise<{ voiceoverUrl: string; voiceoverDuration: number; speed: number }> {
+        // PRE-TTS: Truncate text to fit target duration (prevent cutoff)
+        const truncatedText = truncateToFitDuration(text, targetDuration);
+        if (truncatedText.length < text.length) {
+            console.log(`[TTS] Text truncated from ${text.split(/\s+/).length} to ${truncatedText.split(/\s+/).length} words to fit ${targetDuration}s`);
+        }
+
         // First pass at normal speed
         let result: any;
         let speed = 1.0;
 
         try {
             console.log(`[TTS] Attempting synthesis with primary client (Fish Audio)...${voiceId ? ` (Voice: ${voiceId})` : ''}`);
-            result = await this.deps.ttsClient.synthesize(text, { voiceId });
+            result = await this.deps.ttsClient.synthesize(truncatedText, { voiceId });
         } catch (error: any) {
             console.error('[TTS] ❌ Primary TTS (Fish Audio) failed. Falling back to Gpt.');
             console.error(`[TTS] Error Details: ${error.message}`);
@@ -233,11 +243,13 @@ export class PromoAssetService {
     /**
      * Generates images with priority sourcing.
      * Uses pre-resolved media URLs when available, only generating AI images for gaps.
+     * Verifies CTA images are text-free using vision LLM.
      */
     private async generateImagesWithPriority(
         segments: Segment[],
         resolvedMedia: (string | null)[],
-        jobId: string
+        jobId: string,
+        scenes?: { role: string }[]
     ): Promise<Segment[]> {
         console.log(`Generating images with priority sourcing for ${segments.length} segments...`);
 
@@ -281,6 +293,28 @@ export class PromoAssetService {
                         finalImageUrl = uploadResult.url;
                     } catch (uploadError) {
                         console.warn('Failed to upload image to Cloudinary, using original URL:', uploadError);
+                    }
+                }
+
+                // VERIFICATION: For CTA images, verify they are text-free
+                const isCta = scenes?.[i]?.role === 'cta';
+                if (isCta && this.deps.imageVerificationClient && !preResolvedUrl) {
+                    try {
+                        console.log(`[${jobId}] Verifying CTA image is text-free...`);
+                        const verification = await this.deps.imageVerificationClient.verifyImageContent(
+                            finalImageUrl,
+                            { mustBeTextFree: true }
+                        );
+
+                        if (!verification.isValid) {
+                            console.warn(`[${jobId}] CTA image verification failed: ${verification.issues.join(', ')}`);
+                            console.log(`[${jobId}] Detected text: ${verification.detectedText.join(', ')}`);
+                            // For now, log and continue. Future: regenerate with stricter prompt.
+                        } else {
+                            console.log(`[${jobId}] CTA image verification passed (text-free)`);
+                        }
+                    } catch (verifyError) {
+                        console.warn(`[${jobId}] Vision verification failed, continuing:`, verifyError);
                     }
                 }
 

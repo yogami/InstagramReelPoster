@@ -149,3 +149,47 @@ export function calculateSegmentTimings(
 
     return timings;
 }
+
+/**
+ * Truncates text to fit within a target speaking duration.
+ * Attempts to truncate at sentence boundaries for natural speech.
+ * @param text The text to truncate
+ * @param maxSeconds Maximum allowed duration
+ * @param speakingRateWps Optional override for words per second
+ * @returns Truncated text that fits within duration
+ */
+export function truncateToFitDuration(
+    text: string,
+    maxSeconds: number,
+    speakingRateWps?: number
+): string {
+    if (!text || text.trim().length === 0) {
+        return '';
+    }
+
+    const config = getConfig();
+    const rate = speakingRateWps ?? config.speakingRateWps;
+    const maxWords = Math.floor(maxSeconds * rate);
+
+    const words = text.trim().split(/\s+/);
+    if (words.length <= maxWords) {
+        return text.trim();
+    }
+
+    // Truncate to max words
+    const truncatedWords = words.slice(0, maxWords);
+    let truncated = truncatedWords.join(' ');
+
+    // Try to find the last sentence boundary
+    const lastPeriod = truncated.lastIndexOf('.');
+    const lastQuestion = truncated.lastIndexOf('?');
+    const lastExclaim = truncated.lastIndexOf('!');
+    const lastBoundary = Math.max(lastPeriod, lastQuestion, lastExclaim);
+
+    // If we found a sentence boundary and it's not too early (at least 50% of text)
+    if (lastBoundary > truncated.length * 0.5) {
+        truncated = truncated.substring(0, lastBoundary + 1);
+    }
+
+    return truncated.trim();
+}
