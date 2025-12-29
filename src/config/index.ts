@@ -92,6 +92,7 @@ export interface Config {
         usePersonalCloneLLM: boolean;  // Use local fine-tuned LLM instead of Gpt
         personalCloneTrainingMode: boolean; // Collect data for training
         enableUserApproval: boolean;  // Human-in-the-loop approval checkpoints
+        usePlaywrightScraper: boolean; // Toggle for enhanced scraper
     };
 
     // Personal Clone Configuration (only used when feature flags are enabled)
@@ -233,6 +234,7 @@ export function loadConfig(): Config {
             usePersonalCloneLLM: getEnvVarBoolean('USE_PERSONAL_CLONE_LLM', false),
             personalCloneTrainingMode: getEnvVarBoolean('PERSONAL_CLONE_TRAINING_MODE', false),
             enableUserApproval: getEnvVarBoolean('ENABLE_USER_APPROVAL', false), // Human-in-the-loop approval checkpoints
+            usePlaywrightScraper: getEnvVarBoolean('USE_PLAYWRIGHT_SCRAPER', false), // Toggle for enhanced scraper
         },
 
         // Personal Clone Configuration

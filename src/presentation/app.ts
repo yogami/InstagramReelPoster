@@ -27,6 +27,10 @@ import { RemoteVideoRenderer } from '../infrastructure/video/RemoteVideoRenderer
 import { FallbackVideoRenderer } from '../infrastructure/video/FallbackVideoRenderer';
 import { MediaStorageClient } from '../infrastructure/storage/MediaStorageClient';
 import { WebsiteScraperClient } from '../infrastructure/scraper/WebsiteScraperClient';
+import { EnhancedWebsiteScraper } from '../infrastructure/scraper/EnhancedWebsiteScraper';
+// ... existing imports ...
+
+
 import { ChatService } from './services/ChatService';
 import { ChatNotificationClient } from '../infrastructure/notifications/ChatNotificationClient';
 import { IVideoRenderer } from '../domain/ports/IVideoRenderer';
@@ -117,7 +121,15 @@ function createDependencies(config: Config): {
     const musicSelector = createMusicSelector(config);
     const jobManager = new JobManager(config.minReelSeconds, config.maxReelSeconds, config.redisUrl);
     const notificationClient = createNotificationClient(config);
-    const websiteScraperClient = new WebsiteScraperClient();
+    const websiteScraperClient = config.featureFlags.usePlaywrightScraper
+        ? new EnhancedWebsiteScraper()
+        : new WebsiteScraperClient();
+
+    if (config.featureFlags.usePlaywrightScraper) {
+        console.log('🕷️ Using Enhanced Playwright Scraper');
+    } else {
+        console.log('🕷️ Using Standard HTTP Scraper');
+    }
 
     // Growth Layer Services
     const hookAndStructureService = new HookAndStructureService(llmClient);
