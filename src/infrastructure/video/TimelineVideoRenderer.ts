@@ -227,21 +227,24 @@ export class TimelineVideoRenderer implements IVideoRenderer {
                 });
             }
         } else if (manifest.segments) {
-            // Image Path
-            visualClips = manifest.segments.map((segment, index) => ({
-                asset: {
-                    type: 'image',
-                    src: segment.imageUrl,
-                },
-                start: segment.start,
-                length: segment.end - segment.start,
-                fit: 'contain',
-                transition: {
-                    in: index === 0 ? 'fade' : undefined,
-                    out: 'fade',
-                },
-                effect: 'zoomIn',
-            }));
+            // Image Path - FLUX Optimization: Use segment-level or manifest-level zoom effects
+            visualClips = manifest.segments.map((segment, index) => {
+                const zoomEffect = this.resolveZoomEffect(segment.zoomEffect, index, manifest.zoomType);
+                return {
+                    asset: {
+                        type: 'image' as const,
+                        src: segment.imageUrl,
+                    },
+                    start: segment.start,
+                    length: segment.end - segment.start,
+                    fit: 'contain' as const,
+                    transition: {
+                        in: index === 0 ? 'fade' as const : undefined,
+                        out: 'fade' as const,
+                    },
+                    effect: zoomEffect,
+                };
+            });
         } else {
             throw new Error('Manifest has neither animatedVideoUrl nor segments');
         }
@@ -408,6 +411,45 @@ export class TimelineVideoRenderer implements IVideoRenderer {
                 quality: 'high',
             },
         };
+    }
+
+    /**
+     * Resolves the zoom effect for a segment based on segment-level, manifest-level, or default.
+     * Maps FLUX zoom types to Timeline API effect types.
+     * 
+     * @param segmentZoom Segment-level zoom effect (highest priority)
+     * @param segmentIndex Index of the segment (for alternating mode)
+     * @param manifestZoom Manifest-level default zoom type (fallback)
+     * @returns Timeline API effect type
+     */
+    private resolveZoomEffect(
+        segmentZoom: string | undefined,
+        segmentIndex: number,
+        manifestZoom: string | undefined
+    ): 'zoomIn' | 'zoomOut' | 'slideLeft' | 'slideRight' | undefined {
+        const zoomType = segmentZoom || manifestZoom;
+
+        switch (zoomType) {
+            case 'slow_zoom_in':
+                return 'zoomIn';
+            case 'slow_zoom_out':
+                return 'zoomOut';
+            case 'ken_burns':
+                // Ken Burns approximated as alternating zoom in/out
+                return segmentIndex % 2 === 0 ? 'zoomIn' : 'zoomOut';
+            case 'ken_burns_left':
+                return 'slideLeft';
+            case 'ken_burns_right':
+                return 'slideRight';
+            case 'alternating':
+                // Alternate between zoom in and out for visual variety
+                return segmentIndex % 2 === 0 ? 'zoomIn' : 'zoomOut';
+            case 'static':
+                return undefined; // No effect for static images
+            default:
+                // Default to zoom in for visual dynamism
+                return 'zoomIn';
+        }
     }
 
     /**

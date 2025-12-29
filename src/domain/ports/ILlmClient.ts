@@ -31,6 +31,8 @@ export interface ReelPlan {
     summary: string;
     /** The primary, viral-style caption for the final video post */
     mainCaption: string;
+    /** Zoom effect type for static image reels (FLUX optimization) */
+    zoomType?: 'slow_zoom_in' | 'slow_zoom_out' | 'ken_burns' | 'alternating' | 'static';
 }
 
 /**
@@ -54,13 +56,17 @@ export interface SegmentContent {
         colorGrade: 'vivid-cinematic' | 'teal-orange' | 'warm-filmic' | 'rich-natural';
     };
 
-    /** Continuity tags for sequential prompting (5 elements tracked) */
+    /** Continuity tags for sequential prompting (visual consistency + motion) */
     continuityTags?: {
         location: string;
         timeOfDay: string;
         dominantColor: string;
         heroProp: string;
         wardrobeDetail: string;
+        /** Zoom/pan effect for this segment (FLUX optimization) */
+        zoomEffect?: 'slow_zoom_in' | 'slow_zoom_out' | 'ken_burns_left' | 'ken_burns_right' | 'static';
+        /** Caption overlay position */
+        captionPosition?: 'bottom_center' | 'top_left' | 'center';
     };
 
     /** Brief summary of narrative progression (cause→effect) */

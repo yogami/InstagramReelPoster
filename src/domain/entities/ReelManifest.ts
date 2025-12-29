@@ -9,6 +9,8 @@ export interface ManifestSegment {
     end: number;
     imageUrl: string;
     caption?: string;
+    /** FLUX optimization: zoom/pan effect for this segment */
+    zoomEffect?: 'slow_zoom_in' | 'slow_zoom_out' | 'ken_burns_left' | 'ken_burns_right' | 'static';
 }
 
 /**
@@ -49,6 +51,8 @@ export interface ReelManifest {
     };
     /** specialized overlays like rating badges or QR codes */
     overlays?: ManifestOverlay[];
+    /** FLUX optimization: default zoom type for all segments */
+    zoomType?: 'slow_zoom_in' | 'slow_zoom_out' | 'ken_burns' | 'alternating' | 'static';
 }
 
 export interface ManifestOverlay {
@@ -73,6 +77,7 @@ export function createReelManifest(params: {
     subtitlesUrl: string;
     logoUrl?: string;
     logoPosition?: 'beginning' | 'end' | 'overlay';
+    zoomType?: 'slow_zoom_in' | 'slow_zoom_out' | 'ken_burns' | 'alternating' | 'static';
 }): ReelManifest {
     if (params.durationSeconds <= 0) {
         throw new Error('Manifest durationSeconds must be positive');
@@ -109,6 +114,7 @@ export function createReelManifest(params: {
             end: seg.endSeconds,
             imageUrl: seg.imageUrl || '', // Allow empty if animated
             caption: seg.caption,
+            zoomEffect: seg.zoomEffect, // Pass through segment-level zoom
         }));
     }
 
@@ -123,5 +129,6 @@ export function createReelManifest(params: {
         subtitlesUrl: params.subtitlesUrl.trim(),
         logoUrl: params.logoUrl,
         logoPosition: params.logoPosition,
+        zoomType: params.zoomType,
     };
 }

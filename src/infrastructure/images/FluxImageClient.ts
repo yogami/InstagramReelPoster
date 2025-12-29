@@ -30,7 +30,20 @@ export class FluxImageClient implements IImageClient {
         prompt: string,
         options?: ImageGenerationOptions
     ): Promise<ImageGenerationResult> {
-        const enhancedPrompt = `${prompt}. Style: Cinematic, high quality, 8k, photorealistic. Aspect Ratio: 9:16 Vertical.`;
+        // Clean any Midjourney-style params that may have leaked through prompts
+        // FLUX.1 uses natural language style, not MJ parameters
+        const cleanedPrompt = prompt
+            .replace(/--ar\s+\d+:\d+/gi, '')
+            .replace(/--v\s+\d+(\.\d+)?/gi, '')
+            .replace(/--stylize\s+\d+/gi, '')
+            .replace(/--q\s+\d+/gi, '')
+            .replace(/--style\s+\w+/gi, '')
+            .replace(/--chaos\s+\d+/gi, '')
+            .replace(/--no\s+[\w,\s]+/gi, '')
+            .trim();
+
+        // Add FLUX-native quality boosters
+        const enhancedPrompt = `${cleanedPrompt}. Style: Cinematic, 8k, photorealistic, ultra-detailed. Aspect Ratio: 9:16 Vertical.`;
 
         try {
             console.log(`[Flux FLUX1] Generating image...`);

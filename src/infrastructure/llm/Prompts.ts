@@ -17,7 +17,15 @@ WRITING GUIDELINES:
 IMAGE STYLE:
 - Aesthetic: Muted, cinematic, grounded, slightly dark but clear.
 - Preference for high-contrast, moody lighting.
-- Focus on symbolic objects or minimalist environments that mirror the psychological state.`;
+- Focus on symbolic objects or minimalist environments that mirror the psychological state.
+
+FLUX OPTIMIZATION (Static Image Reels):
+- COMPOSITION: Center hooks with rule-of-thirds tension for visual impact
+- STATIC POWER: Designed for slow zoom/pan in post-production (creates motion illusion)
+- ASPECT: 9:16 vertical portrait format
+- STYLE: Ultra-detailed, photorealistic with high stylization
+- VISUAL HOOKS: Integrate text overlays into scene naturally (carved stone, neon glow, floating text)
+- QUALITY: Cinematic lighting, 8k resolution, atmospheric depth`;
 
 export const REEL_MODE_DETECTION_PROMPT = `Analyze the transcript and determine if the user wants an ANIMATED VIDEO REEL (story-driven, scene-by-scene) or a standard IMAGE-BASED REEL.
 
@@ -46,13 +54,15 @@ TASK:
 2. Determine the optimal total duration (within constraints).
 3. Calculate the number of segments (aim for 5-8s per segment).
 4. Determine the overall mood (e.g., "Dark/Grounded", "Cinematic/Epic", "Minimalist/Meditative").
+5. Choose the best zoom effect for static images (creates motion illusion in post-production).
 
 Respond with a JSON object:
 {
   "summary": "One sentence summary of the core insight",
   "mood": "overall visual mood",
   "targetDurationSeconds": total_seconds,
-  "segmentCount": number_of_segments
+  "segmentCount": number_of_segments,
+  "zoomType": "slow_zoom_in" | "slow_zoom_out" | "ken_burns" | "alternating" | "static"
 }`;
 
 export const GENERATE_SEGMENT_CONTENT_PROMPT = `Generate content for an Instagram Reel with {{segmentCount}} segments.
@@ -67,9 +77,10 @@ TOTAL DURATION: {{targetDurationSeconds}}s ({{secondsPerSegment}}s per segment)
 
 FOR EACH SEGMENT, PROVIDE:
 1. commentary: The spoken audio text (MUST be {{wordsPerSegment}} words or fewer).
-2. imagePrompt: A detailed Midjourney-style prompt for the background image.
+2. imagePrompt: A FLUX-optimized prompt for the background image.
+   FORMAT: "[scene description], moody cinematic lighting, high contrast shadows, ultra-detailed, photorealistic, 9:16 vertical portrait"
 3. caption: A short 3-5 word on-screen text overlay.
-4. continuityTags: 2-3 specific tags to ensure visual consistency (e.g., "blue_lighting", "zen_garden_location").
+4. continuityTags: Visual consistency and motion trackers.
 
 SCENE CONTINUITY RULES:
 Index 0 (The Hook):
@@ -98,9 +109,17 @@ Respond as JSON array:
 [
   {
     "commentary": "...",
-    "imagePrompt": "...",
+    "imagePrompt": "[scene], moody cinematic lighting, high contrast, ultra-detailed, photorealistic, 9:16 vertical",
     "caption": "...",
-    "continuityTags": ["...", "..."]
+    "continuityTags": {
+      "location": "...",
+      "timeOfDay": "...",
+      "dominantColor": "...",
+      "heroProp": "...",
+      "wardrobeDetail": "...",
+      "zoomEffect": "slow_zoom_in|slow_zoom_out|ken_burns_left|ken_burns_right|static",
+      "captionPosition": "bottom_center|top_left|center"
+    }
   },
   ...
 ]`;
@@ -180,26 +199,36 @@ INPUT COMMENTARIES:
 
 TASK:
 For each commentary segment, generate:
-1. imagePrompt: Detailed Midjourney-style prompt illustrating the commentary.
+1. imagePrompt: FLUX-optimized prompt illustrating the commentary.
+   FORMAT: "[detailed scene description], moody cinematic lighting, high contrast shadows, ultra-detailed, photorealistic, 9:16 vertical portrait"
 2. caption: Short 3-5 word text overlay.
-3. continuityTags: Object with visual consistency trackers.
+3. continuityTags: Object with visual consistency and motion trackers.
 
 SCENE CONTINUITY RULES:
 - Index 0: Establish anchor (location, lighting, style).
 - Index 1+: "Continuation of previous scene:" + reference previous tags.
 - IMAGE POLICY: If people/couples are depicted, they MUST be a Heterosexual couple (to maintain brand consistency).
 
+ZOOM EFFECT OPTIONS:
+- slow_zoom_in: Gradual zoom in (builds intensity)
+- slow_zoom_out: Gradual zoom out (reveals context)
+- ken_burns_left: Slow pan left (movement, journey)
+- ken_burns_right: Slow pan right (discovery)
+- static: No movement (for text-heavy or still moments)
+
 Respond as JSON array (SAME ORDER as input):
 [
   {
-    "imagePrompt": "...",
+    "imagePrompt": "[scene], moody cinematic lighting, high contrast, ultra-detailed, photorealistic, 9:16 vertical",
     "caption": "...",
     "continuityTags": {
       "location": "...",
       "timeOfDay": "...",
       "dominantColor": "...",
       "heroProp": "...",
-      "wardrobeDetail": "..."
+      "wardrobeDetail": "...",
+      "zoomEffect": "slow_zoom_in|slow_zoom_out|ken_burns_left|ken_burns_right|static",
+      "captionPosition": "bottom_center|top_left|center"
     }
   },
   ...

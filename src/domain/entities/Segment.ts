@@ -17,6 +17,8 @@ export interface Segment {
     imageUrl?: string;
     /** Optional caption/subtitle for this segment */
     caption?: string;
+    /** FLUX optimization: zoom/pan effect for post-production motion */
+    zoomEffect?: 'slow_zoom_in' | 'slow_zoom_out' | 'ken_burns_left' | 'ken_burns_right' | 'static';
 }
 
 /**
@@ -30,6 +32,7 @@ export function createSegment(params: {
     imagePrompt: string;
     imageUrl?: string;
     caption?: string;
+    zoomEffect?: 'slow_zoom_in' | 'slow_zoom_out' | 'ken_burns_left' | 'ken_burns_right' | 'static';
 }): Segment {
     if (params.index < 0) {
         throw new Error('Segment index must be non-negative');
@@ -55,6 +58,7 @@ export function createSegment(params: {
         imagePrompt: params.imagePrompt.trim(),
         imageUrl: params.imageUrl,
         caption: params.caption?.trim(),
+        zoomEffect: params.zoomEffect,
     };
 }
 

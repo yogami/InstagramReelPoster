@@ -56,7 +56,11 @@ export class StandardReelGenerator {
         if (plan.segmentCount < 2) plan.segmentCount = 2;
         if (plan.segmentCount > 15) plan.segmentCount = 15;
 
-        console.log(`[ReelPlan] Targeted ${plan.targetDurationSeconds}s with ${plan.segmentCount} segments.`);
+        // FLUX Optimization: Extract zoomType with fallback
+        if (!plan.zoomType) {
+            plan.zoomType = 'slow_zoom_in'; // Default for static image reels
+        }
+        console.log(`[ReelPlan] Targeted ${plan.targetDurationSeconds}s with ${plan.segmentCount} segments. ZoomType: ${plan.zoomType}`);
 
         return plan;
     }
