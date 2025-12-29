@@ -140,6 +140,20 @@ export interface WebsiteAnalysis {
     siteDNA?: SiteDNA;
     /** Scraped media assets (images) from the website */
     scrapedMedia?: ScrapedMedia[];
+
+    // Restaurant Specific Fields
+    /** Signature dish detected (e.g. "Gefüllte Knödel") */
+    signatureDish?: string;
+    /** Rating string (e.g. "4.8" or "4.8/5") */
+    rating?: string;
+    /** Number of reviews */
+    reviewCount?: number;
+    /** Link to reservation page */
+    reservationLink?: string;
+    /** Delivery info or links */
+    deliveryLinks?: { platform: string, url: string }[];
+    /** Price range (e.g. "€€") */
+    priceRange?: string;
 }
 
 /**

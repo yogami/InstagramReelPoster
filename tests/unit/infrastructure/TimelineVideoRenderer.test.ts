@@ -269,20 +269,19 @@ describe('TimelineVideoRenderer', () => {
 
             await renderer.render(manifest);
 
-            // Find the branding track (it holds an HTML asset)
-            const brandingTrack = capturedPayload.timeline.tracks.find((t: any) =>
-                t.clips[0].asset.type === 'html'
-            );
+            // Branding is now the LAST clip in Track 1 (visuals), not a separate track
+            const visualTrack = capturedPayload.timeline.tracks[0];
+            const brandingClip = visualTrack.clips.find((c: any) => c.asset.type === 'html');
 
-            expect(brandingTrack).toBeDefined();
-            const clip = brandingTrack.clips[0];
-
-            expect(clip.asset.type).toBe('html');
-            expect(clip.asset.html).toContain('My Cafe');
-            expect(clip.asset.html).toContain('Berlin Str 1');
-            expect(clip.asset.html).toContain('9-5');
-            expect(clip.length).toBe(5); // Last 5 seconds of 15s video
-            expect(clip.start).toBe(10); // 15 - 5 = 10
+            expect(brandingClip).toBeDefined();
+            expect(brandingClip.asset.type).toBe('html');
+            expect(brandingClip.asset.html).toContain('My Cafe'); // Business name shows when no logo
+            expect(brandingClip.asset.html).toContain('Berlin Str 1');
+            expect(brandingClip.asset.html).toContain('9-5');
+            // Branding starts 1.5s into last segment (10 + 1.5 = 11.5)
+            expect(brandingClip.start).toBeCloseTo(11.5, 1);
+            // Branding last until end (15 - 11.5 = 3.5s)
+            expect(brandingClip.length).toBeCloseTo(3.5, 1);
         });
     });
 

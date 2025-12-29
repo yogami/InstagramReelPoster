@@ -371,7 +371,7 @@ export class ReelOrchestrator {
      * Processes a website promo reel job.
      * Orchestrates: scrape → detect category → generate script → render.
      */
-    private async processWebsitePromoJob(jobId: string, job: ReelJob): Promise<ReelJob> {
+    public async processWebsitePromoJob(jobId: string, job: ReelJob): Promise<ReelJob> {
         const websiteInput = job.websitePromoInput!;
         console.log(`[${jobId}] Website Promo: Scraping ${websiteInput.websiteUrl}`);
 
@@ -564,6 +564,30 @@ export class ReelOrchestrator {
                 phone: websiteAnalysis.phone,
                 email: websiteAnalysis.email,
             };
+        };
+
+        // Populate Overlays for Restaurant Pivot (Rating + QR)
+        if (category === 'restaurant' && websiteAnalysis) {
+            manifest.overlays = [];
+
+            // We assume strict 3-scene structure: Hook, Showcase, CTA
+            if (manifest.segments && manifest.segments.length >= 3) {
+                const showcaseScene = manifest.segments[1]; // Scene 2
+                const ctaScene = manifest.segments[2];      // Scene 3
+
+                // Rating Badge (during Showcase)
+                if (websiteAnalysis.rating) {
+                    manifest.overlays.push({
+                        type: 'rating_badge',
+                        content: websiteAnalysis.rating,
+                        start: showcaseScene.start + 0.5,
+                        end: showcaseScene.end - 0.5,
+                        position: 'top_right'
+                    });
+                }
+
+                // QR Code removed as per user feedback (focus on contact info in branding)
+            }
         }
 
         await this.deps.jobManager.updateJob(jobId, { manifest });

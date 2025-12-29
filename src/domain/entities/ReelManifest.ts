@@ -46,6 +46,16 @@ export interface ReelManifest {
         phone?: string;
         email?: string;
     };
+    /** specialized overlays like rating badges or QR codes */
+    overlays?: ManifestOverlay[];
+}
+
+export interface ManifestOverlay {
+    type: 'rating_badge' | 'qr_code';
+    content: string; // The rating "4.8" or the URL for QR
+    start: number;
+    end: number;
+    position: 'top_right' | 'bottom_right' | 'center';
 }
 
 /**

@@ -148,7 +148,7 @@ export class TimelineVideoRenderer implements IVideoRenderer {
      * Submits a manifest for video rendering and waits for completion.
      */
     async render(manifest: ReelManifest): Promise<RenderResult> {
-        const timelineEdit = this.mapManifestToTimelineEdit(manifest);
+        const timelineEdit = await this.mapManifestToTimelineEdit(manifest);
         const renderId = await this.startRender(timelineEdit);
         const videoUrl = await this.pollForCompletion(renderId);
 
@@ -161,10 +161,18 @@ export class TimelineVideoRenderer implements IVideoRenderer {
     /**
      * Maps our internal ReelManifest to Timeline Edit API format.
      */
-    private mapManifestToTimelineEdit(manifest: ReelManifest): TimelineEdit {
+    private async mapManifestToTimelineEdit(manifest: ReelManifest): Promise<TimelineEdit> {
         // Track 1: Images (bottom layer)
         // Track 1: Visuals (Video or Images)
         let visualClips: TimelineClip[];
+
+        // Calculate when visuals should end to make room for branding end-card
+        let visualEndTime = manifest.durationSeconds;
+        if (manifest.branding && manifest.segments && manifest.segments.length > 0) {
+            const lastSegment = manifest.segments[manifest.segments.length - 1];
+            // Match the logic in createBrandingTrack: branding starts 1.5s into last scene
+            visualEndTime = lastSegment.start + 1.5;
+        }
 
         if (manifest.animatedVideoUrls && manifest.animatedVideoUrls.length > 0) {
             // Multiple Animated Videos Path
@@ -237,6 +245,33 @@ export class TimelineVideoRenderer implements IVideoRenderer {
             throw new Error('Manifest has neither animatedVideoUrl nor segments');
         }
 
+        // Truncate visuals to make room for end-card
+        visualClips = visualClips.filter(c => c.start < visualEndTime).map(c => {
+            if (c.start + c.length > visualEndTime) {
+                return { ...c, length: Math.max(0, visualEndTime - c.start) };
+            }
+            return c;
+        });
+
+        // Add Branding End-Card as a sequential visual on Track 1
+        if (manifest.branding) {
+            // Pre-fetch logo and convert to base64 data URI for reliable rendering
+            let logoDataUri: string | undefined;
+            if (manifest.branding.logoUrl) {
+                logoDataUri = await this.fetchImageAsBase64(manifest.branding.logoUrl);
+            }
+            const brandingTrackData = this.createBrandingTrack(manifest, logoDataUri);
+            if (brandingTrackData && brandingTrackData.clips.length > 0) {
+                const clip = brandingTrackData.clips[0];
+                visualClips.push({
+                    ...clip,
+                    start: visualEndTime,
+                    length: Math.max(0, manifest.durationSeconds - visualEndTime),
+                    transition: { in: 'fade' }
+                });
+            }
+        }
+
         // Track 2: Voiceover audio (middle layer)
         const voiceoverClip: TimelineClip = {
             asset: {
@@ -266,7 +301,7 @@ export class TimelineVideoRenderer implements IVideoRenderer {
                 }
             },
             start: 0,
-            length: manifest.durationSeconds,
+            length: Math.min(manifest.durationSeconds, visualEndTime), // Stop captions when branding starts
             position: 'bottom',
             offset: {
                 y: 0.15 // Offset from bottom (normalized ~15% up?)
@@ -312,16 +347,14 @@ export class TimelineVideoRenderer implements IVideoRenderer {
         // Track 3: Voiceover audio
         tracks.push({ clips: [voiceoverClip] });
 
-        // Track 4: Branding/Contact Info Overlay
-        if (manifest.branding) {
-            const brandingTrack = this.createBrandingTrack(manifest);
-            if (brandingTrack) {
-                tracks.push(brandingTrack);
-            }
+        // Track 4: Overlays (Rating/QR)
+        if (manifest.overlays && manifest.overlays.length > 0) {
+            const overlayTracks = this.createOverlayTracks(manifest, visualEndTime);
+            tracks.push(...overlayTracks);
         }
 
         // Track 5: Logo (Top Layer) - Use HTML to prevent upscaling blur
-        if (manifest.logoUrl) {
+        if (manifest.logoUrl && !manifest.logoUrl.toLowerCase().endsWith('.ico')) {
             const logoClip: TimelineClip = {
                 asset: {
                     type: 'image',
@@ -330,9 +363,10 @@ export class TimelineVideoRenderer implements IVideoRenderer {
                 start: manifest.logoPosition === 'end'
                     ? Math.max(0, manifest.durationSeconds - 5)
                     : 0,
-                length: manifest.logoPosition === 'overlay'
-                    ? manifest.durationSeconds
-                    : (manifest.logoPosition === 'end' ? 5 : 3),
+                length: Math.min(
+                    manifest.logoPosition === 'overlay' ? manifest.durationSeconds : (manifest.logoPosition === 'end' ? 5 : 3),
+                    Math.max(0, visualEndTime - (manifest.logoPosition === 'end' ? Math.max(0, manifest.durationSeconds - 5) : 0))
+                ),
                 position: 'topRight',
                 offset: {
                     x: -0.02, // Slight padding from edge
@@ -348,7 +382,7 @@ export class TimelineVideoRenderer implements IVideoRenderer {
             tracks.push({ clips: [logoClip] });
         }
 
-        // Track 6: Captions/Subtitles (Topmost Layer)
+        // Track 6: Captions/Subtitles
         if (manifest.subtitlesUrl) {
             tracks.push({ clips: [captionClip] });
         }
@@ -369,9 +403,66 @@ export class TimelineVideoRenderer implements IVideoRenderer {
     }
 
     /**
-     * Creates a track for branding/contact info overlay.
+     * Creates tracks for overlays (Rating Badge, QR Code).
      */
-    private createBrandingTrack(manifest: ReelManifest): TimelineTrack | null {
+    private createOverlayTracks(manifest: ReelManifest, visualEndTime: number): { clips: TimelineClip[] }[] {
+        if (!manifest.overlays || manifest.overlays.length === 0) return [];
+
+        const clips: TimelineClip[] = manifest.overlays
+            .filter(o => o.start < visualEndTime)
+            .map(overlay => {
+                const end = Math.min(overlay.end, visualEndTime);
+                const length = Math.max(0, end - overlay.start);
+
+                if (length <= 0) return null;
+
+                if (overlay.type === 'rating_badge') {
+                    return {
+                        asset: {
+                            type: 'html' as const,
+                            html: `
+                            <div style="font-family: 'Montserrat', sans-serif; background: rgba(0,0,0,0.85); color: white; padding: 15px 30px; border-radius: 50px; display: flex; align-items: center; gap: 15px; font-size: 50px; border: 3px solid white; box-shadow: 0 8px 32px rgba(0,0,0,0.5);">
+                                <span style="font-weight: 800; letter-spacing: -1px;">${overlay.content}</span>
+                            </div>
+                        `,
+                            width: 400,
+                            height: 150,
+                        },
+                        start: overlay.start,
+                        length: length,
+                        position: 'center', // Currently fixed
+                        offset: { x: 0.25, y: -0.2 }, // Top-Right quadrant
+                        scale: 1.0,
+                        transition: { in: 'slideRight', out: 'fade' }
+                    };
+                } else if (overlay.type === 'qr_code') {
+                    // QR Code for "Sold Out" / Reservation
+                    return {
+                        asset: {
+                            type: 'image' as const,
+                            src: `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(overlay.content)}&bgcolor=255-255-255&color=0-0-0&margin=10`,
+                        },
+                        start: overlay.start,
+                        length: length,
+                        position: 'center',
+                        scale: 0.35,
+                        offset: { x: 0, y: 0 }, // Dead center
+                        transition: { in: 'zoom', out: 'fade' },
+                        effect: 'zoomIn' // Attention grabber (valid enum)
+                    };
+                }
+                return null;
+            }).filter(Boolean) as TimelineClip[];
+
+        return [{ clips }];
+    }
+
+    /**
+     * Creates a track for branding/contact info overlay.
+     * @param manifest The reel manifest with branding info
+     * @param logoDataUri Optional pre-fetched logo as base64 data URI for reliable rendering
+     */
+    private createBrandingTrack(manifest: ReelManifest, logoDataUri?: string): TimelineTrack | null {
         const branding = manifest.branding;
         if (!branding) return null;
 
@@ -393,90 +484,114 @@ export class TimelineVideoRenderer implements IVideoRenderer {
         // Only show if we have something
         if (details.length === 0) return null;
 
+        const midPoint = Math.ceil(details.length / 2);
+        const topDetails = details.slice(0, midPoint);
+        const bottomDetails = details.slice(midPoint);
+
         const html = `
             <div class="container">
-                <div class="card">
-                    <div class="header">
-                        <h1>${branding.businessName}</h1>
-                    </div>
-                    <div class="content">
-                        ${details.map(d => `
-                            <div class="row">
-                                <span class="icon">${d.icon}</span>
-                                <span class="text">${d.text}</span>
-                            </div>
-                        `).join('')}
-                    </div>
+                <div class="top-details">
+                    ${topDetails.map(d => `
+                        <div class="row">
+                            <span class="icon">${d.icon}</span>
+                            <span class="text">${d.text}</span>
+                        </div>
+                    `).join('')}
+                </div>
+                
+                <div class="logo-section">
+                    ${logoDataUri
+                ? `<img src="${logoDataUri}" class="center-logo" />`
+                : (branding.logoUrl
+                    ? `<img src="${branding.logoUrl}" class="center-logo" />`
+                    : `<h1 class="business-name">${branding.businessName}</h1>`)}
+                </div>
+
+                <div class="bottom-details">
+                    ${bottomDetails.map(d => `
+                        <div class="row">
+                            <span class="icon">${d.icon}</span>
+                            <span class="text">${d.text}</span>
+                        </div>
+                    `).join('')}
                 </div>
             </div>
         `;
 
         const css = `
             * { box-sizing: border-box; margin: 0; padding: 0; }
-            body, html { width: 100%; height: 100%; overflow: hidden; background: transparent; }
+            body, html { width: 100%; height: 100%; overflow: hidden; background: #000000; }
             
             .container {
                 display: flex;
-                align-items: flex-end; /* Align card to bottom */
-                justify-content: center;
+                flex-direction: column;
+                align-items: center;
+                justify-content: space-between;
                 width: 100%;
                 height: 100%;
-                padding-bottom: 120px; /* Safety margin from bottom edge */
+                background: #000000;
+                padding: 100px 60px;
             }
 
-            .card {
-                background: rgba(10, 10, 10, 0.94); /* Very dark, slight transparency */
-                border: 1px solid rgba(255, 255, 255, 0.15);
-                border-radius: 24px;
-                padding: 40px;
-                width: 90%;
-                max-width: 900px;
-                box-shadow: 0 15px 50px rgba(0,0,0,0.7);
+            .top-details, .bottom-details {
                 display: flex;
                 flex-direction: column;
-                gap: 25px;
+                align-items: center;
+                gap: 30px;
+                width: 100%;
             }
 
-            .header h1 {
+            .logo-section {
+                flex: 1;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 100%;
+                padding: 40px 0;
+            }
+
+            .center-logo {
+                max-width: 800px;
+                max-height: 500px;
+                object-fit: contain;
+                filter: drop-shadow(0 0 40px rgba(255,255,255,0.15));
+            }
+
+            .business-name {
                 font-family: 'Montserrat', sans-serif;
-                font-size: 44px;
-                font-weight: 800;
-                color: #FACC15; /* Yellow-400 */
+                font-size: 84px;
+                font-weight: 900;
+                color: #FACC15;
                 text-align: center;
                 text-transform: uppercase;
-                letter-spacing: 1px;
+                letter-spacing: 6px;
                 line-height: 1.1;
-                margin-bottom: 10px;
-                text-shadow: 0 2px 4px rgba(0,0,0,0.5);
-            }
-
-            .content {
-                display: flex;
-                flex-direction: column;
-                gap: 18px;
+                padding: 40px;
+                border: 4px solid #FACC15;
+                border-radius: 20px;
+                background: rgba(250, 204, 21, 0.05);
             }
 
             .row {
                 display: flex;
-                align-items: flex-start;
-                gap: 20px;
+                align-items: center;
+                justify-content: center;
+                gap: 24px;
                 color: #FFFFFF;
                 font-family: 'Montserrat', sans-serif;
+                background: #111111;
+                border: 2px solid #333333;
+                padding: 20px 40px;
+                border-radius: 60px;
+                width: fit-content;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.5);
             }
 
-            .icon {
-                font-size: 32px;
-                min-width: 45px;
-                text-align: center;
-                margin-top: -2px; /* Visual alignment with text cap-height */
-            }
-
+            .icon { font-size: 44px; }
             .text {
-                font-size: 26px;
-                font-weight: 500;
-                line-height: 1.35;
-                flex: 1;
-                word-wrap: break-word;
+                font-size: 34px;
+                font-weight: 700;
+                text-align: center;
             }
         `;
 
@@ -486,8 +601,9 @@ export class TimelineVideoRenderer implements IVideoRenderer {
 
         if (manifest.segments && manifest.segments.length > 0) {
             const lastSegment = manifest.segments[manifest.segments.length - 1];
-            start = lastSegment.start;
-            duration = lastSegment.end - lastSegment.start;
+            // Start 1.5s into the last scene so we see the visual first, then the card dominates.
+            start = lastSegment.start + 1.5;
+            duration = (lastSegment.end - lastSegment.start) - 1.5;
         }
 
         return {
@@ -497,17 +613,14 @@ export class TimelineVideoRenderer implements IVideoRenderer {
                     html,
                     css,
                     width: 1080,
-                    height: 1920
+                    height: 1920,
+                    background: '#000000'
                 },
-                start,
-                length: duration,
-                position: 'center', // Asset is full screen, so center it. Position is handled by CSS.
-                transition: {
-                    in: 'slideUp',
-                    out: 'fade'
-                },
-                fit: 'contain',
-                scale: 1.0 // 1:1 pixel mapping
+                start: 0, // Duration managed by the caller
+                length: 0, // Duration managed by the caller
+                position: 'center',
+                fit: 'cover', // Use cover for full-screen card
+                scale: 1.0
             }]
         };
     }
@@ -541,10 +654,10 @@ export class TimelineVideoRenderer implements IVideoRenderer {
         } catch (error) {
             if (axios.isAxiosError(error)) {
                 console.error('[Timeline] Error response:', JSON.stringify(error.response?.data, null, 2));
-                const message = error.response?.data?.message ||
-                    error.response?.data?.error ||
-                    error.message;
-                throw new Error(`Timeline render failed to start: ${message}`);
+                const data = error.response?.data;
+                const message = data?.message || data?.error || error.message;
+                const details = data ? JSON.stringify(data) : '';
+                throw new Error(`Timeline render failed to start: ${message}. Details: ${details}`);
             }
             throw error;
         }
@@ -598,5 +711,39 @@ export class TimelineVideoRenderer implements IVideoRenderer {
 
     private sleep(ms: number): Promise<void> {
         return new Promise((resolve) => setTimeout(resolve, ms));
+    }
+
+    /**
+     * Fetches an image from URL and converts it to a base64 data URI.
+     * This is necessary because the Timeline API cannot fetch external images
+     * within HTML assets during server-side rendering.
+     * 
+     * @param imageUrl The URL of the image to fetch
+     * @returns Base64 data URI or undefined if fetch fails
+     */
+    private async fetchImageAsBase64(imageUrl: string): Promise<string | undefined> {
+        try {
+            console.log(`[Timeline] Fetching logo for base64 conversion: ${imageUrl}`);
+
+            const response = await axios.get(imageUrl, {
+                responseType: 'arraybuffer',
+                timeout: 10000, // 10 second timeout
+                headers: {
+                    'Accept': 'image/*'
+                }
+            });
+
+            const buffer = Buffer.from(response.data, 'binary');
+            const contentType = response.headers['content-type'] || 'image/png';
+            const base64 = buffer.toString('base64');
+            const dataUri = `data:${contentType};base64,${base64}`;
+
+            console.log(`[Timeline] Logo converted to base64 (${(base64.length / 1024).toFixed(1)} KB)`);
+            return dataUri;
+        } catch (error) {
+            console.warn(`[Timeline] Failed to fetch logo for base64 conversion, falling back to URL:`,
+                error instanceof Error ? error.message : error);
+            return undefined;
+        }
     }
 }

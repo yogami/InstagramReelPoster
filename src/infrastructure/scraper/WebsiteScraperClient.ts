@@ -582,25 +582,66 @@ export class WebsiteScraperClient implements IWebsiteScraperClient {
      * Detects logo URL from HTML.
      */
     private detectLogo(html: string, sourceUrl: string): string | undefined {
-        const logoPatterns = [
-            /<img[^>]+src=["']([^"']+)["'][^>]*class=["'][^"']*logo[^"']*["']/i,
-            /<img[^>]+class=["'][^"']*logo[^"']*["'][^>]*src=["']([^"']+)["']/i,
-            /<img[^>]+src=["']([^"']+)["'][^>]*id=["'][^"']*logo[^"']*["']/i,
-            /<link[^>]+rel=["']icon["'][^>]*href=["']([^"']+)["']/i,
-            /<link[^>]+rel=["']shortcut icon["'][^>]*href=["']([^"']+)["']/i,
+        const $ = cheerio.load(html);
+        const baseUrl = new URL(sourceUrl);
+
+        // Priority 1: High-confidence image selectors
+        const selectors = [
+            'picture.logo img',
+            'img[alt*="logo" i]',
+            'img[class*="logo" i]',
+            '.logo img',
+            '.brand img',
+            'header img',
+            'img[src*="logo" i]',
+            '[class*="logo"] img',
+            '[id*="logo"] img'
         ];
 
-        for (const pattern of logoPatterns) {
-            const match = html.match(pattern);
-            if (match) {
-                const src = match[1];
-                try {
-                    return new URL(src, sourceUrl).href;
-                } catch {
-                    // continue
+        for (const selector of selectors) {
+            const src = $(selector).attr('src');
+            if (src) {
+                // Ignore small icons
+                if (src.toLowerCase().includes('logo') || !src.toLowerCase().endsWith('.ico')) {
+                    try {
+                        return new URL(src, sourceUrl).href;
+                    } catch {
+                        // skip
+                    }
                 }
             }
         }
+
+        // Priority 2: OG Image
+        const ogImage = $('meta[property="og:image"]').attr('content');
+        if (ogImage && ogImage.toLowerCase().includes('logo')) {
+            try {
+                return new URL(ogImage, sourceUrl).href;
+            } catch {
+                // skip
+            }
+        }
+
+        // Priority 3: Apple Touch Icon
+        const appleIcon = $('link[rel="apple-touch-icon"]').attr('href');
+        if (appleIcon) {
+            try {
+                return new URL(appleIcon, sourceUrl).href;
+            } catch {
+                // skip
+            }
+        }
+
+        // Fallback: Standard favicon
+        const favicon = $('link[rel*="icon"]').attr('href');
+        if (favicon) {
+            try {
+                return new URL(favicon, sourceUrl).href;
+            } catch {
+                // skip
+            }
+        }
+
         return undefined;
     }
 

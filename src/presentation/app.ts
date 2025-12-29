@@ -103,7 +103,7 @@ export function createApp(config: Config): Application {
 /**
  * Creates all dependencies with proper wiring.
  */
-function createDependencies(config: Config): {
+export function createDependencies(config: Config): {
     jobManager: JobManager;
     orchestrator: ReelOrchestrator;
     growthInsightsService: GrowthInsightsService;

@@ -44,19 +44,18 @@ describe('TimelineVideoRenderer - Branding Overlay', () => {
 
         const clip = brandingTrack.clips[0];
 
-        // Should start at the beginning of last segment
-        expect(clip.start).toBe(10);
-
-        // Should last for the entire duration of last segment
-        expect(clip.length).toBe(10);
+        // start and length are managed by the caller (mapManifestToTimelineEdit)
+        // createBrandingTrack returns 0,0 as placeholders
+        expect(clip.start).toBe(0);
+        expect(clip.length).toBe(0);
 
         // Since we use full-screen HTML overlay, clip position is center
         expect(clip.position).toBe('center');
 
         const asset = clip.asset as any;
 
-        // Should use CSS for positioning (look for padding-bottom in CSS)
-        expect(asset.css).toContain('padding-bottom');
+        // Should use CSS for positioning (look for padding in CSS)
+        expect(asset.css).toContain('padding: 100px 60px');
 
         // Assert full screen asset dimensions
         expect(asset.width).toBe(1080);
@@ -86,11 +85,9 @@ describe('TimelineVideoRenderer - Branding Overlay', () => {
         expect(brandingTrack).toBeDefined();
         const clip = brandingTrack.clips[0];
 
-        // Should start 5 seconds before end
-        expect(clip.start).toBe(15);
-
-        // Should last 5 seconds
-        expect(clip.length).toBe(5);
+        // start and length are managed by the caller
+        expect(clip.start).toBe(0);
+        expect(clip.length).toBe(0);
     });
 
     it('should include logo, business name, and contact details in HTML', () => {
@@ -120,11 +117,9 @@ describe('TimelineVideoRenderer - Branding Overlay', () => {
         const clip = brandingTrack.clips[0];
         const html = clip.asset.html;
 
-
-        // Logo is shown separately in top-right, not in contact card
-
-        // Should include business name
-        expect(html).toContain('Berlin AI Labs');
+        // Logo is shown in center (business name only if no logo)
+        expect(html).toContain('<img');
+        expect(html).toContain('logo.jpg');
 
         // Should include address
         expect(html).toContain('Friedrichstraße 123');
@@ -164,7 +159,7 @@ describe('TimelineVideoRenderer - Branding Overlay', () => {
         // Should use proper Grid/Flex layout
         expect(css).toContain('display: flex');
         expect(css).toContain('.container');
-        expect(css).toContain('.card');
+        expect(css).toContain('.logo-section');
     });
 
     it('should only show contact overlay when at least one contact field exists', () => {
@@ -232,7 +227,7 @@ describe('TimelineVideoRenderer - Branding Overlay', () => {
 
         const asset = clip.asset as any;
         // Should have padding in CSS
-        expect(asset.css).toContain('padding-bottom');
+        expect(asset.css).toContain('padding: 100px 60px');
     });
 
     it('should not include logo in contact card (logo is separate in top-right)', () => {
@@ -260,13 +255,44 @@ describe('TimelineVideoRenderer - Branding Overlay', () => {
         const clip = brandingTrack.clips[0];
         const html = clip.asset.html;
 
-        // Contact card should NOT include logo image
-        // Logo is shown separately in top-right corner
-        expect(html).not.toContain('<img');
-        expect(html).not.toContain('logo.jpg');
+        // Without logoDataUri, the logo URL should still be used as fallback
+        // The img tag should be present with the logo URL
+        expect(html).toContain('<img');
+        expect(html).toContain('logo.jpg');
 
-        // Should still include business name and contact info
-        expect(html).toContain('Test Business');
+        // Should still include contact info (business name only shows when no logo)
         expect(html).toContain('123 Test St');
+    });
+
+    it('should use base64 data URI when logoDataUri is provided', () => {
+        const manifest: ReelManifest = {
+            durationSeconds: 20,
+            voiceoverUrl: 'https://example.com/voice.mp3',
+            musicUrl: 'https://example.com/music.mp3',
+            musicDurationSeconds: 20,
+            subtitlesUrl: 'https://example.com/subs.vtt',
+            segments: [{
+                index: 0,
+                imageUrl: 'https://example.com/1.jpg',
+                start: 0,
+                end: 20
+            }],
+            branding: {
+                logoUrl: 'https://cloudinary.com/logo.jpg',
+                businessName: 'Test Business',
+                address: '123 Test St',
+                email: 'test@example.com'
+            }
+        };
+
+        const logoDataUri = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUg==';
+        const brandingTrack = (renderer as any).createBrandingTrack(manifest, logoDataUri);
+        const clip = brandingTrack.clips[0];
+        const html = clip.asset.html;
+
+        // Should use the base64 data URI instead of the URL
+        expect(html).toContain('<img');
+        expect(html).toContain('data:image/png;base64,');
+        expect(html).not.toContain('logo.jpg');
     });
 });

@@ -27,6 +27,7 @@ import {
 } from './CategoryPrompts';
 import {
     REEL_MODE_DETECTION_PROMPT,
+    GENERATE_RESTAURANT_SCRIPT_PROMPT,
 } from './Prompts';
 import { GptService } from './GptService';
 import { ParableGenerator } from './ParableGenerator';
@@ -317,7 +318,21 @@ STYLE RULES:
         const viralHook = getRandomViralHook();
         const hookInstruction = `virality_strategy: ${viralHook.name} (${viralHook.description})`;
 
-        const prompt = `Create a 17-second Instagram Reel promo script for "${businessName}".
+        let prompt = '';
+
+        if (category === 'restaurant') {
+            prompt = GENERATE_RESTAURANT_SCRIPT_PROMPT
+                .replace(/{{businessName}}/g, businessName)
+                .replace('{{signatureDish}}', analysis.signatureDish || "Chef's Special")
+                .replace('{{rating}}', analysis.rating || "4.8⭐")
+                .replace('{{reviewCount}}', (analysis.reviewCount || 100).toString())
+                .replace('{{address}}', analysis.address || "Berlin")
+                .replace('{{reservationLink}}', analysis.reservationLink || "Link in Bio")
+                .replace('{{deliveryInfo}}', analysis.deliveryLinks?.map(l => l.platform).join(', ') || "Available")
+                .replace('{{highlights}}', analysis.keywords.join(', '))
+                .replace(/{{language}}/g, targetLanguage);
+        } else {
+            prompt = `Create a 17-second Instagram Reel promo script for "${businessName}".
         
 CRITICAL: The script (narration, caption, coreMessage) MUST be in ${targetLanguage}.
 
@@ -365,6 +380,7 @@ Return JSON:
   "musicStyle": "...",
   "caption": "..."
 }`;
+        }
 
         const response = await this.llmService.chatCompletion(prompt, systemPrompt, { jsonMode: true });
         const result = this.llmService.parseJSON<{

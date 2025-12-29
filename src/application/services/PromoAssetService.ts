@@ -59,11 +59,27 @@ export class PromoAssetService {
 
         // Build segments and resolve media with prioritized sourcing
         const segments = this.buildSegments(segmentContent, voiceoverDuration);
-        await this.updateJobStatus(jobId, 'generating_images', 'Creating visuals...');
-
-        // Resolve media for each scene (user > scraped > AI)
+        // Resolve logo and upload to Cloudinary (for reliable cross-origin rendering)
         const websiteAnalysis = (await this.deps.jobManager.getJob(jobId))?.websiteAnalysis;
-        const logoUrl = websiteAnalysis?.logoUrl || job.manifest?.logoUrl;
+        let logoUrl = websiteAnalysis?.logoUrl || job.manifest?.logoUrl;
+
+        if (this.deps.storageClient && logoUrl && !logoUrl.includes('cloudinary.com') && !logoUrl.startsWith('data:')) {
+            console.log(`[${jobId}] Uploading logo to Cloudinary for reliable rendering: ${logoUrl}`);
+            try {
+                const uploadResult = await this.deps.storageClient.uploadImage(logoUrl, {
+                    folder: `instagram-reels/branding/${jobId}`,
+                    publicId: `logo_${Date.now()}`
+                });
+                logoUrl = uploadResult.url;
+                if (websiteAnalysis) {
+                    await this.deps.jobManager.updateJob(jobId, {
+                        websiteAnalysis: { ...websiteAnalysis, logoUrl }
+                    });
+                }
+            } catch (error) {
+                console.warn(`[${jobId}] Logo upload failed, using original URL:`, error);
+            }
+        }
         const scrapedMedia = promoScript?.compliance?.source === 'public-website'
             ? websiteAnalysis?.scrapedMedia || []
             : [];
@@ -211,12 +227,8 @@ export class PromoAssetService {
         for (let i = 0; i < scenes.length; i++) {
             const scene = scenes[i];
 
-            // Special Case: CTA scene prioritizes the logo for branding consistency
-            if (scene.role === 'cta' && logoUrl && userMediaIndex >= userMedia.length) {
-                resolvedMedia.push(logoUrl);
-                console.log(`[MediaResolver] Scene ${i + 1} (cta): Using business logo`);
-                continue;
-            }
+            // Special Case: CTA scene logic removed to avoid blurry logo as background.
+            // Logo is already present in Branding Overlay.
 
             // Priority 1: User-provided media
             if (userMediaIndex < userMedia.length) {

@@ -126,7 +126,10 @@ export class EnhancedWebsiteScraper implements IWebsiteScraperClient {
             }
 
             // Extract from visible page
+            analysis = await this.extractRestaurantFields(page, analysis);
+
             if (!this.isContactInfoComprehensive(analysis)) {
+                // Legacy basic extraction (phone/email/address)
                 analysis = await this.extractFromPage(page, analysis);
             }
 
@@ -280,6 +283,25 @@ export class EnhancedWebsiteScraper implements IWebsiteScraperClient {
                                     isHero: true
                                 }];
                             }
+                        }
+
+                        // Restaurant Specific Fields
+                        if (obj.aggregateRating) {
+                            analysis.rating = `${obj.aggregateRating.ratingValue}`;
+                            analysis.reviewCount = parseInt(obj.aggregateRating.reviewCount || '0');
+                        }
+
+                        if (obj.priceRange) {
+                            analysis.priceRange = obj.priceRange;
+                        }
+
+                        // Check for reservation/menu links in potentialAction or top-level fields
+                        if (obj.hasMenu) {
+                            // potential source for menu URL
+                        }
+                        // Some schemas put reservation link in 'acceptsReservations' string (link) or just boolean
+                        if (obj.acceptsReservations && typeof obj.acceptsReservations === 'string' && obj.acceptsReservations.startsWith('http')) {
+                            analysis.reservationLink = obj.acceptsReservations;
                         }
                     }
                 }
@@ -515,33 +537,135 @@ export class EnhancedWebsiteScraper implements IWebsiteScraperClient {
      */
     private async extractLogo(page: Page, baseUrl: string): Promise<string | undefined> {
         return await page.evaluate((base) => {
+            // Priority 1: High-quality logo selectors
             const selectors = [
+                'picture.logo img',
                 'img[alt*="logo" i]',
                 'img[class*="logo" i]',
                 '.logo img',
+                '.brand img',
                 'header img',
-                '[class*="brand"] img'
+                '[class*="logo"] img',
+                '[id*="logo"] img',
+                'img[src*="logo" i]'
             ];
 
             for (const selector of selectors) {
                 const img = document.querySelector(selector) as HTMLImageElement;
                 if (img?.src) {
-                    try {
-                        return new URL(img.src, base).href;
-                    } catch {
-                        // Invalid URL
+                    // Check if it's a real image and not tiny (favicon)
+                    if (img.naturalWidth > 64 || img.naturalHeight > 64 || img.src.includes('logo')) {
+                        try {
+                            return new URL(img.src, base).href;
+                        } catch {
+                            // Invalid URL
+                        }
                     }
                 }
             }
 
-            // Fallback to favicon
+            // Priority 2: Open Graph Logo
+            const ogImage = document.querySelector('meta[property="og:image"]') as any;
+            if (ogImage?.content && ogImage.content.toLowerCase().includes('logo')) {
+                return new URL(ogImage.content, base).href;
+            }
+
+            // Priority 3: Apple Touch Icon (usually better quality than favicon)
+            const appleIcon = document.querySelector('link[rel="apple-touch-icon"]') as HTMLLinkElement;
+            if (appleIcon?.href) {
+                return new URL(appleIcon.href, base).href;
+            }
+
+            // Fallback: Use standard favicon if nothing else found
             const favicon = document.querySelector('link[rel*="icon"]') as HTMLLinkElement;
             if (favicon?.href) {
-                return favicon.href;
+                return new URL(favicon.href, base).href;
             }
 
             return undefined;
         }, baseUrl);
+    }
+
+    /**
+     * Extract specific restaurant fields using heuristics/DOM
+     */
+    private async extractRestaurantFields(page: Page, analysis: WebsiteAnalysis): Promise<WebsiteAnalysis> {
+        const extracted = await page.evaluate(() => {
+            const data: any = {};
+
+            // 1. Signature Dish / Recommendations
+            // Look for "Signature", "Recommended", "Popular", "Spezialität"
+            const keywords = ['signature', 'spezialität', 'popular', 'beliebt', 'empfehlung', 'special', 'highlight'];
+            const containers = Array.from(document.querySelectorAll('h2, h3, h4, .menu-section, .highlight'));
+
+            for (const item of containers) {
+                const el = item as any;
+                const text = el.textContent?.toLowerCase() || '';
+                if (keywords.some(k => text.includes(k))) {
+                    const nextEl = el.nextElementSibling || el.parentElement?.nextElementSibling;
+                    if (nextEl && nextEl.textContent && nextEl.textContent.length > 3 && nextEl.textContent.length < 60) {
+                        data.signatureDish = nextEl.textContent.trim().split('\n')[0];
+                        break;
+                    }
+                }
+            }
+
+            // Fallback: Look for elements with specific classes
+            if (!data.signatureDish) {
+                const dishEl = document.querySelector('.highlight-dish, .featured-item, .hero-dish');
+                if (dishEl) data.signatureDish = dishEl.textContent?.trim();
+            }
+
+            // 2. Rating (Tripadvisor/Google/Lieferando)
+            const ratingEl = document.querySelector('[class*="rating"], [class*="stars"], [class*="review-score"], .google-rating');
+            if (ratingEl) {
+                const match = ratingEl.textContent?.match(/(\d[.,]\d)(\s?\/)?/);
+                if (match) data.rating = match[1] + '⭐';
+            }
+
+            // 3. Reservation Link
+            const reservationKeywords = ['reservieren', 'book', 'table', 'tisch'];
+            const links = Array.from(document.querySelectorAll('a'));
+            for (const item of links) {
+                const link = item as any;
+                const href = link.href.toLowerCase();
+                const text = link.textContent?.toLowerCase() || '';
+
+                if (reservationKeywords.some(k => text.includes(k) || href.includes(k))) {
+                    if (href.startsWith('http')) {
+                        data.reservationLink = link.href;
+                        break;
+                    }
+                }
+            }
+
+            // 4. Delivery Links (UberEats, Lieferando, Wolt)
+            const deliveryPlatforms = ['lieferando', 'ubereats', 'wolt'];
+            data.deliveryLinks = [];
+            for (const item of links) {
+                const link = item as any;
+                const href = link.href.toLowerCase();
+                for (const platform of deliveryPlatforms) {
+                    if (href.includes(platform)) {
+                        data.deliveryLinks.push({ platform, url: link.href });
+                    }
+                }
+            }
+            // Dedup
+            data.deliveryLinks = data.deliveryLinks.filter((v: any, i: any, a: any) => a.findIndex((t: any) => t.platform === v.platform) === i);
+
+            return data;
+        });
+
+        // Merge
+        if (extracted.signatureDish && !analysis.signatureDish) analysis.signatureDish = extracted.signatureDish;
+        if (extracted.rating && !analysis.rating) analysis.rating = extracted.rating;
+        if (extracted.reservationLink && !analysis.reservationLink) analysis.reservationLink = extracted.reservationLink;
+        if (extracted.deliveryLinks && extracted.deliveryLinks.length > 0) {
+            analysis.deliveryLinks = extracted.deliveryLinks;
+        }
+
+        return analysis;
     }
 
     /**
