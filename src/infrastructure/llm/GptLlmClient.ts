@@ -414,7 +414,7 @@ Return JSON:
         const normalizedKeywords = keywords.map(kw => kw.toLowerCase());
 
         const categoryScores: Record<BusinessCategory, number> = {
-            cafe: 0, gym: 0, shop: 0, service: 0, restaurant: 0, studio: 0,
+            cafe: 0, gym: 0, shop: 0, service: 0, restaurant: 0, studio: 0, spiritual: 0,
         };
 
         const categoryKeywords: Record<BusinessCategory, string[]> = {
@@ -424,6 +424,7 @@ Return JSON:
             restaurant: ['restaurant', 'dining', 'menu', 'chef', 'food'],
             studio: ['studio', 'creative', 'photography', 'art', 'design'],
             service: ['service', 'professional', 'expert', 'booking'],
+            spiritual: ['meditation', 'spirituality', 'insight', 'healing'],
         };
 
         for (const [cat, catKeywords] of Object.entries(categoryKeywords)) {
