@@ -29,9 +29,11 @@ export class EnhancedWebsiteScraper implements IWebsiteScraperClient {
         try {
             const httpAnalysis = await this.httpScraper.scrapeWebsite(url, options);
 
-            // If we have contact info, we're done
-            if (this.hasContactInfo(httpAnalysis)) {
-                console.log('[EnhancedScraper] HTTP scraper found contact info, done');
+            // If we have comprehensive info (Address/Hours), we're done.
+            // Just phone/email isn't enough for the video overlay.
+            const hasLocation = !!(httpAnalysis.address || httpAnalysis.openingHours);
+            if (this.hasContactInfo(httpAnalysis) && hasLocation) {
+                console.log('[EnhancedScraper] HTTP scraper found comprehensive info, done');
                 return httpAnalysis;
             }
 
@@ -47,6 +49,21 @@ export class EnhancedWebsiteScraper implements IWebsiteScraperClient {
             // 3. If HTTP fails completely, try Playwright directly
             return await this.playwrightScrape(url);
         }
+    }
+
+    /**
+     * Check if analysis has comprehensive contact information.
+     * We need more than just one field to successfully create a promo.
+     */
+    private isContactInfoComprehensive(analysis: WebsiteAnalysis): boolean {
+        // Must have at least one valid contact method (Phone OR Email)
+        const hasContact = !!(analysis.phone || analysis.email);
+
+        // AND must have location/timing info (Address OR Hours)
+        // This forces Playwright to run for restaurants/shops that usually have this in modals
+        const hasLocationOrHours = !!(analysis.address || analysis.openingHours);
+
+        return hasContact && hasLocationOrHours;
     }
 
     /**
@@ -109,17 +126,18 @@ export class EnhancedWebsiteScraper implements IWebsiteScraperClient {
             }
 
             // Extract from visible page
-            if (!this.hasContactInfo(analysis)) {
+            if (!this.isContactInfoComprehensive(analysis)) {
                 analysis = await this.extractFromPage(page, analysis);
             }
 
             // Try clicking contact/info buttons to reveal modals
-            if (!this.hasContactInfo(analysis)) {
+            // Force this if we are missing hours or address, even if we have one of them
+            if (!analysis.openingHours || !analysis.address) {
                 await this.tryModalInteractions(page, analysis);
             }
 
             // Try expanding accordions/tabs
-            if (!this.hasContactInfo(analysis)) {
+            if (!this.isContactInfoComprehensive(analysis)) {
                 await this.expandAccordions(page);
                 analysis = await this.extractFromPage(page, analysis);
             }

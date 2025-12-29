@@ -324,18 +324,8 @@ export class TimelineVideoRenderer implements IVideoRenderer {
         if (manifest.logoUrl) {
             const logoClip: TimelineClip = {
                 asset: {
-                    type: 'html',
-                    html: `<img src="${manifest.logoUrl}" class="logo">`,
-                    css: `
-                        .logo {
-                            max-width: 150px;
-                            max-height: 150px;
-                            object-fit: contain;
-                            display: block;
-                        }
-                    `,
-                    width: 1080,
-                    height: 1920
+                    type: 'image',
+                    src: manifest.logoUrl
                 },
                 start: manifest.logoPosition === 'end'
                     ? Math.max(0, manifest.durationSeconds - 5)
@@ -345,15 +335,15 @@ export class TimelineVideoRenderer implements IVideoRenderer {
                     : (manifest.logoPosition === 'end' ? 5 : 3),
                 position: 'topRight',
                 offset: {
-                    x: -0.05,
-                    y: 0.05
+                    x: -0.02, // Slight padding from edge
+                    y: 0.02
                 },
                 transition: {
                     in: 'fade',
                     out: 'fade'
                 },
                 fit: 'contain',
-                scale: 0.15  // Small scale since HTML canvas is 1080x1920
+                scale: 0.25 // 25% of screen width/height, crisp.
             };
             tracks.push({ clips: [logoClip] });
         }
@@ -382,65 +372,111 @@ export class TimelineVideoRenderer implements IVideoRenderer {
      * Creates a track for branding/contact info overlay.
      */
     private createBrandingTrack(manifest: ReelManifest): TimelineTrack | null {
-        if (!manifest.branding) return null;
+        const branding = manifest.branding;
+        if (!branding) return null;
 
-        const b = manifest.branding;
-        const details: string[] = [];
+        const details: { icon: string, text: string }[] = [];
+        if (branding.address) details.push({ icon: '📍', text: branding.address });
 
-        // Prioritize address and hours, then phone/email
-        if (b.address) details.push(`📍 ${b.address}`);
-        if (b.hours) details.push(`🕒 ${b.hours}`);
-        if (b.phone) details.push(`📞 ${b.phone}`);
-        if (b.email && details.length < 3) details.push(`✉️ ${b.email}`);
+        // Handle potentially long hours text
+        if (branding.hours) {
+            // Limit to first 200 chars to avoid layout break
+            const hoursShort = branding.hours.length > 200 ? branding.hours.substring(0, 197) + '...' : branding.hours;
+            details.push({ icon: '🕒', text: hoursShort });
+        }
 
-        // Only show contact card if there's at least one contact detail
+        if (branding.phone) details.push({ icon: '📞', text: branding.phone });
+
+        // Email is lower priority if space is tight (max 4 rows)
+        if (branding.email && details.length < 4) details.push({ icon: '✉️', text: branding.email });
+
+        // Only show if we have something
         if (details.length === 0) return null;
 
         const html = `
-            <div class="contact-card">
-                <h1>${b.businessName}</h1>
-                ${details.map(d => `<p>${d}</p>`).join('')}
+            <div class="container">
+                <div class="card">
+                    <div class="header">
+                        <h1>${branding.businessName}</h1>
+                    </div>
+                    <div class="content">
+                        ${details.map(d => `
+                            <div class="row">
+                                <span class="icon">${d.icon}</span>
+                                <span class="text">${d.text}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
             </div>
         `;
 
         const css = `
-            .contact-card {
-                font-family: 'Montserrat', sans-serif;
-                color: #FFFFFF;
-                background-color: rgba(5, 5, 5, 0.96);
-                padding: 50px;
-                border-radius: 30px;
-                text-align: center;
+            * { box-sizing: border-box; margin: 0; padding: 0; }
+            body, html { width: 100%; height: 100%; overflow: hidden; background: transparent; }
+            
+            .container {
+                display: flex;
+                align-items: flex-end; /* Align card to bottom */
+                justify-content: center;
+                width: 100%;
+                height: 100%;
+                padding-bottom: 120px; /* Safety margin from bottom edge */
+            }
+
+            .card {
+                background: rgba(10, 10, 10, 0.94); /* Very dark, slight transparency */
+                border: 1px solid rgba(255, 255, 255, 0.15);
+                border-radius: 24px;
+                padding: 40px;
+                width: 90%;
+                max-width: 900px;
+                box-shadow: 0 15px 50px rgba(0,0,0,0.7);
                 display: flex;
                 flex-direction: column;
-                justify-content: center;
-                align-items: center;
-                width: 90%;
-                border: 2px solid rgba(255, 255, 255, 0.3);
-                box-shadow: 0 20px 50px rgba(0,0,0,0.8);
+                gap: 25px;
             }
-            .logo {
-                max-width: 200px;
-                max-height: 200px;
-                object-fit: contain;
-                margin-bottom: 20px;
-                border-radius: 20px;
-            }
-            h1 {
-                font-size: 42px;
-                margin: 0 0 20px 0;
-                color: #FACC15; /* Yellow-400 */
-                text-transform: uppercase;
-                letter-spacing: 2px;
+
+            .header h1 {
+                font-family: 'Montserrat', sans-serif;
+                font-size: 44px;
                 font-weight: 800;
+                color: #FACC15; /* Yellow-400 */
+                text-align: center;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+                line-height: 1.1;
+                margin-bottom: 10px;
+                text-shadow: 0 2px 4px rgba(0,0,0,0.5);
             }
-            p {
-                font-size: 28px;
-                margin: 8px 0;
-                font-weight: 500;
+
+            .content {
                 display: flex;
-                align-items: center;
-                gap: 10px;
+                flex-direction: column;
+                gap: 18px;
+            }
+
+            .row {
+                display: flex;
+                align-items: flex-start;
+                gap: 20px;
+                color: #FFFFFF;
+                font-family: 'Montserrat', sans-serif;
+            }
+
+            .icon {
+                font-size: 32px;
+                min-width: 45px;
+                text-align: center;
+                margin-top: -2px; /* Visual alignment with text cap-height */
+            }
+
+            .text {
+                font-size: 26px;
+                font-weight: 500;
+                line-height: 1.35;
+                flex: 1;
+                word-wrap: break-word;
             }
         `;
 
@@ -448,21 +484,10 @@ export class TimelineVideoRenderer implements IVideoRenderer {
         let duration = 5;
         let start = Math.max(0, manifest.durationSeconds - duration);
 
-        console.log('[Branding] Initial fallback:', { start, duration, totalDuration: manifest.durationSeconds });
-
         if (manifest.segments && manifest.segments.length > 0) {
             const lastSegment = manifest.segments[manifest.segments.length - 1];
             start = lastSegment.start;
             duration = lastSegment.end - lastSegment.start;
-            console.log('[Branding] Using last segment:', {
-                segmentIndex: manifest.segments.length - 1,
-                start: lastSegment.start,
-                end: lastSegment.end,
-                duration,
-                totalSegments: manifest.segments.length
-            });
-        } else {
-            console.log('[Branding] No segments found, using fallback timing');
         }
 
         return {
@@ -476,16 +501,13 @@ export class TimelineVideoRenderer implements IVideoRenderer {
                 },
                 start,
                 length: duration,
-                position: 'bottom',
-                offset: {
-                    y: 0.15  // 15% from bottom to avoid overlap with captions
-                },
+                position: 'center', // Asset is full screen, so center it. Position is handled by CSS.
                 transition: {
                     in: 'slideUp',
                     out: 'fade'
                 },
                 fit: 'contain',
-                scale: 0.85
+                scale: 1.0 // 1:1 pixel mapping
             }]
         };
     }

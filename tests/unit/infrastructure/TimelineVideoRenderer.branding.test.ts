@@ -50,14 +50,20 @@ describe('TimelineVideoRenderer - Branding Overlay', () => {
         // Should last for the entire duration of last segment
         expect(clip.length).toBe(10);
 
-        // Should be positioned at bottom
-        expect(clip.position).toBe('bottom');
+        // Since we use full-screen HTML overlay, clip position is center
+        expect(clip.position).toBe('center');
 
-        // Should have offset from bottom
-        expect(clip.offset?.y).toBe(0.15);
+        const asset = clip.asset as any;
+
+        // Should use CSS for positioning (look for padding-bottom in CSS)
+        expect(asset.css).toContain('padding-bottom');
+
+        // Assert full screen asset dimensions
+        expect(asset.width).toBe(1080);
+        expect(asset.height).toBe(1920);
 
         // Should have correct scale
-        expect(clip.scale).toBe(0.85);
+        expect(clip.scale).toBe(1.0);
     });
 
     it('should fallback to last 5 seconds when no segments', () => {
@@ -155,11 +161,10 @@ describe('TimelineVideoRenderer - Branding Overlay', () => {
         const clip = brandingTrack.clips[0];
         const css = clip.asset.css;
 
-        // Logo should NOT have fixed width/height that causes distortion
-        // Should use max-width/max-height with object-fit: contain
-        expect(css).toContain('object-fit: contain');
-        expect(css).not.toContain('width: 150px');
-        expect(css).not.toContain('height: 150px');
+        // Should use proper Grid/Flex layout
+        expect(css).toContain('display: flex');
+        expect(css).toContain('.container');
+        expect(css).toContain('.card');
     });
 
     it('should only show contact overlay when at least one contact field exists', () => {
@@ -222,11 +227,12 @@ describe('TimelineVideoRenderer - Branding Overlay', () => {
         const brandingTrack = (renderer as any).createBrandingTrack(manifest);
         const clip = brandingTrack.clips[0];
 
-        // Should be at bottom
-        expect(clip.position).toBe('bottom');
+        // Should be center (full screen overlay)
+        expect(clip.position).toBe('center');
 
-        // Should have appropriate offset from bottom
-        expect(clip.offset?.y).toBeGreaterThan(0);
+        const asset = clip.asset as any;
+        // Should have padding in CSS
+        expect(asset.css).toContain('padding-bottom');
     });
 
     it('should not include logo in contact card (logo is separate in top-right)', () => {
