@@ -97,7 +97,8 @@ export class MediaStorageClient {
         publicId?: string,
         resourceType: any = 'video'
     ): Promise<{ url: string; publicId: string }> {
-        const tempDir = os.tmpdir();
+        const tempDir = path.join(process.cwd(), 'temp');
+        if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
         const tempPath = path.join(tempDir, `large_asset_${Date.now()}.mp4`);
 
         try {
@@ -106,37 +107,55 @@ export class MediaStorageClient {
                 url,
                 method: 'GET',
                 responseType: 'stream',
-                timeout: 300000 // 5 minutes for large downloads
+                timeout: 600000 // 10 minutes for large downloads
             });
 
             const writer = fs.createWriteStream(tempPath);
-            response.data.pipe(writer);
 
             await new Promise((resolve, reject) => {
-                writer.on('finish', resolve);
-                writer.on('error', (err) => {
+                response.data.on('error', (err: Error) => {
                     writer.close();
-                    reject(err);
+                    reject(new Error(`Download stream error: ${err.message}`));
                 });
+                writer.on('error', (err: Error) => {
+                    writer.close();
+                    reject(new Error(`Write stream error: ${err.message}`));
+                });
+                writer.on('finish', resolve);
                 writer.on('close', resolve);
+
+                response.data.pipe(writer);
             });
 
             // Ensure file handle is released and FS is synced
-            await new Promise(resolve => setTimeout(resolve, 500));
+            await new Promise(resolve => setTimeout(resolve, 1000));
 
             if (!fs.existsSync(tempPath)) {
-                throw new Error(`File was not created at ${tempPath}`);
+                throw new Error(`Buffering failed. File not found at ${tempPath}`);
             }
 
             const stats = fs.statSync(tempPath);
+            if (stats.size === 0) {
+                throw new Error('Buffering failed. Downloaded file is empty.');
+            }
+
             console.log(`[MediaStorage] File ready for chunked upload (${(stats.size / 1024 / 1024).toFixed(2)} MB)`);
 
-            const result = (await cloudinary.uploader.upload_large(tempPath, {
-                folder,
-                public_id: publicId,
-                resource_type: resourceType,
-                chunk_size: 6000000,
-            })) as any;
+            // Use upload_large but wrap carefully to catch any emitted stream errors
+            const result = await new Promise((resolve, reject) => {
+                cloudinary.uploader.upload_large(tempPath, {
+                    folder,
+                    public_id: publicId,
+                    resource_type: resourceType,
+                    chunk_size: 6000000,
+                    overwrite: true,
+                }, (error, result) => {
+                    if (error) reject(error);
+                    else resolve(result);
+                });
+            }) as any;
+
+            console.log(`[MediaStorage] Chunked upload successful: ${result.secure_url}`);
 
             return {
                 url: result.secure_url,
@@ -149,6 +168,7 @@ export class MediaStorageClient {
             try {
                 if (fs.existsSync(tempPath)) {
                     fs.unlinkSync(tempPath);
+                    console.log(`[MediaStorage] Cleaned up temp file: ${tempPath}`);
                 }
             } catch (cleanupError) {
                 console.warn(`[MediaStorage] Cleanup failed for ${tempPath}:`, cleanupError);
