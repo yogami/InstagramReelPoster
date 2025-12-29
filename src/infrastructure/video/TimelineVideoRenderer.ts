@@ -438,10 +438,21 @@ export class TimelineVideoRenderer implements IVideoRenderer {
         let duration = 5;
         let start = Math.max(0, manifest.durationSeconds - duration);
 
+        console.log('[Branding] Initial fallback:', { start, duration, totalDuration: manifest.durationSeconds });
+
         if (manifest.segments && manifest.segments.length > 0) {
             const lastSegment = manifest.segments[manifest.segments.length - 1];
             start = lastSegment.start;
             duration = lastSegment.end - lastSegment.start;
+            console.log('[Branding] Using last segment:', {
+                segmentIndex: manifest.segments.length - 1,
+                start: lastSegment.start,
+                end: lastSegment.end,
+                duration,
+                totalSegments: manifest.segments.length
+            });
+        } else {
+            console.log('[Branding] No segments found, using fallback timing');
         }
 
         return {
