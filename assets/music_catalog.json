@@ -638,5 +638,52 @@
             "advertisement",
             "service"
         ]
+    },
+    {
+        "id": "berlin-techno-minimal-pulse",
+        "title": "Berlin Pulse",
+        "audioUrl": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/District%20Four.mp3",
+        "durationSeconds": 180,
+        "tags": [
+            "berlin-techno-minimal",
+            "restaurant",
+            "minimal",
+            "techno",
+            "berlin",
+            "urgency",
+            "advertisement"
+        ]
+    },
+    {
+        "id": "berlin-lofi-kreuzberg",
+        "title": "Kreuzberg Nights",
+        "audioUrl": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Urban%20Flow.mp3",
+        "durationSeconds": 195,
+        "tags": [
+            "lo-fi-hiphop-berlin",
+            "restaurant",
+            "lofi",
+            "hiphop",
+            "berlin",
+            "kreuzberg",
+            "nostalgic",
+            "advertisement"
+        ]
+    },
+    {
+        "id": "berlin-warm-acoustic-local",
+        "title": "Prenzlauer Mornings",
+        "audioUrl": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Funkorama.mp3",
+        "durationSeconds": 150,
+        "tags": [
+            "warm-acoustic-local",
+            "restaurant",
+            "acoustic",
+            "warm",
+            "local",
+            "berlin",
+            "cafe",
+            "advertisement"
+        ]
     }
 ]

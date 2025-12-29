@@ -63,7 +63,7 @@ export const CATEGORY_MUSIC_STYLES: Record<BusinessCategory, string> = {
     gym: 'energetic-motivational',
     shop: 'upbeat-indie',
     service: 'professional-ambient',
-    restaurant: 'sophisticated-lounge',
+    restaurant: 'berlin-techno-minimal',  // Perplexity: -32% skip rate vs jazz
     studio: 'creative-electronic',
 };
 

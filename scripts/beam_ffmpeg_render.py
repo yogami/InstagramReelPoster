@@ -1,10 +1,11 @@
 """
 FFmpeg Video Rendering Endpoint for Beam.cloud
 
-Updates (V7):
-- Fixed missing music bug by switching amix duration to 'first'.
-- Added Cinematic Ducking (Sidechain Compression): Music volume dips when voiceover is active.
-- Refined audio pipeline with better stream selection and normalization.
+Updates (V8):
+- Fixed missing music bug by splitting voiceover stream for sidechain reuse.
+- Added volume compensation for amix (prevents 50% volume drop).
+- Refined Sidechain Compression: Loosened threshold for smoother transitions.
+- Added explicit stream mapping safety.
 """
 
 from beam import endpoint, Image, Volume
@@ -61,7 +62,7 @@ def render_video(
     os.makedirs(job_dir, exist_ok=True)
     
     try:
-        print(f"[FFmpeg] Job {job_id}: Target Renderer V7 (Audio Fixes)")
+        print(f"[FFmpeg] Job {job_id}: Target Renderer V8 (Audio & Ducking Pro)")
         print(f"[FFmpeg] Incoming Music URL: {music_url}")
         
         # Download voiceover
@@ -309,22 +310,26 @@ def build_ffmpeg_command(
     # 0:a = Voiceover, 1:a = Music
     
     # Standardize VO
-    filter_complex.append(f'[0:a]aresample=44100,pan=stereo|c0=c0|c1=c1,volume=2.0[vo_standard]')
+    # Standardize VO
+    filter_complex.append(f'[0:a]aresample=44100,pan=stereo|c0=c0|c1=c1,volume=2.0[vo_pre]')
+    
+    # Split Voiceover: One for ducking control, one for the final mix
+    filter_complex.append(f'[vo_pre]asplit=2[vo_sidechain][vo_main]')
     
     if music_path:
-        # Standardize Music and apply initial volume
-        filter_complex.append(f'[1:a]aresample=44100,pan=stereo|c0=c0|c1=c1,volume=0.4[bg_standard]')
+        # Standardize Music and apply initial volume (increased to 0.6 for better mixed presence)
+        filter_complex.append(f'[1:a]aresample=44100,pan=stereo|c0=c0|c1=c1,volume=0.6[bg_standard]')
         
         # DUCKING: Reduce music volume when voiceover is detected.
-        # Sidechain compress: [music] [vo] sidechaincompress [outcome]
-        filter_complex.append(f'[bg_standard][vo_standard]sidechaincompress=threshold=0.1:ratio=4:attack=50:release=500[bg_ducked]')
+        # sidechaincompress: [music] [control] sidechaincompress
+        filter_complex.append(f'[bg_standard][vo_sidechain]sidechaincompress=threshold=0.15:ratio=3:attack=50:release=600[bg_ducked]')
         
-        # MIX: 'duration=first' ensures we stop when Voiceover ends (most stable)
-        # dropout_transition=2 avoids clicking at the end if streams differ slightly
-        filter_complex.append(f'[vo_standard][bg_ducked]amix=inputs=2:duration=first:dropout_transition=2[a_mixed]')
+        # MIX: 'duration=first' ensures we stop when Voiceover ends
+        # amix=inputs=2 adds 0.5 multiplier to all inputs, so we compensate with volume=2.0
+        filter_complex.append(f'[vo_main][bg_ducked]amix=inputs=2:duration=first:dropout_transition=2,volume=2.0[a_mixed]')
         a_tag = 'a_mixed'
     else:
-        a_tag = 'vo_standard'
+        a_tag = 'vo_main'
         
     cmd.extend(['-filter_complex', ';'.join(filter_complex)])
     cmd.extend(['-map', f'[{v_tag}]', '-map', f'[{a_tag}]'])

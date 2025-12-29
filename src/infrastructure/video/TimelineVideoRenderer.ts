@@ -496,8 +496,8 @@ export class TimelineVideoRenderer implements IVideoRenderer {
             contactParts.push(`📞 ${branding.phone}`);
         }
 
-        // Determine CTA text based on language/context
-        const ctaText = 'Tisch reservieren? SCAN JETZT!';
+        // Determine CTA text - Perplexity optimized: specific time + urgency
+        const ctaText = 'FREITAG 19H? SCAN JETZT!';
 
         // Build QR section - this is the DOMINANT element
         const qrSection = qrCodeDataUri
@@ -589,18 +589,21 @@ export class TimelineVideoRenderer implements IVideoRenderer {
             }
 
             .qr-code {
-                width: 600px;
-                height: 600px;
+                width: 550px;
+                height: 550px;
+                min-width: 450px;
+                min-height: 450px;
                 background: white;
-                border-radius: 30px;
-                padding: 30px;
-                box-shadow: 0 0 60px rgba(250, 204, 21, 0.3), 0 0 120px rgba(250, 204, 21, 0.15);
-                animation: pulse-qr 2s ease-in-out infinite;
+                border-radius: 20px;
+                padding: 25px;
+                border: 8px solid #FACC15;
+                box-shadow: 0 0 60px rgba(250, 204, 21, 0.4), 0 0 120px rgba(250, 204, 21, 0.2);
+                animation: pulse-qr 0.8s ease-in-out infinite;
             }
 
             @keyframes pulse-qr {
-                0%, 100% { transform: scale(1); box-shadow: 0 0 60px rgba(250, 204, 21, 0.3); }
-                50% { transform: scale(1.03); box-shadow: 0 0 100px rgba(250, 204, 21, 0.5); }
+                0%, 100% { transform: scale(1); box-shadow: 0 0 60px rgba(250, 204, 21, 0.4); }
+                50% { transform: scale(1.02); box-shadow: 0 0 100px rgba(250, 204, 21, 0.6); }
             }
 
             .qr-placeholder {

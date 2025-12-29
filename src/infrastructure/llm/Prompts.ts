@@ -371,36 +371,40 @@ Language: "{{language}}"
 
 STRICT STRUCTURE (15 Seconds Total - EXACTLY 3 SCENES):
 
-SCENE 1: THE MYSTERY HOOK (0-3s)
-- Goal: Stop the scroll. Show the "Sold Out" sign or massive line.
-- Narration: High urgency. "This spot is sold out weeks in advance..." or "Berlin's most secret [Cuisine] spot..."
-- Visual: Steam burst, closed door with sign, or chef stressed but happy.
+SCENE 1: THE VISUAL HOOK (0-3s)
+- Goal: Stop the scroll with VISUAL clock + text flash.
+- Visual: Analog clock flipping to 8PM → "AUSVERKAUFT" text flash + steam burst
+- Narration (German): "Du kennst das Gefühl..." (You know that feeling...)
+- Subtitle: "8PM → AUSVERKAUFT" (visual text, not spoken)
 
 SCENE 2: THE CRAFTSMANSHIP (3-12s)
-- Goal: Show WHY it's worth it. Plating perfection.
-- Narration: Describe the {{signatureDish}} with sensory details (crispy, melting, spicy). Mention the {{rating}} rating.
-- Visual: Chef's hands plating the {{signatureDish}}. Slow motion texture shot.
+- Goal: Show WHY it's worth it. "Warum ALLE kommen..."
+- Narration: Sensory details of {{signatureDish}} (crispy, melting, spicy). Mention the {{rating}} rating as "[Rating]⭐ Warum ALLE kommen..."
+- Visual: Chef's hands plating the {{signatureDish}}. Slow motion texture shot. Food ASMR aesthetic.
 
 SCENE 3: THE FOMO CTA (12-15s)
-- Goal: Close the deal immediately.
-- Narration: "Tables for Friday just opened. Link in bio before they're gone."
-- Visual: Exterior night shot of {{businessName}} at {{address}}. Overlay finding reservation.
+- Goal: Close with SPECIFIC time + urgency.
+- Narration (German): "Freitag 19h? SCAN oder verpasst." (Friday 7pm? Scan or miss out.)
+- Visual: Phone screen showing Resy/booking app with {{businessName}}, tapping "Reserve" button
+- Subtitle: "FREITAG 19H? SCAN!" (high contrast yellow text)
 
 RULES:
-1. TARGET 45-50 words total. The video MUST be 15 seconds. Do not write short sentences.
-2. Tone: "Berlin Insider" - whispering a secret to a friend. Fast paced but detailed.
-3. Language: {{language}} (If German: Informal "Du", Berlin slang allowed but keep it classy).
-4. NO "Welcome to..." or generic intros. Start in the middle of the action.
+1. TARGET 45-50 words total. The video MUST be 15 seconds. Detailed sentences.
+2. Tone: "Berlin Insider" - whispering a secret. Fast-paced but grounded.
+3. Language: {{language}} (German: Informal "Du", Berlin slang, "Du kennst das Gefühl").
+4. NO "Welcome to..." or generic intros. Start mid-action.
+5. Scene 3 imagePrompt MUST include "phone screen showing booking app".
 
 Response Format (JSON):
 {
   "coreMessage": "Berlin's viral [Dish Name] spot",
   "scenes": [
-    { "role": "hook", "duration": 3, "narration": "...", "imagePrompt": "...", "subtitle": "..." },
-    { "role": "showcase", "duration": 9, "narration": "...", "imagePrompt": "...", "subtitle": "..." },
-    { "role": "cta", "duration": 3, "narration": "...", "imagePrompt": "...", "subtitle": "..." }
+    { "role": "hook", "duration": 3, "narration": "Du kennst das Gefühl...", "imagePrompt": "Analog clock flipping to 8PM, AUSVERKAUFT sign appearing, steam burst, dark dramatic lighting, cinematic", "subtitle": "8PM → AUSVERKAUFT" },
+    { "role": "showcase", "duration": 9, "narration": "[Rating]⭐ Warum ALLE kommen...", "imagePrompt": "Chef hands plating [dish], slow motion, food ASMR, shallow depth of field", "subtitle": "[Rating]⭐" },
+    { "role": "cta", "duration": 3, "narration": "Freitag 19h? SCAN oder verpasst.", "imagePrompt": "Phone screen showing Resy booking app for [restaurant], finger tapping Reserve button, warm lighting", "subtitle": "FREITAG 19H? SCAN!" }
   ],
   "caption": "...",
-  "musicStyle": "Berlin Techno Minimal or Lo-Fi Hip Hop"
+  "musicStyle": "Berlin Techno Minimal"
 }
 `;
+

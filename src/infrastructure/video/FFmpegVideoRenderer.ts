@@ -219,11 +219,13 @@ export class FFmpegVideoRenderer implements IVideoRenderer {
             // Mix Audio
             // Voiceover is [0:a], Music is [1:a] (if present)
             if (assets.musicPath) {
+                // Mix Voiceover [0:a] and Music [1:a]
+                // amix=inputs=2 halves the volume of both, so we add volume=2.0 at the end
                 complexFilter.push(`[1:a]volume=0.2[bq_music]`);
-                complexFilter.push(`[0:a][bq_music]amix=inputs=2:duration=first[audio_out]`);
+                complexFilter.push(`[0:a][bq_music]amix=inputs=2:duration=first:dropout_transition=2,volume=2.0[audio_out]`);
             } else {
-                // No music, just use voiceover
-                complexFilter.push(`[0:a]copy[audio_out]`);
+                // No music, just use voiceover pass-through
+                complexFilter.push(`[0:a]anull[audio_out]`);
             }
 
             cmd.complexFilter(complexFilter, ['vburned', 'audio_out']);
