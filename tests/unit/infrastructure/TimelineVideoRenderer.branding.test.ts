@@ -70,7 +70,8 @@ describe('TimelineVideoRenderer - Branding Overlay', () => {
             segments: [],
             branding: {
                 logoUrl: 'https://example.com/logo.png',
-                businessName: 'Test Business'
+                businessName: 'Test Business',
+                email: 'test@example.com'  // Add contact info so track is created
             }
         };
 
@@ -127,5 +128,104 @@ describe('TimelineVideoRenderer - Branding Overlay', () => {
 
         // Should include email
         expect(html).toContain('info@berlinailabs.de');
+    });
+
+    it('should not scale/distort logo - use original size', () => {
+        const manifest: ReelManifest = {
+            durationSeconds: 20,
+            voiceoverUrl: 'https://example.com/voice.mp3',
+            musicUrl: 'https://example.com/music.mp3',
+            musicDurationSeconds: 20,
+            subtitlesUrl: 'https://example.com/subs.vtt',
+            segments: [{
+                index: 0,
+                caption: 'Test',
+                imageUrl: 'https://example.com/1.jpg',
+                start: 0,
+                end: 20
+            }],
+            branding: {
+                logoUrl: 'https://cloudinary.com/logo.jpg',
+                businessName: 'Test Business',
+                email: 'test@example.com'  // Add contact info so track is created
+            }
+        };
+
+        const brandingTrack = (renderer as any).createBrandingTrack(manifest);
+        const clip = brandingTrack.clips[0];
+        const css = clip.asset.css;
+
+        // Logo should NOT have fixed width/height that causes distortion
+        // Should use max-width/max-height with object-fit: contain
+        expect(css).toContain('object-fit: contain');
+        expect(css).not.toContain('width: 150px');
+        expect(css).not.toContain('height: 150px');
+    });
+
+    it('should only show contact overlay when at least one contact field exists', () => {
+        // Test 1: No contact info - should return null
+        const manifestNoContact: ReelManifest = {
+            durationSeconds: 20,
+            voiceoverUrl: 'https://example.com/voice.mp3',
+            musicUrl: 'https://example.com/music.mp3',
+            musicDurationSeconds: 20,
+            subtitlesUrl: 'https://example.com/subs.vtt',
+            segments: [{
+                index: 0,
+                imageUrl: 'https://example.com/1.jpg',
+                start: 0,
+                end: 20
+            }],
+            branding: {
+                logoUrl: 'https://cloudinary.com/logo.jpg',
+                businessName: 'Test Business'
+                // No address, phone, email, or hours
+            }
+        };
+
+        const noContactTrack = (renderer as any).createBrandingTrack(manifestNoContact);
+        expect(noContactTrack).toBeNull();
+
+        // Test 2: Has at least one contact field - should show
+        const manifestWithContact: ReelManifest = {
+            ...manifestNoContact,
+            branding: {
+                logoUrl: 'https://cloudinary.com/logo.jpg',
+                businessName: 'Test Business',
+                email: 'test@example.com'
+            }
+        };
+
+        const withContactTrack = (renderer as any).createBrandingTrack(manifestWithContact);
+        expect(withContactTrack).not.toBeNull();
+    });
+
+    it('should position contact info at bottom of last image', () => {
+        const manifest: ReelManifest = {
+            durationSeconds: 20,
+            voiceoverUrl: 'https://example.com/voice.mp3',
+            musicUrl: 'https://example.com/music.mp3',
+            musicDurationSeconds: 20,
+            subtitlesUrl: 'https://example.com/subs.vtt',
+            segments: [{
+                index: 0,
+                imageUrl: 'https://example.com/1.jpg',
+                start: 0,
+                end: 20
+            }],
+            branding: {
+                businessName: 'Test Business',
+                address: '123 Test St'
+            }
+        };
+
+        const brandingTrack = (renderer as any).createBrandingTrack(manifest);
+        const clip = brandingTrack.clips[0];
+
+        // Should be at bottom
+        expect(clip.position).toBe('bottom');
+
+        // Should have appropriate offset from bottom
+        expect(clip.offset?.y).toBeGreaterThan(0);
     });
 });

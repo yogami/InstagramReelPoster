@@ -383,7 +383,8 @@ export class TimelineVideoRenderer implements IVideoRenderer {
         if (b.phone) details.push(`📞 ${b.phone}`);
         if (b.email && details.length < 3) details.push(`✉️ ${b.email}`);
 
-        if (details.length === 0 && !b.logoUrl && !b.businessName) return null;
+        // Only show contact card if there's at least one contact detail
+        if (details.length === 0) return null;
 
         const html = `
             <div class="contact-card">
@@ -410,8 +411,8 @@ export class TimelineVideoRenderer implements IVideoRenderer {
                 box-shadow: 0 20px 50px rgba(0,0,0,0.8);
             }
             .logo {
-                width: 150px;
-                height: 150px;
+                max-width: 200px;
+                max-height: 200px;
                 object-fit: contain;
                 margin-bottom: 20px;
                 border-radius: 20px;

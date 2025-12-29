@@ -39,7 +39,7 @@ export interface ReelManifest {
     logoPosition?: 'beginning' | 'end' | 'overlay';
     /** Branding details for info slides (address, hours, etc.) */
     branding?: {
-        logoUrl: string;
+        logoUrl?: string;
         businessName: string;
         address?: string;
         hours?: string;
