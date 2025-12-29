@@ -8,7 +8,7 @@ Updates (V8):
 - Added explicit stream mapping safety.
 """
 
-from beam import endpoint, Image, Volume
+from beta9 import endpoint, Image, Volume
 import os
 import subprocess
 import requests

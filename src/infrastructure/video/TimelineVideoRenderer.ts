@@ -495,9 +495,14 @@ export class TimelineVideoRenderer implements IVideoRenderer {
         if (branding.phone) {
             contactParts.push(`📞 ${branding.phone}`);
         }
+        if (branding.email) {
+            contactParts.push(`✉️ ${branding.email}`);
+        }
 
-        // Determine CTA text - Perplexity optimized: specific time + urgency
-        const ctaText = 'FREITAG 19H? SCAN JETZT!';
+        // Determine CTA text - Only use restaurant-specific CTA if QR code exists
+        // For non-restaurant sites, use generic "Mehr erfahren" (Learn more)
+        const ctaText = qrCodeDataUri ? 'TISCH RESERVIEREN? SCAN!' : 'MEHR ERFAHREN';
+        const showCTA = qrCodeDataUri || contactParts.length > 0;
 
         // Build QR section - this is the DOMINANT element
         const qrSection = qrCodeDataUri
@@ -509,14 +514,16 @@ export class TimelineVideoRenderer implements IVideoRenderer {
             ? `<img src="${logoDataUri}" class="small-logo" />`
             : (branding.logoUrl
                 ? `<img src="${branding.logoUrl}" class="small-logo" />`
-                : `<span class="brand-text">${branding.businessName.substring(0, 15)}</span>`);
+                : `<span class="brand-text">${branding.businessName.substring(0, 30)}</span>`);
 
         const html = `
             <div class="container">
-                <!-- TOP: CTA Text -->
+                <!-- TOP: CTA Text (only if QR or contact info exists) -->
+                ${showCTA ? `
                 <div class="cta-section">
                     <h1 class="cta-text">${ctaText}</h1>
                 </div>
+                ` : ''}
                 
                 <!-- CENTER: QR Code (DOMINANT) -->
                 <div class="qr-section">
@@ -661,10 +668,14 @@ export class TimelineVideoRenderer implements IVideoRenderer {
 
             .brand-text {
                 font-family: 'Montserrat', sans-serif;
-                font-size: 24px;
+                font-size: 20px;
                 font-weight: 900;
                 color: #FACC15;
                 text-transform: uppercase;
+                max-width: 200px;
+                word-wrap: break-word;
+                text-align: right;
+                line-height: 1.2;
             }
         `;
 

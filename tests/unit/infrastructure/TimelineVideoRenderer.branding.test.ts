@@ -26,7 +26,8 @@ describe('TimelineVideoRenderer - QR Dominant Branding', () => {
             }
         };
 
-        const brandingTrack = (renderer as any).createBrandingTrack(manifest);
+        const qrCodeDataUri = 'data:image/png;base64,QRCodeTestData==';
+        const brandingTrack = (renderer as any).createBrandingTrack(manifest, undefined, qrCodeDataUri);
 
         expect(brandingTrack).toBeDefined();
         expect(brandingTrack.clips).toHaveLength(1);
@@ -40,8 +41,8 @@ describe('TimelineVideoRenderer - QR Dominant Branding', () => {
         expect(html).toContain('qr-section');
         expect(html).toContain('bottom-section');
 
-        // Should have CTA text
-        expect(html).toContain('SCAN JETZT');
+        // Should have restaurant CTA text when QR code is present
+        expect(html).toContain('TISCH RESERVIEREN');
 
         // CSS should have QR section taking 55% of screen
         expect(css).toContain('.qr-section');
