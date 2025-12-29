@@ -1,0 +1,121 @@
+
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;800;900&display=swap" rel="stylesheet">
+            <style>
+                * { box-sizing: border-box; margin: 0; padding: 0; }
+                body, html { width: 1080px; height: 1920px; overflow: hidden; background: #000000; }
+                
+                .container {
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: space-between;
+                    width: 100%;
+                    height: 100%;
+                    background: #000000;
+                    padding: 100px 60px;
+                }
+
+                .top-details, .bottom-details {
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    gap: 30px;
+                    width: 100%;
+                }
+
+                .logo-section {
+                    flex: 1;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    width: 100%;
+                    padding: 40px 0;
+                }
+
+                .center-logo {
+                    max-width: 800px;
+                    max-height: 500px;
+                    object-fit: contain;
+                    filter: drop-shadow(0 0 40px rgba(255,255,255,0.15));
+                }
+
+                .business-name {
+                    font-family: 'Montserrat', sans-serif;
+                    font-size: 84px;
+                    font-weight: 900;
+                    color: #FACC15;
+                    text-align: center;
+                    text-transform: uppercase;
+                    letter-spacing: 6px;
+                    line-height: 1.1;
+                    padding: 40px;
+                    border: 4px solid #FACC15;
+                    border-radius: 20px;
+                    background: rgba(250, 204, 21, 0.05);
+                }
+
+                .row {
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 24px;
+                    color: #FFFFFF;
+                    font-family: 'Montserrat', sans-serif;
+                    background: #111111;
+                    border: 2px solid #333333;
+                    padding: 20px 40px;
+                    border-radius: 60px;
+                    width: fit-content;
+                    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+                }
+
+                .icon { font-size: 44px; }
+                .text {
+                    font-size: 34px;
+                    font-weight: 700;
+                    text-align: center;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="content-wrapper">
+                    <div class="top-details">
+                        
+                            <div class="row">
+                                <span class="icon">📍</span>
+                                <span class="text">Flughafenstraße 76, 12049 Berlin</span>
+                            </div>
+                        
+                            <div class="row">
+                                <span class="icon">🕒</span>
+                                <span class="text">Mo-So: 11:30 - 22:30</span>
+                            </div>
+                        
+                    </div>
+                    
+                    <div class="logo-section">
+                        <img src="https://www.sushi-yana.de/_shops/res/pics/logo.png" class="center-logo" />
+                    </div>
+
+                    <div class="bottom-details">
+                        
+                            <div class="row">
+                                <span class="icon">📞</span>
+                                <span class="text">030 62737666</span>
+                            </div>
+                        
+                            <div class="row">
+                                <span class="icon">✉️</span>
+                                <span class="text">buero@sushi-yana.de</span>
+                            </div>
+                        
+                    </div>
+                </div>
+            </div>
+        </body>
+        </html>
+    

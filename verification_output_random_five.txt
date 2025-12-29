@@ -1,0 +1,436 @@
+[dotenv@17.2.3] injecting env (44) from .env -- tip: 🔄 add secrets lifecycle management: https://dotenvx.com/ops
+🚀 Loading Configuration...
+🔧 Initializing Dependencies...
+✅ Cloudinary storage configured
+✅ Image generation: Flux (primary) → MultiModel (fallback)
+🎬 Video rendering: Timeline (primary)
+✅ Video generation: Hunyuan (primary) → Kling (reliable) → Mock (safety)
+Loaded 58 jobs from disk
+🕷️ Using Enhanced Playwright Scraper
+📡 Callback configured: Header = yami-instgram-carousel-api-key, Token = reels... 
+🚀 Starting Generation for 5 Berlin Restaurants...
+
+👨‍🍳 Processing: https://60secondstonapoli.de/
+   Job ID: job_c37e1f6b
+[job_c37e1f6b] Website Promo: Scraping https://60secondstonapoli.de/
+[job_c37e1f6b] planning: Analyzing business website...
+[EnhancedScraper] Starting hybrid scrape for https://60secondstonapoli.de/
+[EnhancedScraper] HTTP scraper found comprehensive info, done
+[job_c37e1f6b] Website scraped: hero="Award winning neapolitan pizza", painScore=0, trustSignals=1
+[job_c37e1f6b] Category provided by user: restaurant
+[job_c37e1f6b] generating_commentary: Creating promotional script...
+[job_c37e1f6b] Promo script generated: "Berlin's viral Chef's Special spot" with 3 scenes
+[job_c37e1f6b] synthesizing_voiceover: Creating voiceover...
+[TTS] Attempting synthesis with primary client (Fish Audio)... (Voice: 88b18e0d81474a0ca08e2ea6f9df5ff4)
+[Voice Cloning] Synthesizing with voice ID: 716594c03801446bb87a964a1c2a5895
+[Voiceover] Uploading base64 audio to Cloudinary...
+[Voiceover] Uploaded successfully: https://res.cloudinary.com/djol0rpn5/video/upload/v1767015180/instagram-reels/voiceovers/voiceover_1767015179552.mp3
+[job_c37e1f6b] selecting_music: Selecting background music...
+Loading music catalog from: /Users/user1000/gitprojects/InstagramReelPoster/assets/music_catalog.json
+[MediaResolver] Scene 1 (hook): Using scraped image from https://60secondstonapoli.de/
+[MediaResolver] Scene 2 (showcase): Will use AI generation (gap fill)
+[MediaResolver] Scene 3 (cta): Will use AI generation (gap fill)
+[MediaResolver] Summary: 0 user, 1 scraped, 2 AI-generated
+Generating images with priority sourcing for 3 segments...
+[job_c37e1f6b] Segment 1: Using pre-resolved media
+[job_c37e1f6b] generating_images: Creating visual 2 of 3 (AI)...
+[Flux FLUX1] Generating image...
+[Flux FLUX1] Response received: {
+  status: 200,
+  dataType: 'object',
+  dataKeys: [ 'image_base64', 'width', 'height' ],
+  dataPreview: '{"image_base64":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAkAAAAQACAIAAACGcHE3AAEAAElEQVR42oz925IkWZIthulS3WYeEZlZl+mecw6uIoBQhOQP8AkUCA9JAUCKkPwXfgD/gH9IkADmXHBmuroqMyPc3WxvXXzQfTNzzx7UTFdlZWVEu'
+}
+[Flux FLUX1] Image generated in 29.4s
+[job_c37e1f6b] generating_images: Creating visual 3 of 3 (AI)...
+[Flux FLUX1] Generating image...
+[Flux FLUX1] Response received: {
+  status: 200,
+  dataType: 'object',
+  dataKeys: [ 'image_base64', 'width', 'height' ],
+  dataPreview: '{"image_base64":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAkAAAAQACAIAAACGcHE3AAEAAElEQVR42my9d/xlV3Ufusre55xbfnX6aKQZaSSNehcCIUCA6KYZCNjGJa6J8+L42akv75OXOM2x09zikpcXbIPtADZgwDamF6GKQHXUpZFmNH1+9'
+}
+[Flux FLUX1] Image generated in 2.0s
+Waiting 2s for asset propagation...
+[job_c37e1f6b] Promo assets prepared: 3 segments, 14.8s voiceover
+[Manifest] Before rendering: {
+  duration: 14.761904761904761,
+  segmentCount: 3,
+  segments: [
+    { start: 0, end: 4.92063492063492 },
+    { start: 4.92063492063492, end: 9.84126984126984 },
+    { start: 9.84126984126984, end: 14.76190476190476 }
+  ],
+  hasBranding: true,
+  branding: {
+    logoUrl: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMSIgaGVpZ2h0PSIxIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjwvc3ZnPg==',
+    businessName: 'Award winning pizza restaurant',
+    address: 'Straße 61 10435 Berlin ',
+    hours: undefined,
+    phone: '19945131',
+    email: undefined
+  }
+}
+[Timeline] Fetching logo for base64 conversion: data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMSIgaGVpZ2h0PSIxIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjwvc3ZnPg==
+[Timeline] Logo converted to base64 (0.1 KB)
+[Timeline] Request payload size: 4.90 KB
+[Timeline] Render started: f4a4a54b-1e9c-4122-89e2-edc09b625a4e
+[Timeline] Render f4a4a54b-1e9c-4122-89e2-edc09b625a4e status: fetching
+[Timeline] Render f4a4a54b-1e9c-4122-89e2-edc09b625a4e status: rendering
+[Timeline] Render f4a4a54b-1e9c-4122-89e2-edc09b625a4e status: rendering
+[Timeline] Render f4a4a54b-1e9c-4122-89e2-edc09b625a4e status: rendering
+[Timeline] Render f4a4a54b-1e9c-4122-89e2-edc09b625a4e status: rendering
+[Timeline] Render f4a4a54b-1e9c-4122-89e2-edc09b625a4e status: saving
+[Timeline] Render f4a4a54b-1e9c-4122-89e2-edc09b625a4e status: done
+✅ Completed in 99.8s
+📹 Video URL: https://res.cloudinary.com/djol0rpn5/video/upload/v1767015261/instagram-reels/final-videos/promo_job_c37e1f6b_1767015257601.mp4
+
+👨‍🍳 Processing: https://burgermeister.berlin
+   Job ID: job_6f1d1f66
+[job_6f1d1f66] Website Promo: Scraping https://burgermeister.berlin
+[job_6f1d1f66] planning: Analyzing business website...
+[EnhancedScraper] Starting hybrid scrape for https://burgermeister.berlin
+[EnhancedScraper] HTTP scraper failed: Error: Failed to scrape website: write EPROTO C0E0830302000000:error:0A000458:SSL routines:ssl3_read_bytes:tlsv1 unrecognized name:ssl/record/rec_layer_s3.c:916:SSL alert number 112
+
+    at WebsiteScraperClient.scrapeWebsite (/Users/user1000/gitprojects/InstagramReelPoster/src/infrastructure/scraper/WebsiteScraperClient.ts:65:23)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async EnhancedWebsiteScraper.scrapeWebsite (/Users/user1000/gitprojects/InstagramReelPoster/src/infrastructure/scraper/EnhancedWebsiteScraper.ts:30:34)
+    at async ReelOrchestrator.scrapeWebsiteForPromo (/Users/user1000/gitprojects/InstagramReelPoster/src/application/ReelOrchestrator.ts:409:33)
+    at async ReelOrchestrator.processWebsitePromoJob (/Users/user1000/gitprojects/InstagramReelPoster/src/application/ReelOrchestrator.ts:380:37)
+    at async main (/Users/user1000/gitprojects/InstagramReelPoster/scripts/generate_random_five.ts:42:30)
+[Playwright] Navigating to https://burgermeister.berlin...
+[Playwright] Scraping failed: page.goto: net::ERR_SSL_UNRECOGNIZED_NAME_ALERT at https://burgermeister.berlin/
+Call log:
+[2m  - navigating to "https://burgermeister.berlin/", waiting until "networkidle"[22m
+
+    at EnhancedWebsiteScraper.playwrightScrape (/Users/user1000/gitprojects/InstagramReelPoster/src/infrastructure/scraper/EnhancedWebsiteScraper.ts:104:24)
+    at async EnhancedWebsiteScraper.scrapeWebsite (/Users/user1000/gitprojects/InstagramReelPoster/src/infrastructure/scraper/EnhancedWebsiteScraper.ts:50:20)
+    at async ReelOrchestrator.scrapeWebsiteForPromo (/Users/user1000/gitprojects/InstagramReelPoster/src/application/ReelOrchestrator.ts:409:33)
+    at async ReelOrchestrator.processWebsitePromoJob (/Users/user1000/gitprojects/InstagramReelPoster/src/application/ReelOrchestrator.ts:380:37)
+    at async main (/Users/user1000/gitprojects/InstagramReelPoster/scripts/generate_random_five.ts:42:30) {
+  name: 'Error'
+}
+[job_6f1d1f66] Website scraped: hero="", painScore=0, trustSignals=0
+[job_6f1d1f66] Category provided by user: restaurant
+[job_6f1d1f66] generating_commentary: Creating promotional script...
+[job_6f1d1f66] Promo script generated: "Berlin's viral Chef's Special spot" with 3 scenes
+[job_6f1d1f66] synthesizing_voiceover: Creating voiceover...
+[TTS] Text truncated from 33 to 27 words to fit 15s
+[TTS] Attempting synthesis with primary client (Fish Audio)... (Voice: 88b18e0d81474a0ca08e2ea6f9df5ff4)
+[Voice Cloning] Synthesizing with voice ID: 716594c03801446bb87a964a1c2a5895
+[TTS] Applying speed adjustment (0.86x) to hit target 15s (current: 12.86s)...
+[Voice Cloning] Synthesizing with voice ID: 716594c03801446bb87a964a1c2a5895
+[Voiceover] Uploading base64 audio to Cloudinary...
+[Voiceover] Uploaded successfully: https://res.cloudinary.com/djol0rpn5/video/upload/v1767015278/instagram-reels/voiceovers/voiceover_1767015278168.mp3
+[job_6f1d1f66] selecting_music: Selecting background music...
+[MediaResolver] Scene 1 (hook): Will use AI generation (gap fill)
+[MediaResolver] Scene 2 (showcase): Will use AI generation (gap fill)
+[MediaResolver] Scene 3 (cta): Will use AI generation (gap fill)
+[MediaResolver] Summary: 0 user, 0 scraped, 3 AI-generated
+Generating images with priority sourcing for 3 segments...
+[job_6f1d1f66] generating_images: Creating visual 1 of 3 (AI)...
+[Flux FLUX1] Generating image...
+[Flux FLUX1] Response received: {
+  status: 200,
+  dataType: 'object',
+  dataKeys: [ 'image_base64', 'width', 'height' ],
+  dataPreview: '{"image_base64":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAkAAAAQACAIAAACGcHE3AAEAAElEQVR42nT9y5ZkS5JkBzIRi9rNzCmwVv9MT3vU//8hXYUCMlyPMPWAHyLHPCoLyIzwe91M9TxEhJmJNuH/+//5fxNLFmYwA2iSYGYGA0wgzGRmA'
+}
+[Flux FLUX1] Image generated in 3.0s
+[job_6f1d1f66] generating_images: Creating visual 2 of 3 (AI)...
+[Flux FLUX1] Generating image...
+[Flux FLUX1] Response received: {
+  status: 200,
+  dataType: 'object',
+  dataKeys: [ 'image_base64', 'width', 'height' ],
+  dataPreview: '{"image_base64":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAkAAAAQACAIAAACGcHE3AAEAAElEQVR42qz9y5ZkSY5sCYLA4lG3uv63Rz3uX66b4cqgHoDwYFHzyKy12jPSH2ZqqiJHzmFmAESb8P/9//y/ATfADCQBAAaAYXCYGZB/N5gBRtIMA'
+}
+[Flux FLUX1] Image generated in 2.9s
+[job_6f1d1f66] generating_images: Creating visual 3 of 3 (AI)...
+[Flux FLUX1] Generating image...
+[Flux FLUX1] Response received: {
+  status: 200,
+  dataType: 'object',
+  dataKeys: [ 'image_base64', 'width', 'height' ],
+  dataPreview: '{"image_base64":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAkAAAAQACAIAAACGcHE3AAEAAElEQVR42pz9abBt13EmBuaXufY+59x733t4mAFiJiYSJEAQAMF5EsmiJEqypFJJVaohyuF2uaN/dLvt6I4Od1d0ONrd4W6H3Q5XRXW7ynaVVV2zq'
+}
+[Flux FLUX1] Image generated in 2.1s
+Waiting 2s for asset propagation...
+[job_6f1d1f66] Promo assets prepared: 3 segments, 18.3s voiceover
+[Manifest] Before rendering: {
+  duration: 18.333333333333332,
+  segmentCount: 3,
+  segments: [
+    { start: 0, end: 6.111111111111111 },
+    { start: 6.111111111111111, end: 12.222222222222221 },
+    { start: 12.222222222222221, end: 18.333333333333332 }
+  ],
+  hasBranding: true,
+  branding: {
+    logoUrl: '',
+    businessName: 'Local Business',
+    address: undefined,
+    hours: undefined,
+    phone: undefined,
+    email: undefined
+  }
+}
+[Timeline] Request payload size: 1.33 KB
+[Timeline] Render started: 0769215b-4106-4554-8afd-a8ac309837e4
+[Timeline] Render 0769215b-4106-4554-8afd-a8ac309837e4 status: fetching
+[Timeline] Render 0769215b-4106-4554-8afd-a8ac309837e4 status: rendering
+[Timeline] Render 0769215b-4106-4554-8afd-a8ac309837e4 status: rendering
+[Timeline] Render 0769215b-4106-4554-8afd-a8ac309837e4 status: rendering
+[Timeline] Render 0769215b-4106-4554-8afd-a8ac309837e4 status: rendering
+[Timeline] Render 0769215b-4106-4554-8afd-a8ac309837e4 status: rendering
+[Timeline] Render 0769215b-4106-4554-8afd-a8ac309837e4 status: rendering
+[Timeline] Render 0769215b-4106-4554-8afd-a8ac309837e4 status: done
+✅ Completed in 81.0s
+📹 Video URL: https://res.cloudinary.com/djol0rpn5/video/upload/v1767015342/instagram-reels/final-videos/promo_job_6f1d1f66_1767015338305.mp4
+
+👨‍🍳 Processing: https://monsieurvuong.de/
+   Job ID: job_6fa05c01
+[job_6fa05c01] Website Promo: Scraping https://monsieurvuong.de/
+[job_6fa05c01] planning: Analyzing business website...
+[EnhancedScraper] Starting hybrid scrape for https://monsieurvuong.de/
+[EnhancedScraper] HTTP scraper found comprehensive info, done
+[job_6fa05c01] Website scraped: hero="Monsieur Vuong Berlin", painScore=0, trustSignals=0
+[job_6fa05c01] Category provided by user: restaurant
+[job_6fa05c01] generating_commentary: Creating promotional script...
+[job_6fa05c01] Promo script generated: "Berlin's viral Chef's Special spot" with 3 scenes
+[job_6fa05c01] synthesizing_voiceover: Creating voiceover...
+[TTS] Text truncated from 33 to 27 words to fit 15s
+[TTS] Attempting synthesis with primary client (Fish Audio)... (Voice: 88b18e0d81474a0ca08e2ea6f9df5ff4)
+[Voice Cloning] Synthesizing with voice ID: 716594c03801446bb87a964a1c2a5895
+[TTS] Applying speed adjustment (0.86x) to hit target 15s (current: 12.86s)...
+[Voice Cloning] Synthesizing with voice ID: 716594c03801446bb87a964a1c2a5895
+[Voiceover] Uploading base64 audio to Cloudinary...
+[Voiceover] Uploaded successfully: https://res.cloudinary.com/djol0rpn5/video/upload/v1767015362/instagram-reels/voiceovers/voiceover_1767015361607.mp3
+[job_6fa05c01] selecting_music: Selecting background music...
+[job_6fa05c01] Uploading logo to Cloudinary for reliable rendering: https://monsieurvuong.de/apple-touch-icon.png
+[MediaResolver] Scene 1 (hook): Using scraped image from https://monsieurvuong.de/
+[MediaResolver] Scene 2 (showcase): Using scraped image from https://monsieurvuong.de/
+[MediaResolver] Scene 3 (cta): Using scraped image from https://monsieurvuong.de/
+[MediaResolver] Summary: 0 user, 3 scraped, 0 AI-generated
+Generating images with priority sourcing for 3 segments...
+[job_6fa05c01] Segment 1: Using pre-resolved media
+[job_6fa05c01] Segment 2: Using pre-resolved media
+[job_6fa05c01] Segment 3: Using pre-resolved media
+Waiting 2s for asset propagation...
+[job_6fa05c01] Promo assets prepared: 3 segments, 18.3s voiceover
+[Manifest] Before rendering: {
+  duration: 18.333333333333332,
+  segmentCount: 3,
+  segments: [
+    { start: 0, end: 6.111111111111111 },
+    { start: 6.111111111111111, end: 12.222222222222221 },
+    { start: 12.222222222222221, end: 18.333333333333332 }
+  ],
+  hasBranding: true,
+  branding: {
+    logoUrl: 'https://res.cloudinary.com/djol0rpn5/image/upload/v1767015364/instagram-reels/branding/job_6fa05c01/logo_1767015362932.png',
+    businessName: 'Monsieur Vuong',
+    address: 'Str. 4610119 Berlin-',
+    hours: 'Mo – Do 12:00 – 22:00 Fr – Sa 12:00 – 22:30 Son 12:00 – 22:00 23',
+    phone: undefined,
+    email: undefined
+  }
+}
+[Timeline] Fetching logo for base64 conversion: https://res.cloudinary.com/djol0rpn5/image/upload/v1767015364/instagram-reels/branding/job_6fa05c01/logo_1767015362932.png
+[Timeline] Logo converted to base64 (22.4 KB)
+[Timeline] Request payload size: 27.26 KB
+[Timeline] Render started: 9b6ae7c0-1676-4347-9f56-5d531e9f223c
+[Timeline] Render 9b6ae7c0-1676-4347-9f56-5d531e9f223c status: fetching
+[Timeline] Render 9b6ae7c0-1676-4347-9f56-5d531e9f223c status: rendering
+[Timeline] Render 9b6ae7c0-1676-4347-9f56-5d531e9f223c status: rendering
+[Timeline] Render 9b6ae7c0-1676-4347-9f56-5d531e9f223c status: rendering
+[Timeline] Render 9b6ae7c0-1676-4347-9f56-5d531e9f223c status: rendering
+[Timeline] Render 9b6ae7c0-1676-4347-9f56-5d531e9f223c status: rendering
+[Timeline] Render 9b6ae7c0-1676-4347-9f56-5d531e9f223c status: rendering
+[Timeline] Render 9b6ae7c0-1676-4347-9f56-5d531e9f223c status: done
+✅ Completed in 84.9s
+📹 Video URL: https://res.cloudinary.com/djol0rpn5/video/upload/v1767015426/instagram-reels/final-videos/promo_job_6fa05c01_1767015422522.mp4
+
+👨‍🍳 Processing: https://shisoburger.de/
+   Job ID: job_39b66117
+[job_39b66117] Website Promo: Scraping https://shisoburger.de/
+[job_39b66117] planning: Analyzing business website...
+[EnhancedScraper] Starting hybrid scrape for https://shisoburger.de/
+[EnhancedScraper] HTTP scraper missed contact info, trying Playwright...
+[Playwright] Navigating to https://shisoburger.de/...
+[Playwright] Scrape complete: {
+  hasPhone: false,
+  hasEmail: false,
+  hasAddress: false,
+  hasHours: false
+}
+[job_39b66117] Website scraped: hero="Shiso Burger:Das Beste aus zwei Welten", painScore=0, trustSignals=0
+[job_39b66117] Category provided by user: restaurant
+[job_39b66117] generating_commentary: Creating promotional script...
+[job_39b66117] Promo script generated: "Berlin's viral Chef's Special spot" with 3 scenes
+[job_39b66117] synthesizing_voiceover: Creating voiceover...
+[TTS] Text truncated from 33 to 27 words to fit 15s
+[TTS] Attempting synthesis with primary client (Fish Audio)... (Voice: 88b18e0d81474a0ca08e2ea6f9df5ff4)
+[Voice Cloning] Synthesizing with voice ID: 716594c03801446bb87a964a1c2a5895
+[TTS] Applying speed adjustment (0.86x) to hit target 15s (current: 12.86s)...
+[Voice Cloning] Synthesizing with voice ID: 716594c03801446bb87a964a1c2a5895
+[Voiceover] Uploading base64 audio to Cloudinary...
+[Voiceover] Uploaded successfully: https://res.cloudinary.com/djol0rpn5/video/upload/v1767015446/instagram-reels/voiceovers/voiceover_1767015446091.mp3
+[job_39b66117] selecting_music: Selecting background music...
+[job_39b66117] Uploading logo to Cloudinary for reliable rendering: https://shisoburger.cdn.prismic.io/shisoburger/3da72649-7dbd-4c70-be97-dde11db761e1_Shiso-Logo-Default.svg?ixlib=gatsbyFP&auto=compress%2Cformat&fit=max
+[MediaResolver] Scene 1 (hook): Using scraped image from https://shisoburger.de/
+[MediaResolver] Scene 2 (showcase): Using scraped image from https://shisoburger.de/
+[MediaResolver] Scene 3 (cta): Using scraped image from https://shisoburger.de/
+[MediaResolver] Summary: 0 user, 3 scraped, 0 AI-generated
+Generating images with priority sourcing for 3 segments...
+[job_39b66117] Segment 1: Using pre-resolved media
+[job_39b66117] Segment 2: Using pre-resolved media
+[job_39b66117] Segment 3: Using pre-resolved media
+Waiting 2s for asset propagation...
+[job_39b66117] Promo assets prepared: 3 segments, 18.3s voiceover
+[Manifest] Before rendering: {
+  duration: 18.333333333333332,
+  segmentCount: 3,
+  segments: [
+    { start: 0, end: 6.111111111111111 },
+    { start: 6.111111111111111, end: 12.222222222222221 },
+    { start: 12.222222222222221, end: 18.333333333333332 }
+  ],
+  hasBranding: true,
+  branding: {
+    logoUrl: 'https://res.cloudinary.com/djol0rpn5/image/upload/v1767015448/instagram-reels/branding/job_39b66117/logo_1767015448611.svg',
+    businessName: 'Das Beste aus zwei Welten | Shiso Burger',
+    address: undefined,
+    hours: undefined,
+    phone: undefined,
+    email: undefined
+  }
+}
+[Timeline] Fetching logo for base64 conversion: https://res.cloudinary.com/djol0rpn5/image/upload/v1767015448/instagram-reels/branding/job_39b66117/logo_1767015448611.svg
+[Timeline] Logo converted to base64 (45.9 KB)
+[Timeline] Request payload size: 1.33 KB
+[Timeline] Render started: 939ba5d4-a800-4090-a6a0-e4f717ccf36d
+[Timeline] Render 939ba5d4-a800-4090-a6a0-e4f717ccf36d status: fetching
+[Timeline] Render 939ba5d4-a800-4090-a6a0-e4f717ccf36d status: rendering
+[Timeline] Render 939ba5d4-a800-4090-a6a0-e4f717ccf36d status: rendering
+[Timeline] Render 939ba5d4-a800-4090-a6a0-e4f717ccf36d status: rendering
+[Timeline] Render 939ba5d4-a800-4090-a6a0-e4f717ccf36d status: rendering
+[Timeline] Render 939ba5d4-a800-4090-a6a0-e4f717ccf36d status: rendering
+[Timeline] Render 939ba5d4-a800-4090-a6a0-e4f717ccf36d status: done
+✅ Completed in 72.3s
+📹 Video URL: https://res.cloudinary.com/djol0rpn5/video/upload/v1767015498/instagram-reels/final-videos/promo_job_39b66117_1767015495845.mp4
+
+👨‍🍳 Processing: https://standard-pizza.de/
+   Job ID: job_9efa8d96
+[job_9efa8d96] Website Promo: Scraping https://standard-pizza.de/
+[job_9efa8d96] planning: Analyzing business website...
+[EnhancedScraper] Starting hybrid scrape for https://standard-pizza.de/
+[EnhancedScraper] HTTP scraper failed: Error: Failed to scrape website: getaddrinfo ENOTFOUND standard-pizza.de
+    at WebsiteScraperClient.scrapeWebsite (/Users/user1000/gitprojects/InstagramReelPoster/src/infrastructure/scraper/WebsiteScraperClient.ts:65:23)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async EnhancedWebsiteScraper.scrapeWebsite (/Users/user1000/gitprojects/InstagramReelPoster/src/infrastructure/scraper/EnhancedWebsiteScraper.ts:30:34)
+    at async ReelOrchestrator.scrapeWebsiteForPromo (/Users/user1000/gitprojects/InstagramReelPoster/src/application/ReelOrchestrator.ts:409:33)
+    at async ReelOrchestrator.processWebsitePromoJob (/Users/user1000/gitprojects/InstagramReelPoster/src/application/ReelOrchestrator.ts:380:37)
+    at async main (/Users/user1000/gitprojects/InstagramReelPoster/scripts/generate_random_five.ts:42:30)
+[Playwright] Navigating to https://standard-pizza.de/...
+[Playwright] Scraping failed: page.goto: net::ERR_NAME_NOT_RESOLVED at https://standard-pizza.de/
+Call log:
+[2m  - navigating to "https://standard-pizza.de/", waiting until "networkidle"[22m
+
+    at EnhancedWebsiteScraper.playwrightScrape (/Users/user1000/gitprojects/InstagramReelPoster/src/infrastructure/scraper/EnhancedWebsiteScraper.ts:104:24)
+    at async EnhancedWebsiteScraper.scrapeWebsite (/Users/user1000/gitprojects/InstagramReelPoster/src/infrastructure/scraper/EnhancedWebsiteScraper.ts:50:20)
+    at async ReelOrchestrator.scrapeWebsiteForPromo (/Users/user1000/gitprojects/InstagramReelPoster/src/application/ReelOrchestrator.ts:409:33)
+    at async ReelOrchestrator.processWebsitePromoJob (/Users/user1000/gitprojects/InstagramReelPoster/src/application/ReelOrchestrator.ts:380:37)
+    at async main (/Users/user1000/gitprojects/InstagramReelPoster/scripts/generate_random_five.ts:42:30) {
+  name: 'Error'
+}
+[job_9efa8d96] Website scraped: hero="", painScore=0, trustSignals=0
+[job_9efa8d96] Category provided by user: restaurant
+[job_9efa8d96] generating_commentary: Creating promotional script...
+[job_9efa8d96] Promo script generated: "Berlin's viral Chef's Special spot" with 3 scenes
+[job_9efa8d96] synthesizing_voiceover: Creating voiceover...
+[TTS] Text truncated from 38 to 27 words to fit 15s
+[TTS] Attempting synthesis with primary client (Fish Audio)... (Voice: 88b18e0d81474a0ca08e2ea6f9df5ff4)
+[Voice Cloning] Synthesizing with voice ID: 716594c03801446bb87a964a1c2a5895
+[TTS] Applying speed adjustment (0.86x) to hit target 15s (current: 12.86s)...
+[Voice Cloning] Synthesizing with voice ID: 716594c03801446bb87a964a1c2a5895
+[Voiceover] Uploading base64 audio to Cloudinary...
+[Voiceover] Uploaded successfully: https://res.cloudinary.com/djol0rpn5/video/upload/v1767015514/instagram-reels/voiceovers/voiceover_1767015514093.mp3
+[job_9efa8d96] selecting_music: Selecting background music...
+[MediaResolver] Scene 1 (hook): Will use AI generation (gap fill)
+[MediaResolver] Scene 2 (showcase): Will use AI generation (gap fill)
+[MediaResolver] Scene 3 (cta): Will use AI generation (gap fill)
+[MediaResolver] Summary: 0 user, 0 scraped, 3 AI-generated
+Generating images with priority sourcing for 3 segments...
+[job_9efa8d96] generating_images: Creating visual 1 of 3 (AI)...
+[Flux FLUX1] Generating image...
+[Flux FLUX1] Response received: {
+  status: 200,
+  dataType: 'object',
+  dataKeys: [ 'image_base64', 'width', 'height' ],
+  dataPreview: '{"image_base64":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAkAAAAQACAIAAACGcHE3AAEAAElEQVR42nT9245k2bIlhtkwm8vd45L3uu2zN0+TlEg+CXyRIAGE/kGfoC/Q3wnQi6BXCQQkQGQTTXU3yXPbe1ftqsrMysyIcF/TbOjBbM61PLLOa'
+}
+[Flux FLUX1] Image generated in 27.9s
+[job_9efa8d96] generating_images: Creating visual 2 of 3 (AI)...
+[Flux FLUX1] Generating image...
+[Flux FLUX1] Response received: {
+  status: 200,
+  dataType: 'object',
+  dataKeys: [ 'image_base64', 'width', 'height' ],
+  dataPreview: '{"image_base64":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAkAAAAQACAIAAACGcHE3AAEAAElEQVR42oz9yZolSZJcDTKxXI8afnS/Ze972+8NfKgMU2bqBY+i16KArEQiRnczu6oiPBAdwv/v//v/gShFSBHI/IcChVBQfxVCAEIRQESgQsafA'
+}
+[Flux FLUX1] Image generated in 3.1s
+[job_9efa8d96] generating_images: Creating visual 3 of 3 (AI)...
+[Flux FLUX1] Generating image...
+[Flux FLUX1] Response received: {
+  status: 200,
+  dataType: 'object',
+  dataKeys: [ 'image_base64', 'width', 'height' ],
+  dataPreview: '{"image_base64":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAkAAAAQACAIAAACGcHE3AAEAAElEQVR42qz9d6Bm11kfCj+/Z+2933b6dGkkjUYadcmyJHfLDXfApodqHCAECA7kJjfthuRyc8MHN+1+FxIgfAkxBFMMsXHHRbZl2ZZtFav3Mr2dO'
+}
+[Flux FLUX1] Image generated in 2.3s
+Waiting 2s for asset propagation...
+[job_9efa8d96] Promo assets prepared: 3 segments, 21.1s voiceover
+[Manifest] Before rendering: {
+  duration: 21.11111111111111,
+  segmentCount: 3,
+  segments: [
+    { start: 0, end: 7.037037037037037 },
+    { start: 7.037037037037037, end: 14.074074074074074 },
+    { start: 14.074074074074074, end: 21.11111111111111 }
+  ],
+  hasBranding: true,
+  branding: {
+    logoUrl: '',
+    businessName: 'Local Business',
+    address: undefined,
+    hours: undefined,
+    phone: undefined,
+    email: undefined
+  }
+}
+[Timeline] Request payload size: 1.33 KB
+[Timeline] Render started: 0aea4635-822a-4563-be9d-147570eed71a
+[Timeline] Render 0aea4635-822a-4563-be9d-147570eed71a status: fetching
+[Timeline] Render 0aea4635-822a-4563-be9d-147570eed71a status: rendering
+[Timeline] Render 0aea4635-822a-4563-be9d-147570eed71a status: rendering
+[Timeline] Render 0aea4635-822a-4563-be9d-147570eed71a status: rendering
+[Timeline] Render 0aea4635-822a-4563-be9d-147570eed71a status: rendering
+[Timeline] Render 0aea4635-822a-4563-be9d-147570eed71a status: rendering
+[Timeline] Render 0aea4635-822a-4563-be9d-147570eed71a status: rendering
+[Timeline] Render 0aea4635-822a-4563-be9d-147570eed71a status: rendering
+[Timeline] Render 0aea4635-822a-4563-be9d-147570eed71a status: done
+✅ Completed in 114.0s
+📹 Video URL: https://res.cloudinary.com/djol0rpn5/video/upload/v1767015609/instagram-reels/final-videos/promo_job_9efa8d96_1767015606129.mp4
+
+
+🏁 Generation Summary 🏁
+┌─────────┬─────────────────────────────────┬───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┬───────────┬──────────┐
+│ (index) │ restaurant                      │ videoUrl                                                                                                                          │ status    │ duration │
+├─────────┼─────────────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┼───────────┼──────────┤
+│ 0       │ 'https://60secondstonapoli.de/' │ 'https://res.cloudinary.com/djol0rpn5/video/upload/v1767015261/instagram-reels/final-videos/promo_job_c37e1f6b_1767015257601.mp4' │ 'success' │ 99.763   │
+│ 1       │ 'https://burgermeister.berlin'  │ 'https://res.cloudinary.com/djol0rpn5/video/upload/v1767015342/instagram-reels/final-videos/promo_job_6f1d1f66_1767015338305.mp4' │ 'success' │ 80.967   │
+│ 2       │ 'https://monsieurvuong.de/'     │ 'https://res.cloudinary.com/djol0rpn5/video/upload/v1767015426/instagram-reels/final-videos/promo_job_6fa05c01_1767015422522.mp4' │ 'success' │ 84.889   │
+│ 3       │ 'https://shisoburger.de/'       │ 'https://res.cloudinary.com/djol0rpn5/video/upload/v1767015498/instagram-reels/final-videos/promo_job_39b66117_1767015495845.mp4' │ 'success' │ 72.312   │
+│ 4       │ 'https://standard-pizza.de/'    │ 'https://res.cloudinary.com/djol0rpn5/video/upload/v1767015609/instagram-reels/final-videos/promo_job_9efa8d96_1767015606129.mp4' │ 'success' │ 113.967  │
+└─────────┴─────────────────────────────────┴───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┴───────────┴──────────┘

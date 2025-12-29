@@ -563,6 +563,7 @@ export class ReelOrchestrator {
                 hours: websiteAnalysis.openingHours,
                 phone: websiteAnalysis.phone,
                 email: websiteAnalysis.email,
+                qrCodeUrl: websiteAnalysis.reservationLink || job.websitePromoInput?.websiteUrl,
             };
         };
 

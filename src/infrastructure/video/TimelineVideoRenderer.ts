@@ -1,4 +1,5 @@
 import axios from 'axios';
+import * as QRCode from 'qrcode';
 /* eslint-disable max-lines */
 /* eslint-disable complexity */
 /* eslint-disable max-lines-per-function */
@@ -260,7 +261,14 @@ export class TimelineVideoRenderer implements IVideoRenderer {
             if (manifest.branding.logoUrl) {
                 logoDataUri = await this.fetchImageAsBase64(manifest.branding.logoUrl);
             }
-            const brandingTrackData = this.createBrandingTrack(manifest, logoDataUri);
+
+            // Generate QR code for the booking/reservation link
+            let qrCodeDataUri: string | undefined;
+            if (manifest.branding.qrCodeUrl) {
+                qrCodeDataUri = await this.generateQrCode(manifest.branding.qrCodeUrl);
+            }
+
+            const brandingTrackData = this.createBrandingTrack(manifest, logoDataUri, qrCodeDataUri);
             if (brandingTrackData && brandingTrackData.clips.length > 0) {
                 const clip = brandingTrackData.clips[0];
                 visualClips.push({
@@ -458,67 +466,78 @@ export class TimelineVideoRenderer implements IVideoRenderer {
     }
 
     /**
-     * Creates a track for branding/contact info overlay.
+     * Creates a track for branding/contact info overlay with QR-dominant layout.
+     * Layout: CTA text (top) -> QR Code (center, 55%) -> Contact + Small Logo (bottom)
      * @param manifest The reel manifest with branding info
      * @param logoDataUri Optional pre-fetched logo as base64 data URI for reliable rendering
+     * @param qrCodeDataUri Optional pre-generated QR code as base64 data URI
      */
-    private createBrandingTrack(manifest: ReelManifest, logoDataUri?: string): TimelineTrack | null {
+    private createBrandingTrack(
+        manifest: ReelManifest,
+        logoDataUri?: string,
+        qrCodeDataUri?: string
+    ): TimelineTrack | null {
         const branding = manifest.branding;
         if (!branding) return null;
 
-        const details: { icon: string, text: string }[] = [];
-        if (branding.address) details.push({ icon: '📍', text: branding.address });
-
-        // Handle potentially long hours text
+        // Build contact details for bottom-left
+        const contactParts: string[] = [];
+        if (branding.address) {
+            // Shorten address to first part
+            const shortAddr = branding.address.split(',')[0].trim();
+            contactParts.push(`📍 ${shortAddr}`);
+        }
         if (branding.hours) {
-            // Limit to first 200 chars to avoid layout break
-            const hoursShort = branding.hours.length > 200 ? branding.hours.substring(0, 197) + '...' : branding.hours;
-            details.push({ icon: '🕒', text: hoursShort });
+            // Extract just the first line of hours
+            const shortHours = branding.hours.split('\n')[0].substring(0, 30);
+            contactParts.push(`🕒 ${shortHours}`);
+        }
+        if (branding.phone) {
+            contactParts.push(`📞 ${branding.phone}`);
         }
 
-        if (branding.phone) details.push({ icon: '📞', text: branding.phone });
+        // Determine CTA text based on language/context
+        const ctaText = 'Tisch reservieren? SCAN JETZT!';
 
-        // Email is lower priority if space is tight (max 4 rows)
-        if (branding.email && details.length < 4) details.push({ icon: '✉️', text: branding.email });
+        // Build QR section - this is the DOMINANT element
+        const qrSection = qrCodeDataUri
+            ? `<img src="${qrCodeDataUri}" class="qr-code" alt="Scan to book" />`
+            : `<div class="qr-placeholder">📲 Link in Bio</div>`;
 
-        // Only show if we have something
-        if (details.length === 0) return null;
-
-        const midPoint = Math.ceil(details.length / 2);
-        const topDetails = details.slice(0, midPoint);
-        const bottomDetails = details.slice(midPoint);
+        // Build logo section (small, bottom-right)
+        const logoSection = logoDataUri
+            ? `<img src="${logoDataUri}" class="small-logo" />`
+            : (branding.logoUrl
+                ? `<img src="${branding.logoUrl}" class="small-logo" />`
+                : `<span class="brand-text">${branding.businessName.substring(0, 15)}</span>`);
 
         const html = `
             <div class="container">
-                <div class="top-details">
-                    ${topDetails.map(d => `
-                        <div class="row">
-                            <span class="icon">${d.icon}</span>
-                            <span class="text">${d.text}</span>
-                        </div>
-                    `).join('')}
+                <!-- TOP: CTA Text -->
+                <div class="cta-section">
+                    <h1 class="cta-text">${ctaText}</h1>
                 </div>
                 
-                <div class="logo-section">
-                    ${logoDataUri
-                ? `<img src="${logoDataUri}" class="center-logo" />`
-                : (branding.logoUrl
-                    ? `<img src="${branding.logoUrl}" class="center-logo" />`
-                    : `<h1 class="business-name">${branding.businessName}</h1>`)}
+                <!-- CENTER: QR Code (DOMINANT) -->
+                <div class="qr-section">
+                    ${qrSection}
                 </div>
-
-                <div class="bottom-details">
-                    ${bottomDetails.map(d => `
-                        <div class="row">
-                            <span class="icon">${d.icon}</span>
-                            <span class="text">${d.text}</span>
-                        </div>
-                    `).join('')}
+                
+                <!-- BOTTOM: Contact Left + Logo Right -->
+                <div class="bottom-section">
+                    <div class="contact-info">
+                        ${contactParts.map(c => `<span class="contact-line">${c}</span>`).join('')}
+                    </div>
+                    <div class="logo-corner">
+                        ${logoSection}
+                    </div>
                 </div>
             </div>
         `;
 
         const css = `
+            @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&display=swap');
+            
             * { box-sizing: border-box; margin: 0; padding: 0; }
             body, html { width: 100%; height: 100%; overflow: hidden; background: #000000; }
             
@@ -529,82 +548,122 @@ export class TimelineVideoRenderer implements IVideoRenderer {
                 justify-content: space-between;
                 width: 100%;
                 height: 100%;
-                background: #000000;
-                padding: 100px 60px;
+                background: linear-gradient(180deg, #0a0a0a 0%, #000000 50%, #0a0a0a 100%);
+                padding: 80px 50px 60px 50px;
             }
 
-            .top-details, .bottom-details {
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                gap: 30px;
-                width: 100%;
-            }
-
-            .logo-section {
-                flex: 1;
+            /* TOP: CTA Text (15% of screen) */
+            .cta-section {
+                flex: 0 0 15%;
                 display: flex;
                 align-items: center;
                 justify-content: center;
                 width: 100%;
-                padding: 40px 0;
             }
 
-            .center-logo {
-                max-width: 800px;
-                max-height: 500px;
-                object-fit: contain;
-                filter: drop-shadow(0 0 40px rgba(255,255,255,0.15));
-            }
-
-            .business-name {
+            .cta-text {
                 font-family: 'Montserrat', sans-serif;
-                font-size: 84px;
+                font-size: 52px;
                 font-weight: 900;
                 color: #FACC15;
                 text-align: center;
                 text-transform: uppercase;
-                letter-spacing: 6px;
-                line-height: 1.1;
-                padding: 40px;
-                border: 4px solid #FACC15;
-                border-radius: 20px;
-                background: rgba(250, 204, 21, 0.05);
+                letter-spacing: 3px;
+                text-shadow: 0 0 30px rgba(250, 204, 21, 0.5);
+                animation: pulse-text 1.5s ease-in-out infinite;
             }
 
-            .row {
+            @keyframes pulse-text {
+                0%, 100% { transform: scale(1); opacity: 1; }
+                50% { transform: scale(1.02); opacity: 0.9; }
+            }
+
+            /* CENTER: QR Code (55% of screen) - DOMINANT */
+            .qr-section {
+                flex: 0 0 55%;
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                gap: 24px;
-                color: #FFFFFF;
-                font-family: 'Montserrat', sans-serif;
-                background: #111111;
-                border: 2px solid #333333;
-                padding: 20px 40px;
-                border-radius: 60px;
-                width: fit-content;
-                box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+                width: 100%;
+                padding: 20px;
             }
 
-            .icon { font-size: 44px; }
-            .text {
-                font-size: 34px;
-                font-weight: 700;
+            .qr-code {
+                width: 600px;
+                height: 600px;
+                background: white;
+                border-radius: 30px;
+                padding: 30px;
+                box-shadow: 0 0 60px rgba(250, 204, 21, 0.3), 0 0 120px rgba(250, 204, 21, 0.15);
+                animation: pulse-qr 2s ease-in-out infinite;
+            }
+
+            @keyframes pulse-qr {
+                0%, 100% { transform: scale(1); box-shadow: 0 0 60px rgba(250, 204, 21, 0.3); }
+                50% { transform: scale(1.03); box-shadow: 0 0 100px rgba(250, 204, 21, 0.5); }
+            }
+
+            .qr-placeholder {
+                font-family: 'Montserrat', sans-serif;
+                font-size: 64px;
+                color: #888888;
                 text-align: center;
             }
+
+            /* BOTTOM: Contact + Logo (30% of screen) */
+            .bottom-section {
+                flex: 0 0 30%;
+                display: flex;
+                align-items: flex-end;
+                justify-content: space-between;
+                width: 100%;
+                gap: 30px;
+            }
+
+            .contact-info {
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+                flex: 1;
+            }
+
+            .contact-line {
+                font-family: 'Montserrat', sans-serif;
+                font-size: 28px;
+                font-weight: 700;
+                color: #FFFFFF;
+                background: rgba(255,255,255,0.1);
+                padding: 12px 20px;
+                border-radius: 12px;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+
+            .logo-corner {
+                flex: 0 0 auto;
+                display: flex;
+                align-items: flex-end;
+                justify-content: flex-end;
+            }
+
+            .small-logo {
+                max-width: 150px;
+                max-height: 150px;
+                object-fit: contain;
+                border-radius: 12px;
+                background: rgba(255,255,255,0.1);
+                padding: 10px;
+            }
+
+            .brand-text {
+                font-family: 'Montserrat', sans-serif;
+                font-size: 24px;
+                font-weight: 900;
+                color: #FACC15;
+                text-transform: uppercase;
+            }
         `;
-
-        // Show for the duration of the last segment (or last 5 seconds if no segments)
-        let duration = 5;
-        let start = Math.max(0, manifest.durationSeconds - duration);
-
-        if (manifest.segments && manifest.segments.length > 0) {
-            const lastSegment = manifest.segments[manifest.segments.length - 1];
-            // Start 1.5s into the last scene so we see the visual first, then the card dominates.
-            start = lastSegment.start + 1.5;
-            duration = (lastSegment.end - lastSegment.start) - 1.5;
-        }
 
         return {
             clips: [{
@@ -619,7 +678,7 @@ export class TimelineVideoRenderer implements IVideoRenderer {
                 start: 0, // Duration managed by the caller
                 length: 0, // Duration managed by the caller
                 position: 'center',
-                fit: 'cover', // Use cover for full-screen card
+                fit: 'cover',
                 scale: 1.0
             }]
         };
@@ -742,6 +801,35 @@ export class TimelineVideoRenderer implements IVideoRenderer {
             return dataUri;
         } catch (error) {
             console.warn(`[Timeline] Failed to fetch logo for base64 conversion, falling back to URL:`,
+                error instanceof Error ? error.message : error);
+            return undefined;
+        }
+    }
+
+    /**
+     * Generates a QR code as a base64 data URI.
+     * 
+     * @param url The URL to encode in the QR code
+     * @returns Base64 data URI of the QR code image, or undefined if generation fails
+     */
+    private async generateQrCode(url: string): Promise<string | undefined> {
+        try {
+            console.log(`[Timeline] Generating QR code for: ${url}`);
+
+            const dataUri = await QRCode.toDataURL(url, {
+                width: 400,
+                margin: 2,
+                color: {
+                    dark: '#000000',
+                    light: '#FFFFFF'
+                },
+                errorCorrectionLevel: 'M'
+            });
+
+            console.log(`[Timeline] QR code generated (${(dataUri.length / 1024).toFixed(1)} KB)`);
+            return dataUri;
+        } catch (error) {
+            console.warn(`[Timeline] Failed to generate QR code:`,
                 error instanceof Error ? error.message : error);
             return undefined;
         }

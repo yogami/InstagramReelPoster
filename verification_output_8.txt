@@ -1,0 +1,79 @@
+[dotenv@17.2.3] injecting env (44) from .env -- tip: ⚙️  suppress all logs with { quiet: true }
+🚀 Loading Configuration...
+🔧 Initializing Dependencies...
+✅ Cloudinary storage configured
+✅ Image generation: Flux (primary) → MultiModel (fallback)
+🎬 Video rendering: Timeline (primary)
+✅ Video generation: Hunyuan (primary) → Kling (reliable) → Mock (safety)
+Loaded 49 jobs from disk
+🕷️ Using Enhanced Playwright Scraper
+📡 Callback configured: Header = yami-instgram-carousel-api-key, Token = reels... 
+🚀 Starting Verification for 1 Berlin Restaurant...
+
+👨‍🍳 Processing: https://sushi-yana.de/
+   Job ID: job_bf49be71
+[job_bf49be71] Website Promo: Scraping https://sushi-yana.de/
+[job_bf49be71] planning: Analyzing business website...
+[EnhancedScraper] Starting hybrid scrape for https://sushi-yana.de/
+[EnhancedScraper] HTTP scraper found comprehensive info, done
+[job_bf49be71] Website scraped: hero="Sushi bestellen in Berlin", painScore=0, trustSignals=0
+[job_bf49be71] Category provided by user: restaurant
+[job_bf49be71] generating_commentary: Creating promotional script...
+[job_bf49be71] Promo script generated: "Berlin's viral Chef's Special spot" with 3 scenes
+[job_bf49be71] synthesizing_voiceover: Creating voiceover...
+[TTS] Attempting synthesis with primary client (Fish Audio)... (Voice: 88b18e0d81474a0ca08e2ea6f9df5ff4)
+[Voice Cloning] Synthesizing with voice ID: 716594c03801446bb87a964a1c2a5895
+[TTS] Applying speed adjustment (0.85x) to hit target 15s (current: 12.38s)...
+[Voice Cloning] Synthesizing with voice ID: 716594c03801446bb87a964a1c2a5895
+[Voiceover] Uploading base64 audio to Cloudinary...
+[Voiceover] Uploaded successfully: https://res.cloudinary.com/djol0rpn5/video/upload/v1767007376/instagram-reels/voiceovers/voiceover_1767007375774.mp3
+[job_bf49be71] selecting_music: Selecting background music...
+Loading music catalog from: /Users/user1000/gitprojects/InstagramReelPoster/assets/music_catalog.json
+[job_bf49be71] generating_images: Creating visuals...
+[MediaResolver] Scene 1 (hook): Using scraped image from https://sushi-yana.de/
+[MediaResolver] Scene 2 (showcase): Using scraped image from https://sushi-yana.de/
+[MediaResolver] Scene 3 (cta): Using scraped image from https://sushi-yana.de/
+[MediaResolver] Summary: 0 user, 3 scraped, 0 AI-generated
+Generating images with priority sourcing for 3 segments...
+[job_bf49be71] Segment 1: Using pre-resolved media
+[job_bf49be71] Segment 2: Using pre-resolved media
+[job_bf49be71] Segment 3: Using pre-resolved media
+Waiting 2s for asset propagation...
+[job_bf49be71] Promo assets prepared: 3 segments, 14.6s voiceover
+[Manifest] Before rendering: {
+  duration: 14.56582633053221,
+  segmentCount: 3,
+  segments: [
+    { start: 0, end: 4.855275443510737 },
+    { start: 4.855275443510737, end: 9.710550887021475 },
+    { start: 9.710550887021475, end: 14.56582633053221 }
+  ],
+  hasBranding: true,
+  branding: {
+    logoUrl: 'https://sushi-yana.de/_shops/res/pics/favicon.ico',
+    businessName: 'Sushi bestellen in Berlin',
+    address: 'Flughafenstraße 76 12049 Berlin buero',
+    hours: undefined,
+    phone: undefined,
+    email: 'buero@sushi-yana.de'
+  }
+}
+[Timeline] Request payload size: 4.63 KB
+[Timeline] Render started: b2a9267c-dda3-4d37-9823-8ccbb83d49aa
+[Timeline] Render b2a9267c-dda3-4d37-9823-8ccbb83d49aa status: fetching
+[Timeline] Render b2a9267c-dda3-4d37-9823-8ccbb83d49aa status: rendering
+[Timeline] Render b2a9267c-dda3-4d37-9823-8ccbb83d49aa status: rendering
+[Timeline] Render b2a9267c-dda3-4d37-9823-8ccbb83d49aa status: rendering
+[Timeline] Render b2a9267c-dda3-4d37-9823-8ccbb83d49aa status: rendering
+[Timeline] Render b2a9267c-dda3-4d37-9823-8ccbb83d49aa status: rendering
+[Timeline] Render b2a9267c-dda3-4d37-9823-8ccbb83d49aa status: done
+✅ Completed in 69.6s
+📹 Video URL: https://res.cloudinary.com/djol0rpn5/video/upload/v1767007429/instagram-reels/final-videos/promo_job_bf49be71_1767007424343.mp4
+
+
+🏁 Verification Summary 🏁
+┌─────────┬──────────────────────────┬───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┬───────────┬──────────┐
+│ (index) │ restaurant               │ videoUrl                                                                                                                          │ status    │ duration │
+├─────────┼──────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┼───────────┼──────────┤
+│ 0       │ 'https://sushi-yana.de/' │ 'https://res.cloudinary.com/djol0rpn5/video/upload/v1767007429/instagram-reels/final-videos/promo_job_bf49be71_1767007424343.mp4' │ 'success' │ 69.585   │
+└─────────┴──────────────────────────┴───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┴───────────┴──────────┘

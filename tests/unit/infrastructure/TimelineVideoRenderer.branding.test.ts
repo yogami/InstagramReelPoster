@@ -1,206 +1,54 @@
 import { TimelineVideoRenderer } from '../../../src/infrastructure/video/TimelineVideoRenderer';
 import { ReelManifest } from '../../../src/domain/entities/ReelManifest';
 
-describe('TimelineVideoRenderer - Branding Overlay', () => {
+describe('TimelineVideoRenderer - QR Dominant Branding', () => {
     const renderer = new TimelineVideoRenderer('test-key', 'https://api.timeline.io/v1');
 
-    it('should position branding card for entire duration of last segment', () => {
+    it('should create branding track with QR-dominant layout', () => {
         const manifest: ReelManifest = {
             durationSeconds: 20,
             voiceoverUrl: 'https://example.com/voice.mp3',
             musicUrl: 'https://example.com/music.mp3',
             musicDurationSeconds: 20,
             subtitlesUrl: 'https://example.com/subs.vtt',
-            segments: [
-                {
-                    index: 0,
-                    caption: 'First',
-                    imageUrl: 'https://example.com/1.jpg',
-                    start: 0,
-                    end: 10
-                },
-                {
-                    index: 1,
-                    caption: 'Last',
-                    imageUrl: 'https://example.com/2.jpg',
-                    start: 10,
-                    end: 20
-                }
-            ],
+            segments: [{
+                index: 0,
+                imageUrl: 'https://example.com/1.jpg',
+                start: 0,
+                end: 20
+            }],
             branding: {
                 logoUrl: 'https://example.com/logo.png',
                 businessName: 'Test Business',
-                address: '123 Test St',
+                address: '123 Test St, Berlin',
                 phone: '+1234567890',
-                email: 'test@example.com'
+                qrCodeUrl: 'https://reserve.example.com'
             }
         };
 
-        // Access private method via type assertion
         const brandingTrack = (renderer as any).createBrandingTrack(manifest);
 
         expect(brandingTrack).toBeDefined();
         expect(brandingTrack.clips).toHaveLength(1);
 
         const clip = brandingTrack.clips[0];
-
-        // start and length are managed by the caller (mapManifestToTimelineEdit)
-        // createBrandingTrack returns 0,0 as placeholders
-        expect(clip.start).toBe(0);
-        expect(clip.length).toBe(0);
-
-        // Since we use full-screen HTML overlay, clip position is center
-        expect(clip.position).toBe('center');
-
-        const asset = clip.asset as any;
-
-        // Should use CSS for positioning (look for padding in CSS)
-        expect(asset.css).toContain('padding: 100px 60px');
-
-        // Assert full screen asset dimensions
-        expect(asset.width).toBe(1080);
-        expect(asset.height).toBe(1920);
-
-        // Should have correct scale
-        expect(clip.scale).toBe(1.0);
-    });
-
-    it('should fallback to last 5 seconds when no segments', () => {
-        const manifest: ReelManifest = {
-            durationSeconds: 20,
-            voiceoverUrl: 'https://example.com/voice.mp3',
-            musicUrl: 'https://example.com/music.mp3',
-            musicDurationSeconds: 20,
-            subtitlesUrl: 'https://example.com/subs.vtt',
-            segments: [],
-            branding: {
-                logoUrl: 'https://example.com/logo.png',
-                businessName: 'Test Business',
-                email: 'test@example.com'  // Add contact info so track is created
-            }
-        };
-
-        const brandingTrack = (renderer as any).createBrandingTrack(manifest);
-
-        expect(brandingTrack).toBeDefined();
-        const clip = brandingTrack.clips[0];
-
-        // start and length are managed by the caller
-        expect(clip.start).toBe(0);
-        expect(clip.length).toBe(0);
-    });
-
-    it('should include logo, business name, and contact details in HTML', () => {
-        const manifest: ReelManifest = {
-            durationSeconds: 20,
-            voiceoverUrl: 'https://example.com/voice.mp3',
-            musicUrl: 'https://example.com/music.mp3',
-            musicDurationSeconds: 20,
-            subtitlesUrl: 'https://example.com/subs.vtt',
-            segments: [{
-                index: 0,
-                caption: 'Test',
-                imageUrl: 'https://example.com/1.jpg',
-                start: 0,
-                end: 20
-            }],
-            branding: {
-                logoUrl: 'https://cloudinary.com/logo.jpg',
-                businessName: 'Berlin AI Labs',
-                address: 'Friedrichstraße 123, 10117 Berlin',
-                phone: '+49 30 12345678',
-                email: 'info@berlinailabs.de'
-            }
-        };
-
-        const brandingTrack = (renderer as any).createBrandingTrack(manifest);
-        const clip = brandingTrack.clips[0];
         const html = clip.asset.html;
-
-        // Logo is shown in center (business name only if no logo)
-        expect(html).toContain('<img');
-        expect(html).toContain('logo.jpg');
-
-        // Should include address
-        expect(html).toContain('Friedrichstraße 123');
-
-        // Should include phone
-        expect(html).toContain('+49 30 12345678');
-
-        // Should include email
-        expect(html).toContain('info@berlinailabs.de');
-    });
-
-    it('should not scale/distort logo - use original size', () => {
-        const manifest: ReelManifest = {
-            durationSeconds: 20,
-            voiceoverUrl: 'https://example.com/voice.mp3',
-            musicUrl: 'https://example.com/music.mp3',
-            musicDurationSeconds: 20,
-            subtitlesUrl: 'https://example.com/subs.vtt',
-            segments: [{
-                index: 0,
-                caption: 'Test',
-                imageUrl: 'https://example.com/1.jpg',
-                start: 0,
-                end: 20
-            }],
-            branding: {
-                logoUrl: 'https://cloudinary.com/logo.jpg',
-                businessName: 'Test Business',
-                email: 'test@example.com'  // Add contact info so track is created
-            }
-        };
-
-        const brandingTrack = (renderer as any).createBrandingTrack(manifest);
-        const clip = brandingTrack.clips[0];
         const css = clip.asset.css;
 
-        // Should use proper Grid/Flex layout
-        expect(css).toContain('display: flex');
-        expect(css).toContain('.container');
-        expect(css).toContain('.logo-section');
+        // Should have QR-dominant layout structure
+        expect(html).toContain('cta-section');
+        expect(html).toContain('qr-section');
+        expect(html).toContain('bottom-section');
+
+        // Should have CTA text
+        expect(html).toContain('SCAN JETZT');
+
+        // CSS should have QR section taking 55% of screen
+        expect(css).toContain('.qr-section');
+        expect(css).toContain('flex: 0 0 55%');
     });
 
-    it('should only show contact overlay when at least one contact field exists', () => {
-        // Test 1: No contact info - should return null
-        const manifestNoContact: ReelManifest = {
-            durationSeconds: 20,
-            voiceoverUrl: 'https://example.com/voice.mp3',
-            musicUrl: 'https://example.com/music.mp3',
-            musicDurationSeconds: 20,
-            subtitlesUrl: 'https://example.com/subs.vtt',
-            segments: [{
-                index: 0,
-                imageUrl: 'https://example.com/1.jpg',
-                start: 0,
-                end: 20
-            }],
-            branding: {
-                logoUrl: 'https://cloudinary.com/logo.jpg',
-                businessName: 'Test Business'
-                // No address, phone, email, or hours
-            }
-        };
-
-        const noContactTrack = (renderer as any).createBrandingTrack(manifestNoContact);
-        expect(noContactTrack).toBeNull();
-
-        // Test 2: Has at least one contact field - should show
-        const manifestWithContact: ReelManifest = {
-            ...manifestNoContact,
-            branding: {
-                logoUrl: 'https://cloudinary.com/logo.jpg',
-                businessName: 'Test Business',
-                email: 'test@example.com'
-            }
-        };
-
-        const withContactTrack = (renderer as any).createBrandingTrack(manifestWithContact);
-        expect(withContactTrack).not.toBeNull();
-    });
-
-    it('should position contact info at bottom of last image', () => {
+    it('should show fallback when no QR code provided', () => {
         const manifest: ReelManifest = {
             durationSeconds: 20,
             voiceoverUrl: 'https://example.com/voice.mp3',
@@ -219,18 +67,47 @@ describe('TimelineVideoRenderer - Branding Overlay', () => {
             }
         };
 
+        // No qrCodeDataUri passed
         const brandingTrack = (renderer as any).createBrandingTrack(manifest);
-        const clip = brandingTrack.clips[0];
+        const html = brandingTrack.clips[0].asset.html;
 
-        // Should be center (full screen overlay)
-        expect(clip.position).toBe('center');
-
-        const asset = clip.asset as any;
-        // Should have padding in CSS
-        expect(asset.css).toContain('padding: 100px 60px');
+        // Should show placeholder
+        expect(html).toContain('qr-placeholder');
+        expect(html).toContain('Link in Bio');
     });
 
-    it('should not include logo in contact card (logo is separate in top-right)', () => {
+    it('should include QR code image when qrCodeDataUri is provided', () => {
+        const manifest: ReelManifest = {
+            durationSeconds: 20,
+            voiceoverUrl: 'https://example.com/voice.mp3',
+            musicUrl: 'https://example.com/music.mp3',
+            musicDurationSeconds: 20,
+            subtitlesUrl: 'https://example.com/subs.vtt',
+            segments: [{
+                index: 0,
+                imageUrl: 'https://example.com/1.jpg',
+                start: 0,
+                end: 20
+            }],
+            branding: {
+                businessName: 'Test Business',
+                address: '123 Test St',
+                qrCodeUrl: 'https://reserve.example.com'
+            }
+        };
+
+        const qrCodeDataUri = 'data:image/png;base64,QRCodeBase64Data==';
+        const brandingTrack = (renderer as any).createBrandingTrack(manifest, undefined, qrCodeDataUri);
+        const html = brandingTrack.clips[0].asset.html;
+
+        // Should contain QR code image
+        expect(html).toContain('<img');
+        expect(html).toContain('qr-code');
+        expect(html).toContain('QRCodeBase64Data');
+        expect(html).not.toContain('qr-placeholder');
+    });
+
+    it('should position logo in bottom-right corner', () => {
         const manifest: ReelManifest = {
             durationSeconds: 20,
             voiceoverUrl: 'https://example.com/voice.mp3',
@@ -246,25 +123,63 @@ describe('TimelineVideoRenderer - Branding Overlay', () => {
             branding: {
                 logoUrl: 'https://cloudinary.com/logo.jpg',
                 businessName: 'Test Business',
-                address: '123 Test St',
-                email: 'test@example.com'
+                address: '123 Test St'
             }
         };
 
         const brandingTrack = (renderer as any).createBrandingTrack(manifest);
-        const clip = brandingTrack.clips[0];
-        const html = clip.asset.html;
+        const html = brandingTrack.clips[0].asset.html;
+        const css = brandingTrack.clips[0].asset.css;
 
-        // Without logoDataUri, the logo URL should still be used as fallback
-        // The img tag should be present with the logo URL
-        expect(html).toContain('<img');
+        // Logo should be in logo-corner section with small-logo class
+        expect(html).toContain('logo-corner');
+        expect(html).toContain('small-logo');
         expect(html).toContain('logo.jpg');
 
-        // Should still include contact info (business name only shows when no logo)
-        expect(html).toContain('123 Test St');
+        // CSS should constrain logo size
+        expect(css).toContain('.small-logo');
+        expect(css).toContain('max-width: 150px');
     });
 
-    it('should use base64 data URI when logoDataUri is provided', () => {
+    it('should include contact details in bottom-left', () => {
+        const manifest: ReelManifest = {
+            durationSeconds: 20,
+            voiceoverUrl: 'https://example.com/voice.mp3',
+            musicUrl: 'https://example.com/music.mp3',
+            musicDurationSeconds: 20,
+            subtitlesUrl: 'https://example.com/subs.vtt',
+            segments: [{
+                index: 0,
+                imageUrl: 'https://example.com/1.jpg',
+                start: 0,
+                end: 20
+            }],
+            branding: {
+                businessName: 'Sushi Yana',
+                address: 'Flughafenstraße 76, Berlin',
+                hours: 'Mo-Fr 11:00-22:00',
+                phone: '+49 30 12345678'
+            }
+        };
+
+        const brandingTrack = (renderer as any).createBrandingTrack(manifest);
+        const html = brandingTrack.clips[0].asset.html;
+
+        // Contact info should be in contact-info section
+        expect(html).toContain('contact-info');
+        expect(html).toContain('contact-line');
+
+        // Should include shortened address (first part before comma)
+        expect(html).toContain('Flughafenstraße 76');
+
+        // Should include hours (first line)
+        expect(html).toContain('Mo-Fr 11:00-22:00');
+
+        // Should include phone
+        expect(html).toContain('+49 30 12345678');
+    });
+
+    it('should use base64 logo when logoDataUri is provided', () => {
         const manifest: ReelManifest = {
             durationSeconds: 20,
             voiceoverUrl: 'https://example.com/voice.mp3',
@@ -280,19 +195,69 @@ describe('TimelineVideoRenderer - Branding Overlay', () => {
             branding: {
                 logoUrl: 'https://cloudinary.com/logo.jpg',
                 businessName: 'Test Business',
-                address: '123 Test St',
-                email: 'test@example.com'
+                address: '123 Test St'
             }
         };
 
         const logoDataUri = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUg==';
         const brandingTrack = (renderer as any).createBrandingTrack(manifest, logoDataUri);
-        const clip = brandingTrack.clips[0];
-        const html = clip.asset.html;
+        const html = brandingTrack.clips[0].asset.html;
 
         // Should use the base64 data URI instead of the URL
-        expect(html).toContain('<img');
         expect(html).toContain('data:image/png;base64,');
         expect(html).not.toContain('logo.jpg');
+    });
+
+    it('should show brand text when no logo provided', () => {
+        const manifest: ReelManifest = {
+            durationSeconds: 20,
+            voiceoverUrl: 'https://example.com/voice.mp3',
+            musicUrl: 'https://example.com/music.mp3',
+            musicDurationSeconds: 20,
+            subtitlesUrl: 'https://example.com/subs.vtt',
+            segments: [{
+                index: 0,
+                imageUrl: 'https://example.com/1.jpg',
+                start: 0,
+                end: 20
+            }],
+            branding: {
+                businessName: 'Berlin AI Labs Restaurant',
+                address: '123 Test St'
+            }
+        };
+
+        const brandingTrack = (renderer as any).createBrandingTrack(manifest);
+        const html = brandingTrack.clips[0].asset.html;
+
+        // Should show brand text (truncated to 15 chars)
+        expect(html).toContain('brand-text');
+        expect(html).toContain('Berlin AI Labs');
+    });
+
+    it('should return track even without contact details (for QR display)', () => {
+        const manifest: ReelManifest = {
+            durationSeconds: 20,
+            voiceoverUrl: 'https://example.com/voice.mp3',
+            musicUrl: 'https://example.com/music.mp3',
+            musicDurationSeconds: 20,
+            subtitlesUrl: 'https://example.com/subs.vtt',
+            segments: [{
+                index: 0,
+                imageUrl: 'https://example.com/1.jpg',
+                start: 0,
+                end: 20
+            }],
+            branding: {
+                businessName: 'Test Business',
+                qrCodeUrl: 'https://reserve.example.com'
+                // No contact details
+            }
+        };
+
+        // With QR-dominant design, we always show the end card for QR
+        const brandingTrack = (renderer as any).createBrandingTrack(manifest);
+        expect(brandingTrack).toBeDefined();
+        expect(brandingTrack).not.toBeNull();
     });
 });

@@ -45,6 +45,7 @@ export interface ReelManifest {
         hours?: string;
         phone?: string;
         email?: string;
+        qrCodeUrl?: string;  // URL for QR code (reservation/booking link)
     };
     /** specialized overlays like rating badges or QR codes */
     overlays?: ManifestOverlay[];
