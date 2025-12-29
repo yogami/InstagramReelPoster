@@ -114,8 +114,8 @@ describe('TimelineVideoRenderer - Branding Overlay', () => {
         const clip = brandingTrack.clips[0];
         const html = clip.asset.html;
 
-        // Should include logo
-        expect(html).toContain('https://cloudinary.com/logo.jpg');
+
+        // Logo is shown separately in top-right, not in contact card
 
         // Should include business name
         expect(html).toContain('Berlin AI Labs');
@@ -227,5 +227,40 @@ describe('TimelineVideoRenderer - Branding Overlay', () => {
 
         // Should have appropriate offset from bottom
         expect(clip.offset?.y).toBeGreaterThan(0);
+    });
+
+    it('should not include logo in contact card (logo is separate in top-right)', () => {
+        const manifest: ReelManifest = {
+            durationSeconds: 20,
+            voiceoverUrl: 'https://example.com/voice.mp3',
+            musicUrl: 'https://example.com/music.mp3',
+            musicDurationSeconds: 20,
+            subtitlesUrl: 'https://example.com/subs.vtt',
+            segments: [{
+                index: 0,
+                imageUrl: 'https://example.com/1.jpg',
+                start: 0,
+                end: 20
+            }],
+            branding: {
+                logoUrl: 'https://cloudinary.com/logo.jpg',
+                businessName: 'Test Business',
+                address: '123 Test St',
+                email: 'test@example.com'
+            }
+        };
+
+        const brandingTrack = (renderer as any).createBrandingTrack(manifest);
+        const clip = brandingTrack.clips[0];
+        const html = clip.asset.html;
+
+        // Contact card should NOT include logo image
+        // Logo is shown separately in top-right corner
+        expect(html).not.toContain('<img');
+        expect(html).not.toContain('logo.jpg');
+
+        // Should still include business name and contact info
+        expect(html).toContain('Test Business');
+        expect(html).toContain('123 Test St');
     });
 });

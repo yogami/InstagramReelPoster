@@ -388,7 +388,6 @@ export class TimelineVideoRenderer implements IVideoRenderer {
 
         const html = `
             <div class="contact-card">
-                ${b.logoUrl ? `<img src="${b.logoUrl}" class="logo">` : ''}
                 <h1>${b.businessName}</h1>
                 ${details.map(d => `<p>${d}</p>`).join('')}
             </div>
