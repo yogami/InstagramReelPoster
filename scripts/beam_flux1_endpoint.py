@@ -21,6 +21,7 @@ image = Image(
         "accelerate>=0.25.0",
         "safetensors",
         "sentencepiece",
+        "protobuf",
         "Pillow",
     ],
 )
