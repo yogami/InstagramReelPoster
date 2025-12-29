@@ -42,6 +42,8 @@ export class RenderStep implements PipelineStep {
             musicUrl: musicUrl,
             musicDurationSeconds: context.musicDurationSeconds,
             subtitlesUrl: subtitlesUrl || '',
+            zoomType: context.plan?.zoomType,
+            zoomSequence: context.plan?.zoomSequence,
         });
 
         const result = await this.videoRenderer.render(manifest);

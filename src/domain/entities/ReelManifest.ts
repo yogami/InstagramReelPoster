@@ -53,6 +53,8 @@ export interface ReelManifest {
     overlays?: ManifestOverlay[];
     /** FLUX optimization: default zoom type for all segments */
     zoomType?: 'slow_zoom_in' | 'slow_zoom_out' | 'ken_burns' | 'alternating' | 'static';
+    /** FLUX optimization: zoom sequence for finer control */
+    zoomSequence?: ('slow_zoom_in' | 'slow_zoom_out' | 'ken_burns_left' | 'ken_burns_right' | 'static')[];
 }
 
 export interface ManifestOverlay {
@@ -78,6 +80,7 @@ export function createReelManifest(params: {
     logoUrl?: string;
     logoPosition?: 'beginning' | 'end' | 'overlay';
     zoomType?: 'slow_zoom_in' | 'slow_zoom_out' | 'ken_burns' | 'alternating' | 'static';
+    zoomSequence?: ('slow_zoom_in' | 'slow_zoom_out' | 'ken_burns_left' | 'ken_burns_right' | 'static')[];
 }): ReelManifest {
     if (params.durationSeconds <= 0) {
         throw new Error('Manifest durationSeconds must be positive');
@@ -130,5 +133,6 @@ export function createReelManifest(params: {
         logoUrl: params.logoUrl,
         logoPosition: params.logoPosition,
         zoomType: params.zoomType,
+        zoomSequence: params.zoomSequence,
     };
 }

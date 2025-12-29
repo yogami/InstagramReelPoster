@@ -229,7 +229,7 @@ export class TimelineVideoRenderer implements IVideoRenderer {
         } else if (manifest.segments) {
             // Image Path - FLUX Optimization: Use segment-level or manifest-level zoom effects
             visualClips = manifest.segments.map((segment, index) => {
-                const zoomEffect = this.resolveZoomEffect(segment.zoomEffect, index, manifest.zoomType);
+                const zoomEffect = this.resolveZoomEffect(segment.zoomEffect, index, manifest.zoomType, manifest.zoomSequence);
                 return {
                     asset: {
                         type: 'image' as const,
@@ -417,17 +417,29 @@ export class TimelineVideoRenderer implements IVideoRenderer {
      * Resolves the zoom effect for a segment based on segment-level, manifest-level, or default.
      * Maps FLUX zoom types to Timeline API effect types.
      * 
-     * @param segmentZoom Segment-level zoom effect (highest priority)
+     * @param segmentZoom Segment-level zoom effect (highest priority if explicit)
      * @param segmentIndex Index of the segment (for alternating mode)
      * @param manifestZoom Manifest-level default zoom type (fallback)
+     * @param zoomSequence Manifest-level zoom sequence (priority over manifestZoom)
      * @returns Timeline API effect type
      */
     private resolveZoomEffect(
         segmentZoom: string | undefined,
         segmentIndex: number,
-        manifestZoom: string | undefined
+        manifestZoom: string | undefined,
+        zoomSequence: string[] | undefined
     ): 'zoomIn' | 'zoomOut' | 'slideLeft' | 'slideRight' | undefined {
-        const zoomType = segmentZoom || manifestZoom;
+        // Priority:
+        // 1. zoomSequence (if available for this index) - Enforces plan-level variety
+        // 2. segmentZoom (if manually set/overridden in segment)
+        // 3. manifestZoom (default fallback)
+
+        let zoomType = segmentZoom || manifestZoom;
+
+        // If a sequence exists, use it for this index
+        if (zoomSequence && zoomSequence.length > segmentIndex) {
+            zoomType = zoomSequence[segmentIndex];
+        }
 
         switch (zoomType) {
             case 'slow_zoom_in':

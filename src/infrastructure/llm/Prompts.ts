@@ -62,7 +62,7 @@ Respond with a JSON object:
   "mood": "overall visual mood",
   "targetDurationSeconds": total_seconds,
   "segmentCount": number_of_segments,
-  "zoomType": "slow_zoom_in" | "slow_zoom_out" | "ken_burns" | "alternating" | "static"
+  "zoomSequence": ["slow_zoom_in", "ken_burns_right", "slow_zoom_out"] // Array of effects for each segment. Options: "slow_zoom_in" | "slow_zoom_out" | "ken_burns_left" | "ken_burns_right" | "static". MUST match segmentCount.
 }`;
 
 export const GENERATE_SEGMENT_CONTENT_PROMPT = `Generate content for an Instagram Reel with {{segmentCount}} segments.

@@ -31,7 +31,9 @@ export interface ReelPlan {
     summary: string;
     /** The primary, viral-style caption for the final video post */
     mainCaption: string;
-    /** Zoom effect type for static image reels (FLUX optimization) */
+    /** Zoom effect sequence for static image reels (FLUX optimization) */
+    zoomSequence?: ('slow_zoom_in' | 'slow_zoom_out' | 'ken_burns_left' | 'ken_burns_right' | 'static')[];
+    /** @deprecated Use zoomSequence instead */
     zoomType?: 'slow_zoom_in' | 'slow_zoom_out' | 'ken_burns' | 'alternating' | 'static';
 }
 

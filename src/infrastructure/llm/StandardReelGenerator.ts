@@ -56,11 +56,30 @@ export class StandardReelGenerator {
         if (plan.segmentCount < 2) plan.segmentCount = 2;
         if (plan.segmentCount > 15) plan.segmentCount = 15;
 
-        // FLUX Optimization: Extract zoomType with fallback
-        if (!plan.zoomType) {
-            plan.zoomType = 'slow_zoom_in'; // Default for static image reels
+        // FLUX Optimization: Extract zoomSequence or zoomType with fallback
+        if (!plan.zoomSequence || plan.zoomSequence.length === 0) {
+            // Fallback to zoomType if present, or generate a sequence based on it
+            if (plan.zoomType === 'static') {
+                plan.zoomSequence = Array(plan.segmentCount).fill('static');
+            } else if (plan.zoomType === 'alternating' || plan.zoomType === 'ken_burns') {
+                plan.zoomSequence = Array(plan.segmentCount).fill(null).map((_, i) => i % 2 === 0 ? 'slow_zoom_in' : 'slow_zoom_out');
+            } else {
+                // Default to slow_zoom_in for visual energy
+                plan.zoomSequence = Array(plan.segmentCount).fill(plan.zoomType || 'slow_zoom_in');
+            }
         }
-        console.log(`[ReelPlan] Targeted ${plan.targetDurationSeconds}s with ${plan.segmentCount} segments. ZoomType: ${plan.zoomType}`);
+
+        // Ensure zoomSequence matches segment count (truncate or extend if needed)
+        if (plan.zoomSequence.length < plan.segmentCount) {
+            const filler = plan.zoomSequence[plan.zoomSequence.length - 1] || 'slow_zoom_in';
+            while (plan.zoomSequence.length < plan.segmentCount) {
+                plan.zoomSequence.push(filler);
+            }
+        } else if (plan.zoomSequence.length > plan.segmentCount) {
+            plan.zoomSequence = plan.zoomSequence.slice(0, plan.segmentCount);
+        }
+
+        console.log(`[ReelPlan] Targeted ${plan.targetDurationSeconds}s with ${plan.segmentCount} segments. ZoomSequence: ${JSON.stringify(plan.zoomSequence)}`);
 
         return plan;
     }
