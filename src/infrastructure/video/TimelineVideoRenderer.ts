@@ -434,9 +434,15 @@ export class TimelineVideoRenderer implements IVideoRenderer {
             }
         `;
 
-        // Show for the last 5 seconds (or max 1/3 of video if short)
-        const duration = Math.min(5, manifest.durationSeconds / 3);
-        const start = Math.max(0, manifest.durationSeconds - duration);
+        // Show for the duration of the last segment (or last 5 seconds if no segments)
+        let duration = 5;
+        let start = Math.max(0, manifest.durationSeconds - duration);
+
+        if (manifest.segments && manifest.segments.length > 0) {
+            const lastSegment = manifest.segments[manifest.segments.length - 1];
+            start = lastSegment.start;
+            duration = lastSegment.end - lastSegment.start;
+        }
 
         return {
             clips: [{
@@ -449,13 +455,16 @@ export class TimelineVideoRenderer implements IVideoRenderer {
                 },
                 start,
                 length: duration,
-                position: 'center',
+                position: 'bottom',
+                offset: {
+                    y: 0.15  // 15% from bottom to avoid overlap with captions
+                },
                 transition: {
                     in: 'slideUp',
                     out: 'fade'
                 },
                 fit: 'contain',
-                scale: 0.9
+                scale: 0.85
             }]
         };
     }
