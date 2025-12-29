@@ -387,6 +387,7 @@ export class TimelineVideoRenderer implements IVideoRenderer {
 
         const html = `
             <div class="contact-card">
+                ${b.logoUrl ? `<img src="${b.logoUrl}" class="logo">` : ''}
                 <h1>${b.businessName}</h1>
                 ${details.map(d => `<p>${d}</p>`).join('')}
             </div>
@@ -407,6 +408,13 @@ export class TimelineVideoRenderer implements IVideoRenderer {
                 width: 90%;
                 border: 2px solid rgba(255, 255, 255, 0.3);
                 box-shadow: 0 20px 50px rgba(0,0,0,0.8);
+            }
+            .logo {
+                width: 150px;
+                height: 150px;
+                object-fit: contain;
+                margin-bottom: 20px;
+                border-radius: 20px;
             }
             h1 {
                 font-size: 42px;

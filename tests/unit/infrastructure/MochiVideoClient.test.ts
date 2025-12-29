@@ -128,7 +128,7 @@ describe('MochiVideoClient', () => {
             await expect(client.generateAnimatedVideo({
                 durationSeconds: 5,
                 theme: 'Test',
-            })).rejects.toThrow('Remote video generation failed: GPU unavailable');
+            })).rejects.toThrow('Remote Mochi generation failed: GPU unavailable');
         });
 
         test('should throw if no video URL can be extracted', async () => {
@@ -144,7 +144,7 @@ describe('MochiVideoClient', () => {
             await expect(client.generateAnimatedVideo({
                 durationSeconds: 5,
                 theme: 'Test',
-            })).rejects.toThrow('Could not extract video URL from Remote response');
+            })).rejects.toThrow('Remote Mochi generation failed: Could not extract video URL from Mochi response');
         });
     });
 });

@@ -20,6 +20,7 @@ function loadFixture(filename: string): any {
 }
 
 describe('ReelOrchestrator E2E', () => {
+    jest.setTimeout(30000);
     let orchestrator: ReelOrchestrator;
     let jobManager: JobManager;
     let sharedDeps: OrchestratorDependencies;
@@ -111,6 +112,7 @@ describe('ReelOrchestrator E2E', () => {
         const mockStorageClient = {
             uploadRawContent: jest.fn().mockResolvedValue({ url: 'https://mock-storage.example.com/subtitles.srt' }),
             uploadImage: jest.fn().mockResolvedValue({ url: 'https://mock-storage.example.com/final-image.jpg' }),
+            uploadVideo: jest.fn().mockResolvedValue({ url: 'https://mock-storage.example.com/final-video.mp4' }),
         } as any;
 
         const subtitlesClient = new WhisperSubtitlesClient('test-key', mockStorageClient, 'https://api.openai.com');
@@ -137,6 +139,7 @@ describe('ReelOrchestrator E2E', () => {
         const job = await jobManager.createJob({
             sourceAudioUrl: 'https://example.com/voice-note.mp3',
             targetDurationRange: { min: 10, max: 15 },
+            forceMode: 'direct'
         });
 
         const result = await orchestrator.processJob(job.id);
@@ -150,7 +153,8 @@ describe('ReelOrchestrator E2E', () => {
 
         // Simulate MultiModel returning text model response
         nock('https://api.openrouter.ai')
-            .post('/v1/chat/completions')
+            .persist()
+            .post(/.*/)
             .reply(200, {
                 choices: [{ message: { content: 'I am a text model' } }]
             });

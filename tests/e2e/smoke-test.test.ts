@@ -69,8 +69,8 @@ describe('Smoke Test - Real API Integration', () => {
             const primaryImageClient = config.multiModelImageApiKey
                 ? new MultiModelImageClient(
                     config.multiModelImageApiKey,
-                    config.openrouterModel,
-                    config.openrouterBaseUrl
+                    config.multiModelImageModel,
+                    config.multiModelImageBaseUrl
                 )
                 : undefined;
 
@@ -92,7 +92,7 @@ describe('Smoke Test - Real API Integration', () => {
             );
             const videoRenderer = new TimelineVideoRenderer(
                 config.timelineApiKey,
-                config.shotstackBaseUrl
+                config.timelineBaseUrl
             );
 
             // Use internal music catalog

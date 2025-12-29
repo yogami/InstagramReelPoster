@@ -16,7 +16,7 @@ export class IntentDetectionStep implements PipelineStep {
     ) { }
 
     shouldSkip(context: JobContext): boolean {
-        return context.isAnimatedMode !== undefined;
+        return context.isAnimatedMode !== undefined || !!context.forceMode;
     }
 
     async execute(context: JobContext): Promise<JobContext> {

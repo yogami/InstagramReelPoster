@@ -13,6 +13,7 @@ import { ImageStep } from './steps/ImageStep';
 import { RenderStep } from './steps/RenderStep';
 import { SubtitlesStep } from './steps/SubtitlesStep';
 import { AnimatedVideoStep } from './steps/AnimatedVideoStep';
+import { HookStep } from './steps/HookStep';
 
 import { VoiceoverService } from '../services/VoiceoverService';
 import { ImageGenerationService } from '../services/ImageGenerationService';
@@ -40,6 +41,11 @@ export function createStandardPipeline(deps: PipelineDependencies): PipelineStep
 
     // 4. Planning
     steps.push(new PlanningStep(deps.llmClient, deps.jobManager));
+
+    // 4.5 Hook Optimization
+    if (deps.hookAndStructureService) {
+        steps.push(new HookStep(deps.hookAndStructureService, deps.jobManager));
+    }
 
     // 5. Commentary
     steps.push(new CommentaryStep(deps.llmClient, deps.jobManager));

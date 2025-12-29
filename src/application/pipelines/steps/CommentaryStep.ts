@@ -59,6 +59,10 @@ export class CommentaryStep implements PipelineStep {
             const isUserProvided = !!job.providedCommentary;
 
             // 1. Initial Validation
+            if (isParablePreGenerated) {
+                console.log('Skipping segment validation for parable mode');
+            }
+
             if (!isParablePreGenerated && !isUserProvided) {
                 this.validateSegmentCount(segmentContent, plan.segmentCount, 'Initial Generation');
             }

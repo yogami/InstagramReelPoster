@@ -6,7 +6,9 @@
 import { ReelJob } from '../../domain/entities/ReelJob';
 import { ReelPlan, SegmentContent } from '../../domain/ports/ILlmClient';
 import { Segment } from '../../domain/entities/Segment';
-import { ContentMode } from '../../domain/entities/Parable';
+import { ContentMode, ForceMode } from '../../domain/entities/Parable';
+
+import { HookPlan } from '../../domain/entities/Growth';
 
 /**
  * JobContext carries all state through the pipeline.
@@ -23,13 +25,14 @@ export interface JobContext {
     isAnimatedMode?: boolean;
     storyline?: string;
     contentMode?: ContentMode;
-    forceMode?: string;
+    forceMode?: ForceMode;
 
     // Planning
     plan?: ReelPlan;
     segmentContent?: SegmentContent[];
     parableIntent?: unknown;
     parableScriptPlan?: unknown;
+    hookPlan?: HookPlan;
 
     // Assets
     voiceoverUrl?: string;
@@ -84,6 +87,8 @@ export function createJobContext(jobId: string, job: ReelJob): JobContext {
         hashtags: job.hashtags,
         parableIntent: job.parableIntent,
         parableScriptPlan: job.parableScriptPlan,
+        hookPlan: job.hookPlan,
+        forceMode: job.forceMode,
         isAnimatedMode: job.isAnimatedVideoMode,
     };
 }

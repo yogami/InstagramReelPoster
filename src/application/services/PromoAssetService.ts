@@ -62,19 +62,22 @@ export class PromoAssetService {
         await this.updateJobStatus(jobId, 'generating_images', 'Creating visuals...');
 
         // Resolve media for each scene (user > scraped > AI)
+        const websiteAnalysis = (await this.deps.jobManager.getJob(jobId))?.websiteAnalysis;
+        const logoUrl = websiteAnalysis?.logoUrl || job.manifest?.logoUrl;
         const scrapedMedia = promoScript?.compliance?.source === 'public-website'
-            ? (await this.deps.jobManager.getJob(jobId))?.websiteAnalysis?.scrapedMedia || []
+            ? websiteAnalysis?.scrapedMedia || []
             : [];
         const userProvidedMedia = job.websitePromoInput?.providedMedia || [];
         const resolvedMedia = this.resolveMediaForScenes(
             promoScript?.scenes || [],
             userProvidedMedia,
-            scrapedMedia
+            scrapedMedia,
+            logoUrl
         );
 
         // Generate images only for scenes needing AI (gap fill), with CTA verification
         const segmentsWithImages = await this.generateImagesWithPriority(
-            segments, resolvedMedia, jobId, promoScript?.scenes
+            segments, resolvedMedia, jobId, promoScript?.scenes, logoUrl, websiteAnalysis
         );
         await this.deps.jobManager.updateJob(jobId, { segments: segmentsWithImages });
 
@@ -198,7 +201,8 @@ export class PromoAssetService {
     private resolveMediaForScenes(
         scenes: PromoSceneContent[],
         userMedia: string[] = [],
-        scrapedMedia: ScrapedMedia[] = []
+        scrapedMedia: ScrapedMedia[] = [],
+        logoUrl?: string
     ): (string | null)[] {
         const resolvedMedia: (string | null)[] = [];
         let userMediaIndex = 0;
@@ -206,6 +210,13 @@ export class PromoAssetService {
 
         for (let i = 0; i < scenes.length; i++) {
             const scene = scenes[i];
+
+            // Special Case: CTA scene prioritizes the logo for branding consistency
+            if (scene.role === 'cta' && logoUrl && userMediaIndex >= userMedia.length) {
+                resolvedMedia.push(logoUrl);
+                console.log(`[MediaResolver] Scene ${i + 1} (cta): Using business logo`);
+                continue;
+            }
 
             // Priority 1: User-provided media
             if (userMediaIndex < userMedia.length) {
@@ -249,7 +260,9 @@ export class PromoAssetService {
         segments: Segment[],
         resolvedMedia: (string | null)[],
         jobId: string,
-        scenes?: { role: string }[]
+        scenes?: { role: string }[],
+        logoUrl?: string,
+        websiteAnalysis?: any
     ): Promise<Segment[]> {
         console.log(`Generating images with priority sourcing for ${segments.length} segments...`);
 
@@ -291,6 +304,13 @@ export class PromoAssetService {
                             publicId: `seg_${i}_${Date.now()}`
                         });
                         finalImageUrl = uploadResult.url;
+
+                        // If this was the logo used for CTA, update analysis for other uses (like branding card)
+                        if (preResolvedUrl === logoUrl && websiteAnalysis) {
+                            await this.deps.jobManager.updateJob(jobId, {
+                                websiteAnalysis: { ...websiteAnalysis, logoUrl: finalImageUrl }
+                            });
+                        }
                     } catch (uploadError) {
                         console.warn('Failed to upload image to Cloudinary, using original URL:', uploadError);
                     }

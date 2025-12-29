@@ -120,6 +120,27 @@ describe('WebsiteScraperClient', () => {
             expect(result.openingHours).toContain('Mon-Fri: 9:00 - 18:00');
         });
 
+        it('should detect email and phone from contact sections', async () => {
+            nock('https://contact-test.de')
+                .get('/')
+                .reply(200, `
+                    <html>
+                        <body>
+                            <footer id="footer">
+                                <p>Contact us: sales@berlinailabs.de</p>
+                                <p>Tel: +49 30 12345678</p>
+                                <a href="mailto:support@berlinailabs.de">Email Support</a>
+                            </footer>
+                        </body>
+                    </html>
+                `);
+
+            const result = await client.scrapeWebsite('https://contact-test.de/');
+
+            expect(result.email).toBe('sales@berlinailabs.de');
+            expect(result.phone).toContain('49 30 12345678');
+        });
+
         it('should extract business name from og:site_name', async () => {
             nock('https://fancy-restaurant.de')
                 .get('/')

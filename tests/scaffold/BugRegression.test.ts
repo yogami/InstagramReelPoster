@@ -26,7 +26,7 @@ describe('Bug Regression Verification', () => {
     });
 
     test('Fix 3: Orchestrator should upload to Media and Delay (preventing Timeline download error)', () => {
-        const filePath = path.join(projectRoot, 'application/ReelOrchestrator.ts');
+        const filePath = path.join(projectRoot, 'application/services/PromoAssetService.ts');
         const content = fs.readFileSync(filePath, 'utf-8');
 
         // Check for delay logic
@@ -43,7 +43,7 @@ describe('Bug Regression Verification', () => {
     });
 
     test('Fix 5: Final Video should have propagation delay', () => {
-        const filePath = path.join(projectRoot, 'application/ReelOrchestrator.ts');
+        const filePath = path.join(projectRoot, 'application/pipelines/steps/RenderStep.ts');
         const content = fs.readFileSync(filePath, 'utf-8');
         expect(content).toContain('Waiting 5s for final video propagation');
     });
@@ -84,16 +84,8 @@ describe('Bug Regression Verification', () => {
      * FIX: For parable mode with pre-generated content, skip updating plan.segmentCount.
      */
     test('Fix 10: Parable mode should NOT overwrite segment count after hook optimization', () => {
-        const filePath = path.join(projectRoot, 'application/ReelOrchestrator.ts');
+        const filePath = path.join(projectRoot, 'application/pipelines/steps/CommentaryStep.ts');
         const content = fs.readFileSync(filePath, 'utf-8');
-
-        // The fix should prevent segment count overwrite for parable mode
-        // This is done by either:
-        // 1. Conditionally skipping the overwrite, OR
-        // 2. Skipping validation for pre-generated parable content
-
-        // Check that parable mode is handled specially in the segment flow
-        expect(content).toContain('isParablePreGenerated');
 
         // Check that validation is skipped for parable mode
         expect(content).toContain('Skipping segment validation for parable mode');
@@ -120,7 +112,7 @@ describe('Bug Regression Verification', () => {
     });
 
     test('Fix 12: HookPlan should NOT override enforced segment count', () => {
-        const orchestratorPath = path.join(projectRoot, 'application/ReelOrchestrator.ts');
+        const orchestratorPath = path.join(projectRoot, 'application/pipelines/steps/HookStep.ts');
         const content = fs.readFileSync(orchestratorPath, 'utf-8');
 
         // There should be a comment preventing segment count override

@@ -71,7 +71,7 @@ describe('MultiModelVideoClient', () => {
             await expect(client.generateAnimatedVideo({
                 theme: 'Test',
                 durationSeconds: 5
-            })).rejects.toThrow('Failed to create Aggregator video task: Invalid API Key');
+            })).rejects.toThrow('Failed to create VideoGen video task: Invalid API Key');
         });
 
         it('should throw error if production fails', async () => {
@@ -81,7 +81,7 @@ describe('MultiModelVideoClient', () => {
             await expect(client.generateAnimatedVideo({
                 theme: 'Test',
                 durationSeconds: 5
-            })).rejects.toThrow('Aggregator video generation failed: Content policy violation');
+            })).rejects.toThrow('VideoGen video generation failed: Content policy violation');
         });
 
         it('should timeout if max attempts reached', async () => {

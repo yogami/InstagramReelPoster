@@ -17,7 +17,7 @@ describe('SegmentMusicClient', () => {
 
     describe('constructor', () => {
         test('should throw error if apiKey is empty', () => {
-            expect(() => new SegmentMusicClient('')).toThrow('Kie.ai API key is required');
+            expect(() => new SegmentMusicClient('')).toThrow('VideoGen API key is required');
         });
 
         test('should create client with valid apiKey', () => {
@@ -126,185 +126,185 @@ describe('SegmentMusicClient', () => {
                 durationSeconds: 30
             };
 
-            await expect(client.generateMusic(request)).rejects.toThrow('No job ID returned from Kie.ai');
-        });
-
-        test('should throw with error message on API failure', async () => {
-            const client = new SegmentMusicClient('test-api-key', 'https://api.kie.ai/suno', 100, 1);
-
-            mockedAxios.post.mockRejectedValueOnce({
-                isAxiosError: true,
-                response: {
-                    data: { message: 'Invalid API key' }
-                }
-            });
-
-            (axios.isAxiosError as unknown as jest.Mock) = jest.fn().mockReturnValue(true);
-
-            const request: MusicGenerationRequest = {
-                descriptionPrompt: 'test music',
-                durationSeconds: 30
-            };
-
-            await expect(client.generateMusic(request)).rejects.toThrow('Music generation failed to start: Invalid API key');
+            await expect(client.generateMusic(request)).rejects.toThrow('No job ID returned from VideoGen');
         });
     });
 
-    describe('pollForCompletion', () => {
-        test('should poll multiple times before success', async () => {
-            const client = new SegmentMusicClient('test-api-key', 'https://api.kie.ai/suno', 100, 10);
+    test('should throw with error message on API failure', async () => {
+        const client = new SegmentMusicClient('test-api-key', 'https://api.kie.ai/suno', 100, 1);
 
-            mockedAxios.post.mockResolvedValueOnce({
-                data: { jobId: 'test-job-123' }
-            });
-
-            // First poll: still processing
-            mockedAxios.get
-                .mockResolvedValueOnce({ data: { status: 'processing' } })
-                .mockResolvedValueOnce({ data: { status: 'processing' } })
-                .mockResolvedValueOnce({
-                    data: {
-                        status: 'completed',
-                        audio_url: 'https://example.com/music.mp3'
-                    }
-                });
-
-            const request: MusicGenerationRequest = {
-                descriptionPrompt: 'ambient music',
-                durationSeconds: 30
-            };
-
-            const resultPromise = client.generateMusic(request);
-            await jest.runAllTimersAsync();
-            const result = await resultPromise;
-
-            expect(mockedAxios.get).toHaveBeenCalledTimes(3);
-            expect(result.audioUrl).toBe('https://example.com/music.mp3');
+        mockedAxios.post.mockRejectedValueOnce({
+            isAxiosError: true,
+            response: {
+                data: { message: 'Invalid API key' }
+            }
         });
 
-        test('should throw on failed status', async () => {
-            jest.useRealTimers(); // Use real timers for this test
-            const client = new SegmentMusicClient('test-api-key', 'https://api.kie.ai/suno', 10, 5);
+        (axios.isAxiosError as unknown as jest.Mock) = jest.fn().mockReturnValue(true);
 
-            mockedAxios.post.mockResolvedValueOnce({
-                data: { jobId: 'test-job-123' }
-            });
+        const request: MusicGenerationRequest = {
+            descriptionPrompt: 'test music',
+            durationSeconds: 30
+        };
 
-            mockedAxios.get.mockResolvedValueOnce({
-                data: {
-                    status: 'failed',
-                    error: 'Generation failed due to content policy'
-                }
-            });
-
-            const request: MusicGenerationRequest = {
-                descriptionPrompt: 'test music',
-                durationSeconds: 30
-            };
-
-            await expect(client.generateMusic(request)).rejects.toThrow('Music generation failed: Generation failed due to content policy');
-        });
-
-        test('should throw on timeout', async () => {
-            jest.useRealTimers(); // Use real timers for this test
-            const client = new SegmentMusicClient('test-api-key', 'https://api.kie.ai/suno', 10, 2);
-
-            mockedAxios.post.mockResolvedValueOnce({
-                data: { jobId: 'test-job-123' }
-            });
-
-            // Always return processing status
-            mockedAxios.get.mockResolvedValue({ data: { status: 'processing' } });
-
-            const request: MusicGenerationRequest = {
-                descriptionPrompt: 'test music',
-                durationSeconds: 30
-            };
-
-            await expect(client.generateMusic(request)).rejects.toThrow('Music generation timed out');
-        });
-
-        test('should throw if no audio URL in completed response', async () => {
-            jest.useRealTimers(); // Use real timers for this test
-            const client = new SegmentMusicClient('test-api-key', 'https://api.kie.ai/suno', 10, 5);
-
-            mockedAxios.post.mockResolvedValueOnce({
-                data: { jobId: 'test-job-123' }
-            });
-
-            mockedAxios.get.mockResolvedValueOnce({
-                data: { status: 'completed' } // No audio_url
-            });
-
-            const request: MusicGenerationRequest = {
-                descriptionPrompt: 'test music',
-                durationSeconds: 30
-            };
-
-            await expect(client.generateMusic(request)).rejects.toThrow('No audio URL in completed response');
-        });
+        await expect(client.generateMusic(request)).rejects.toThrow('Music generation failed to start: Invalid API key');
     });
+});
 
-    describe('buildDescriptionPrompt', () => {
-        test('should include ambient and eastern requirements', async () => {
-            const client = new SegmentMusicClient('test-api-key', 'https://api.kie.ai/suno', 100, 5);
+describe('pollForCompletion', () => {
+    test('should poll multiple times before success', async () => {
+        const client = new SegmentMusicClient('test-api-key', 'https://api.kie.ai/suno', 100, 10);
 
-            mockedAxios.post.mockResolvedValueOnce({
-                data: { jobId: 'test-job-123' }
-            });
+        mockedAxios.post.mockResolvedValueOnce({
+            data: { jobId: 'test-job-123' }
+        });
 
-            mockedAxios.get.mockResolvedValueOnce({
+        // First poll: still processing
+        mockedAxios.get
+            .mockResolvedValueOnce({ data: { status: 'processing' } })
+            .mockResolvedValueOnce({ data: { status: 'processing' } })
+            .mockResolvedValueOnce({
                 data: {
                     status: 'completed',
                     audio_url: 'https://example.com/music.mp3'
                 }
             });
 
-            const request: MusicGenerationRequest = {
-                descriptionPrompt: 'calm meditation',
-                durationSeconds: 30
-            };
+        const request: MusicGenerationRequest = {
+            descriptionPrompt: 'ambient music',
+            durationSeconds: 30
+        };
 
-            const resultPromise = client.generateMusic(request);
-            await jest.runAllTimersAsync();
-            await resultPromise;
+        const resultPromise = client.generateMusic(request);
+        await jest.runAllTimersAsync();
+        const result = await resultPromise;
 
-            // Verify the prompt sent to the API
-            expect(mockedAxios.post).toHaveBeenCalledWith(
-                expect.any(String),
-                expect.objectContaining({
-                    gpt_description_prompt: expect.stringContaining('ambient')
-                }),
-                expect.any(Object)
-            );
-        });
+        expect(mockedAxios.get).toHaveBeenCalledTimes(3);
+        expect(result.audioUrl).toBe('https://example.com/music.mp3');
     });
 
-    describe('extractTagsFromPrompt', () => {
-        test('should always include ai-generated tag', async () => {
-            const client = new SegmentMusicClient('test-api-key', 'https://api.kie.ai/suno', 100, 5);
+    test('should throw on failed status', async () => {
+        jest.useRealTimers(); // Use real timers for this test
+        const client = new SegmentMusicClient('test-api-key', 'https://api.kie.ai/suno', 10, 5);
 
-            mockedAxios.post.mockResolvedValueOnce({
-                data: { jobId: 'test-job-123' }
-            });
-
-            mockedAxios.get.mockResolvedValueOnce({
-                data: {
-                    status: 'completed',
-                    audio_url: 'https://example.com/music.mp3'
-                }
-            });
-
-            const request: MusicGenerationRequest = {
-                descriptionPrompt: 'some random prompt without common tags',
-                durationSeconds: 30
-            };
-
-            const resultPromise = client.generateMusic(request);
-            await jest.runAllTimersAsync();
-            const result = await resultPromise;
-
-            expect(result.tags).toContain('ai-generated');
+        mockedAxios.post.mockResolvedValueOnce({
+            data: { jobId: 'test-job-123' }
         });
+
+        mockedAxios.get.mockResolvedValueOnce({
+            data: {
+                status: 'failed',
+                error: 'Generation failed due to content policy'
+            }
+        });
+
+        const request: MusicGenerationRequest = {
+            descriptionPrompt: 'test music',
+            durationSeconds: 30
+        };
+
+        await expect(client.generateMusic(request)).rejects.toThrow('Music generation failed: Generation failed due to content policy');
+    });
+
+    test('should throw on timeout', async () => {
+        jest.useRealTimers(); // Use real timers for this test
+        const client = new SegmentMusicClient('test-api-key', 'https://api.kie.ai/suno', 10, 2);
+
+        mockedAxios.post.mockResolvedValueOnce({
+            data: { jobId: 'test-job-123' }
+        });
+
+        // Always return processing status
+        mockedAxios.get.mockResolvedValue({ data: { status: 'processing' } });
+
+        const request: MusicGenerationRequest = {
+            descriptionPrompt: 'test music',
+            durationSeconds: 30
+        };
+
+        await expect(client.generateMusic(request)).rejects.toThrow('Music generation timed out');
+    });
+
+    test('should throw if no audio URL in completed response', async () => {
+        jest.useRealTimers(); // Use real timers for this test
+        const client = new SegmentMusicClient('test-api-key', 'https://api.kie.ai/suno', 10, 5);
+
+        mockedAxios.post.mockResolvedValueOnce({
+            data: { jobId: 'test-job-123' }
+        });
+
+        mockedAxios.get.mockResolvedValueOnce({
+            data: { status: 'completed' } // No audio_url
+        });
+
+        const request: MusicGenerationRequest = {
+            descriptionPrompt: 'test music',
+            durationSeconds: 30
+        };
+
+        await expect(client.generateMusic(request)).rejects.toThrow('No audio URL in completed response');
+    });
+});
+
+describe('buildDescriptionPrompt', () => {
+    test('should include ambient and eastern requirements', async () => {
+        const client = new SegmentMusicClient('test-api-key', 'https://api.kie.ai/suno', 100, 5);
+
+        mockedAxios.post.mockResolvedValueOnce({
+            data: { jobId: 'test-job-123' }
+        });
+
+        mockedAxios.get.mockResolvedValueOnce({
+            data: {
+                status: 'completed',
+                audio_url: 'https://example.com/music.mp3'
+            }
+        });
+
+        const request: MusicGenerationRequest = {
+            descriptionPrompt: 'calm meditation',
+            durationSeconds: 30
+        };
+
+        const resultPromise = client.generateMusic(request);
+        await jest.runAllTimersAsync();
+        await resultPromise;
+
+        // Verify the prompt sent to the API
+        expect(mockedAxios.post).toHaveBeenCalledWith(
+            expect.any(String),
+            expect.objectContaining({
+                gpt_description_prompt: expect.stringContaining('ambient')
+            }),
+            expect.any(Object)
+        );
+    });
+});
+
+describe('extractTagsFromPrompt', () => {
+    test('should always include ai-generated tag', async () => {
+        const client = new SegmentMusicClient('test-api-key', 'https://api.kie.ai/suno', 100, 5);
+
+        mockedAxios.post.mockResolvedValueOnce({
+            data: { jobId: 'test-job-123' }
+        });
+
+        mockedAxios.get.mockResolvedValueOnce({
+            data: {
+                status: 'completed',
+                audio_url: 'https://example.com/music.mp3'
+            }
+        });
+
+        const request: MusicGenerationRequest = {
+            descriptionPrompt: 'some random prompt without common tags',
+            durationSeconds: 30
+        };
+
+        const resultPromise = client.generateMusic(request);
+        await jest.runAllTimersAsync();
+        const result = await resultPromise;
+
+        expect(result.tags).toContain('ai-generated');
     });
 });

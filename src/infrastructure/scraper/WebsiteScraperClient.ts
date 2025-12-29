@@ -660,18 +660,36 @@ export class WebsiteScraperClient implements IWebsiteScraperClient {
         return undefined;
     }
 
-    /**
-     * Detects email address.
-     */
     private detectEmail(text: string, html: string): string | undefined {
-        // Check mailto: links first as they are most reliable
-        const mailtoMatch = html.match(/mailto:([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i);
-        if (mailtoMatch) {
-            return mailtoMatch[1];
+        const emails: string[] = [];
+
+        // 1. Collect from mailto links
+        const mailtoMatches = html.matchAll(/mailto:([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/gi);
+        for (const match of mailtoMatches) {
+            emails.push(match[1].toLowerCase());
         }
 
-        const emailPattern = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;
-        const match = text.match(emailPattern);
-        return match ? match[0] : undefined;
+        // 2. Collect from raw text
+        const emailPattern = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
+        const textMatches = text.match(emailPattern);
+        if (textMatches) {
+            for (const match of textMatches) {
+                emails.push(match.toLowerCase());
+            }
+        }
+
+        if (emails.length === 0) return undefined;
+
+        // Dedup
+        const uniqueEmails = Array.from(new Set(emails));
+
+        // 3. Priority Scoring
+        const priorities = ['sales', 'info', 'contact', 'hello', 'office'];
+        for (const p of priorities) {
+            const found = uniqueEmails.find(e => e.includes(p));
+            if (found) return found;
+        }
+
+        return uniqueEmails[0];
     }
 }

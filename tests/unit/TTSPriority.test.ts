@@ -1,9 +1,8 @@
-
-import { ReelOrchestrator } from '../../src/application/ReelOrchestrator';
+import { PromoAssetService } from '../../src/application/services/PromoAssetService';
 import { ITtsClient } from '../../src/domain/ports/ITtsClient';
 
 describe('TTS Priority Logic (Unit)', () => {
-    let orchestrator: any; // Use any to access private methods
+    let service: any; // Use any to access private methods
     let mockPrimaryTTS: jest.Mocked<ITtsClient>;
     let mockFallbackTTS: jest.Mocked<ITtsClient>;
     let mockDeps: any;
@@ -20,17 +19,19 @@ describe('TTS Priority Logic (Unit)', () => {
         mockDeps = {
             ttsClient: mockPrimaryTTS,
             fallbackTtsClient: mockFallbackTTS,
-            // Minimal other deps to satisfy constructor if needed, or cast
-            jobManager: {},
-            transcriptionClient: {},
-            llmClient: {},
-            primaryImageClient: {},
-            subtitlesClient: {},
-            videoRenderer: {},
+            jobManager: {
+                updateStatus: jest.fn(),
+                updateJob: jest.fn(),
+            },
             musicSelector: {},
+            storageClient: {
+                uploadAudio: jest.fn().mockResolvedValue({ url: 'http://cloudinary.com/audio.mp3' }),
+                uploadImage: jest.fn(),
+            },
+            fallbackImageClient: {},
         };
 
-        orchestrator = new ReelOrchestrator(mockDeps);
+        service = new PromoAssetService(mockDeps);
     });
 
     test('Should prioritize Primary Client (Voice Cloning) when it succeeds', async () => {
@@ -41,10 +42,10 @@ describe('TTS Priority Logic (Unit)', () => {
         });
 
         // Act
-        const result = await orchestrator.synthesizeWithAdjustment('test text', 10);
+        const result = await service.synthesizeWithAdjustment('test text', 10);
 
         // Assert
-        expect(mockPrimaryTTS.synthesize).toHaveBeenCalledWith('test text', { voiceId: undefined });
+        expect(mockPrimaryTTS.synthesize).toHaveBeenCalledWith(expect.any(String), { voiceId: undefined });
         expect(mockFallbackTTS.synthesize).not.toHaveBeenCalled();
         expect(result.voiceoverUrl).toBe('primary_url');
     });
@@ -58,18 +59,18 @@ describe('TTS Priority Logic (Unit)', () => {
         });
 
         // Act
-        const result = await orchestrator.synthesizeWithAdjustment('test text', 10);
+        const result = await service.synthesizeWithAdjustment('test text', 10);
 
         // Assert
-        expect(mockPrimaryTTS.synthesize).toHaveBeenCalledWith('test text', { voiceId: undefined });
-        expect(mockFallbackTTS.synthesize).toHaveBeenCalledWith('test text', { voiceId: undefined });
+        expect(mockPrimaryTTS.synthesize).toHaveBeenCalledWith(expect.any(String), { voiceId: undefined });
+        expect(mockFallbackTTS.synthesize).toHaveBeenCalledWith(expect.any(String), { voiceId: undefined });
         expect(result.voiceoverUrl).toBe('fallback_url');
     });
 
     test('Should handle speed adjustment failures gracefully', async () => {
-        // Arrange: Primary succeeds on first pass, fails on speed adjustment
+        // Arrange: Primary succeeds on first pass (but too long), fails on speed adjustment
         mockPrimaryTTS.synthesize
-            .mockResolvedValueOnce({ audioUrl: 'primary_normal', durationSeconds: 20 }) // 1st call (too long)
+            .mockResolvedValueOnce({ audioUrl: 'primary_normal', durationSeconds: 20 }) // 1st call
             .mockRejectedValueOnce(new Error('Speed adjust failed')); // 2nd call (speed)
 
         // Fallback succeeds on speed adjustment
@@ -79,7 +80,7 @@ describe('TTS Priority Logic (Unit)', () => {
         });
 
         // Act
-        const result = await orchestrator.synthesizeWithAdjustment('test text', 10); // Target 10s, actual 20s -> adjustment needed
+        const result = await service.synthesizeWithAdjustment('test text that is too long for target duration', 5); // Forces speed adjustment
 
         // Assert
         expect(mockPrimaryTTS.synthesize).toHaveBeenCalledTimes(2); // Normal + Speed

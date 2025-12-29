@@ -45,7 +45,11 @@ export class RenderStep implements PipelineStep {
         });
 
         const result = await this.videoRenderer.render(manifest);
-        const finalVideoUrl = result.videoUrl;
+        let finalVideoUrl = result.videoUrl;
+
+        // Waiting 5s for final video propagation
+        console.log('Waiting 5s for final video propagation...');
+        await new Promise(resolve => setTimeout(resolve, 5000));
 
         await this.jobManager.updateJob(job.id, {
             finalVideoUrl,
