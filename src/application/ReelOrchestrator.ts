@@ -568,6 +568,14 @@ export class ReelOrchestrator {
 
         await this.deps.jobManager.updateJob(jobId, { manifest });
 
+        console.log('[Manifest] Before rendering:', {
+            duration: manifest.durationSeconds,
+            segmentCount: manifest.segments?.length || 0,
+            segments: manifest.segments?.map(s => ({ start: s.start, end: s.end })),
+            hasBranding: !!manifest.branding,
+            branding: manifest.branding
+        });
+
         await this.deps.jobManager.updateStatus(jobId, 'rendering', 'Rendering final video...');
         const renderResult = await this.deps.videoRenderer.render(manifest);
         let finalVideoUrl = renderResult.videoUrl;
