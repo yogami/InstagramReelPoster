@@ -128,11 +128,10 @@ export class PromoAssetService {
             console.log(`[TTS] Attempting synthesis with primary client (Fish Audio)...${voiceId ? ` (Voice: ${voiceId})` : ''}`);
             result = await this.deps.ttsClient.synthesize(truncatedText, { voiceId });
         } catch (error: any) {
-            console.error('[TTS] ❌ Primary TTS (Fish Audio) failed. Falling back to Gpt.');
-            console.error(`[TTS] Error Details: ${error.message}`);
+            console.error('[TTS] ❌ Primary TTS (Fish Audio) failed.');
+            console.error(`[TTS] Error: ${error.message}`);
             if (error.response) {
                 console.error(`[TTS] Status: ${error.response.status}`);
-                console.error(`[TTS] Data: ${JSON.stringify(error.response.data)}`);
             }
 
             if (this.deps.fallbackTtsClient) {
@@ -179,8 +178,8 @@ export class PromoAssetService {
                 });
                 voiceoverUrl = uploadResult.url;
                 console.log('[Voiceover] Uploaded successfully:', voiceoverUrl);
-            } catch (uploadError) {
-                console.error('[Voiceover] Cloudinary upload failed, using data URL (may cause API issues):', uploadError);
+            } catch (uploadError: any) {
+                console.error(`[Voiceover] Cloudinary upload failed: ${uploadError.message || 'Unknown error'}`);
             }
         }
 
@@ -351,8 +350,8 @@ export class PromoAssetService {
                 }
 
                 results.push({ ...segment, imageUrl: finalImageUrl });
-            } catch (error) {
-                console.error(`Image generation failed for segment ${i}:`, error);
+            } catch (error: any) {
+                console.error(`Image generation failed for segment ${i}: ${error.message || 'Unknown error'}`);
                 throw error;
             }
         }

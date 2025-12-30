@@ -228,8 +228,8 @@ export class ReelOrchestrator {
                     });
                     finalVideoUrl = uploadResult.url;
                     finalJob = await this.deps.jobManager.updateJob(jobId, { finalVideoUrl, status: 'completed' });
-                } catch (e) {
-                    console.error('Upload failed', e);
+                } catch (e: any) {
+                    console.error(`Upload failed: ${e.message || 'Unknown error'}`);
                 }
             }
 
@@ -293,8 +293,8 @@ export class ReelOrchestrator {
             console.log(`[${job.id}] Sending callback payload:`, JSON.stringify(payload, null, 2));
             await axios.post(job.callbackUrl, payload, { headers });
             console.log(`[${job.id}] Callback notification sent successfully`);
-        } catch (error) {
-            console.error(`[${job.id}] Failed to notify callback:`, error);
+        } catch (error: any) {
+            console.error(`[${job.id}] Failed to notify callback: ${error.message || 'Unknown error'}`);
         }
     }
 

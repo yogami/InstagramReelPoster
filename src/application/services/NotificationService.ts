@@ -82,13 +82,16 @@ export class NotificationService {
 
     private logError(jobId: string, error: unknown): void {
         if (axios.isAxiosError(error)) {
+            const data = error.response?.data;
+            const cleanData = typeof data === 'string' && data.length > 500 ? data.substring(0, 500) + '...' : data;
             console.error(`[${jobId}] Callback failed:`, {
                 status: error.response?.status,
-                data: error.response?.data,
+                data: cleanData,
                 message: error.message,
             });
         } else {
-            console.error(`[${jobId}] Callback error:`, error);
+            const message = error instanceof Error ? error.message : String(error);
+            console.error(`[${jobId}] Callback error: ${message}`);
         }
     }
 }

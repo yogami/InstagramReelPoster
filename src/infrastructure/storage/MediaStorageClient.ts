@@ -27,6 +27,14 @@ export class MediaStorageClient {
     }
 
     /**
+     * Truncates a string for safe logging.
+     */
+    private truncate(str: string, len: number = 100): string {
+        if (!str) return '';
+        return str.length > len ? `${str.substring(0, len)}... [truncated ${str.length - len} chars]` : str;
+    }
+
+    /**
      * Uploads a file from a URL to Media.
      */
     async uploadFromUrl(
@@ -39,16 +47,33 @@ export class MediaStorageClient {
     ): Promise<{ url: string; publicId: string }> {
         const resourceType = options.resourceType || 'auto';
         const isRemote = url.startsWith('http');
+        const isDataUri = url.startsWith('data:');
         const folder = options.folder || 'instagram-reels';
 
         try {
-            // Case 1: Local file path
+            // Case 1: Data URI
+            if (isDataUri) {
+                console.log(`[MediaStorage] Data URI detected (type: ${url.split(';')[0]}, length: ${url.length})`);
+                const result = await cloudinary.uploader.upload(url, {
+                    folder,
+                    public_id: options.publicId,
+                    resource_type: resourceType,
+                    overwrite: true,
+                });
+
+                return {
+                    url: result.secure_url,
+                    publicId: result.public_id,
+                };
+            }
+
+            // Case 2: Local file path
             if (!isRemote) {
                 const stats = fs.statSync(url);
                 const fileSizeInBytes = stats.size;
                 const fileSizeInMB = fileSizeInBytes / (1024 * 1024);
 
-                console.log(`[MediaStorage] Local file detected: ${url} (${fileSizeInMB.toFixed(2)} MB)`);
+                console.log(`[MediaStorage] Local file detected: ${this.truncate(url)} (${fileSizeInMB.toFixed(2)} MB)`);
 
                 if (fileSizeInMB < 90) {
                     // Use standard upload for files < 90MB (Cloudinary limit is usually 100MB for direct)
@@ -112,10 +137,13 @@ export class MediaStorageClient {
                 }
                 throw error;
             }
-        } catch (error) {
-            console.error('[Cloudinary] Detailed Error:', error);
+        } catch (error: any) {
+            const truncatedUrl = this.truncate(url);
+            console.error(`[Cloudinary] Upload failed for ${truncatedUrl}:`, error.message || 'Unknown error');
             const message = error instanceof Error ? error.message : JSON.stringify(error) || 'Unknown error';
-            throw new Error(`Media upload failed: ${message}`);
+            // Truncate message if it contains the URL
+            const cleanMessage = message.length > 500 ? message.substring(0, 500) + '...' : message;
+            throw new Error(`Media upload failed: ${cleanMessage}`);
         }
     }
 

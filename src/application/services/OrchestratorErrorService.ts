@@ -13,7 +13,8 @@ export class OrchestratorErrorService {
      */
     async handlePromoJobError(jobId: string, job: ReelJob, error: unknown): Promise<never> {
         const errorMessage = error instanceof Error ? error.message : String(error);
-        console.error(`[${jobId}] Website promo job failed:`, error);
+        const cleanError = errorMessage.length > 500 ? errorMessage.substring(0, 500) + '...' : errorMessage;
+        console.error(`[${jobId}] Website promo job failed: ${cleanError}`);
 
         failJob(job, errorMessage); // Update job state to failed
         await this.jobManager.updateJob(jobId, { status: 'failed', error: errorMessage });

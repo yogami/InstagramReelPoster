@@ -53,8 +53,8 @@ export class FFmpegVideoRenderer implements IVideoRenderer {
                 videoUrl: uploadResult.url,
                 renderId: jobId,
             };
-        } catch (error) {
-            console.error(`[FFmpeg] Render failed:`, error);
+        } catch (error: any) {
+            console.error(`[FFmpeg] Render failed: ${error.message || 'Unknown error'}`);
             throw error;
         } finally {
             // 4. Cleanup
