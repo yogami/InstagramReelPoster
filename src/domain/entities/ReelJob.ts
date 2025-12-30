@@ -3,6 +3,7 @@ import { ReelManifest } from './ReelManifest';
 import { HookPlan } from './Growth';
 import { ContentMode, ForceMode, ParableIntent, ParableScriptPlan } from './Parable';
 import { WebsitePromoInput, WebsiteAnalysis, BusinessCategory, PromoScriptPlan } from './WebsitePromo';
+import { YouTubeShortInput, YouTubeShortScriptPlan } from './YouTubeShort';
 
 /**
  * Possible statuses for a ReelJob.
@@ -75,6 +76,8 @@ export interface ReelJobInput {
     providedCommentary?: string;
     /** Optional meta-instructions or user description of the reel */
     description?: string;
+    /** YouTube Short input (alternative to transcript/audio for YouTube content) */
+    youtubeShortInput?: YouTubeShortInput;
 }
 
 /**
@@ -179,6 +182,12 @@ export interface ReelJob {
     language?: string;
     /** User-provided commentary (overrides LLM generation) */
     providedCommentary?: string;
+
+    // YouTube Shorts Mode:
+    /** YouTube Short input (if youtube-short mode) */
+    youtubeShortInput?: YouTubeShortInput;
+    /** YouTube Short script plan */
+    youtubeScriptPlan?: YouTubeShortScriptPlan;
 
     /** Timestamps */
     createdAt: Date;

@@ -9,6 +9,7 @@ import { getConfig } from '../../config';
 import { isLinkedInRequest, extractRawNote, createLinkedInDraft, LinkedInDraft, assemblePostContent } from '../../domain/entities/LinkedInDraft';
 import { GptLinkedInDraftService } from '../../infrastructure/linkedin/GptLinkedInDraftService';
 import { WebhookLinkedInPosterService } from '../../infrastructure/linkedin/WebhookLinkedInPosterService';
+import { YouTubeScriptParser } from '../../infrastructure/youtube/YouTubeScriptParser';
 
 /**
  * In-memory storage for pending LinkedIn drafts awaiting "post" command.
@@ -228,6 +229,49 @@ async function processUpdate(
             } catch (error) {
                 console.error('[Telegram] LinkedIn posting failed:', error);
                 await telegramService.sendMessage(chatId, `❌ Failed to post: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            }
+            return;
+        }
+
+        // YOUTUBE SHORT PATH - Check if this is a YouTube Short script
+        if (YouTubeScriptParser.isYouTubeRequest(text)) {
+            console.log(`[Telegram] YouTube Short script request from chat ${chatId}`);
+
+            try {
+                const youtubeInput = YouTubeScriptParser.parse(text);
+                const youtubeScriptPlan = YouTubeScriptParser.toScriptPlan(youtubeInput);
+
+                await telegramService.sendMessage(chatId,
+                    `🎬 *YouTube Short Script Received!*\n\n` +
+                    `Title: _${youtubeInput.title}_\n` +
+                    `Duration: ${youtubeInput.totalDurationSeconds}s\n` +
+                    `Scenes: ${youtubeInput.scenes.length}\n\n` +
+                    `Processing video...`
+                );
+
+                // Create job with YouTube Short input
+                const job = await jobManager.createJob({
+                    transcript: youtubeInput.scenes.map(s => s.narration).join(' '),
+                    youtubeShortInput: youtubeInput,
+                    forceMode: 'youtube-short',
+                    targetDurationRange: { min: 15, max: youtubeInput.totalDurationSeconds + 10 },
+                    callbackUrl: makeWebhookUrl,
+                    telegramChatId: chatId,
+                });
+
+                console.log(`[Telegram] Started YouTube Short job ${job.id}`);
+
+                // Process job (fire and forget)
+                orchestrator.processJob(job.id).catch((err) => {
+                    console.error(`YouTube Short job ${job.id} failed:`, err);
+                    telegramService.sendMessage(chatId, `❌ YouTube Short failed: ${err.message || 'Unknown error'}`);
+                });
+
+            } catch (error) {
+                console.error('[Telegram] YouTube Short parsing failed:', error);
+                await telegramService.sendMessage(chatId,
+                    `❌ Failed to parse YouTube script: ${error instanceof Error ? error.message : 'Unknown error'}`
+                );
             }
             return;
         }

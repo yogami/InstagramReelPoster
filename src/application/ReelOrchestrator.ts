@@ -157,6 +157,12 @@ export class ReelOrchestrator {
         }
 
         try {
+            // YouTube Short Mode Branch
+            if (job.forceMode === 'youtube-short' || job.youtubeShortInput) {
+                console.log(`[${jobId}] 🎬 Using YOUTUBE SHORT pipeline (forceMode: ${job.forceMode})`);
+                return await this.processYouTubeShortJob(jobId, job);
+            }
+
             // Website Promo Mode Branch
             const forceModeCheck = (job as any)?.forceMode || (job as any)?.websitePromoInput?.forceMode;
             if (forceModeCheck === 'website-promo' || job.websitePromoInput) {
@@ -655,5 +661,147 @@ export class ReelOrchestrator {
             imagePrompt: scene.imagePrompt,
             caption: scene.subtitle || scene.narration.substring(0, 100),
         }));
+    }
+
+    /**
+     * Processes a YouTube Short job.
+     * Generates TTS for each scene, creates images, renders final video.
+     */
+    private async processYouTubeShortJob(jobId: string, job: ReelJob): Promise<ReelJob> {
+        const youtubeInput = job.youtubeShortInput;
+        if (!youtubeInput) {
+            throw new Error('YouTube Short input is required');
+        }
+
+        this.logMemoryUsage('Start YouTube Short Pipeline');
+
+        // 1. Generate full narration text
+        const fullNarration = youtubeInput.scenes.map(s => s.narration).join(' ');
+        await this.updateJobStatus(jobId, 'synthesizing_voiceover', 'Generating voiceover...');
+
+        // 2. Generate TTS for full narration
+        const voiceId = job.voiceId || getConfig().ttsCloningVoiceId;
+        const ttsResult = await this.deps.ttsClient.synthesize(fullNarration, { voiceId });
+        const voiceoverUrl = ttsResult.audioUrl;
+        const voiceoverDuration = ttsResult.durationSeconds || youtubeInput.totalDurationSeconds;
+
+        await this.deps.jobManager.updateJob(jobId, {
+            voiceoverUrl,
+            voiceoverDurationSeconds: voiceoverDuration,
+        });
+
+        // 3. Generate images for each scene
+        await this.updateJobStatus(jobId, 'generating_images', 'Creating scene visuals...');
+        const primaryImage = this.deps.primaryImageClient || this.deps.fallbackImageClient;
+        const segments: Segment[] = [];
+        let currentTime = 0;
+
+        for (let i = 0; i < youtubeInput.scenes.length; i++) {
+            const scene = youtubeInput.scenes[i];
+            const sceneDuration = scene.durationSeconds || 10;
+
+            // Generate image
+            let imageUrl: string | undefined;
+            try {
+                const imageResult = await primaryImage.generateImage(scene.visualPrompt);
+                imageUrl = imageResult.imageUrl;
+                if (this.deps.storageClient && imageUrl && !imageUrl.includes('cloudinary')) {
+                    const uploaded = await this.deps.storageClient.uploadImage(imageUrl, {
+                        folder: 'instagram-reels/youtube-images',
+                        publicId: `youtube_${jobId}_scene${i}`,
+                    });
+                    imageUrl = uploaded.url;
+                }
+            } catch (error) {
+                console.warn(`[${jobId}] Failed to generate image for scene ${i}:`, error);
+            }
+
+            segments.push(createSegment({
+                index: i,
+                commentary: scene.narration,
+                imagePrompt: scene.visualPrompt,
+                imageUrl: imageUrl || '',
+                startSeconds: currentTime,
+                endSeconds: currentTime + sceneDuration,
+                caption: scene.title,
+            }));
+
+            currentTime += sceneDuration;
+        }
+
+        await this.deps.jobManager.updateJob(jobId, { segments });
+
+        // 4. Select music (ambient for YouTube Shorts)
+        await this.updateJobStatus(jobId, 'selecting_music', 'Selecting background music...');
+        const musicResult = await this.deps.musicSelector.selectMusic(
+            ['ambient', 'cinematic', 'epic'],
+            voiceoverDuration,
+            youtubeInput.tone || 'epic'
+        );
+
+        if (musicResult) {
+            await this.deps.jobManager.updateJob(jobId, {
+                musicUrl: musicResult.track.audioUrl,
+                musicDurationSeconds: musicResult.track.durationSeconds,
+                musicSource: musicResult.source as 'catalog' | 'internal' | 'ai',
+            });
+        }
+
+        // 5. Build manifest
+        await this.updateJobStatus(jobId, 'building_manifest', 'Preparing video manifest...');
+        const manifest = createReelManifest({
+            durationSeconds: voiceoverDuration,
+            voiceoverUrl,
+            musicUrl: musicResult?.track.audioUrl,
+            segments,
+            subtitlesUrl: '',
+        });
+
+        await this.deps.jobManager.updateJob(jobId, { manifest });
+
+        // 6. Render video
+        await this.updateJobStatus(jobId, 'rendering', 'Rendering final video...');
+        const renderResult = await this.deps.videoRenderer.render(manifest);
+        let finalVideoUrl = renderResult.videoUrl;
+
+        // 7. Upload to permanent storage
+        if (this.deps.storageClient && finalVideoUrl && !finalVideoUrl.includes('cloudinary')) {
+            try {
+                await this.updateJobStatus(jobId, 'uploading', 'Saving to permanent storage...');
+                const uploadResult = await this.deps.storageClient.uploadVideo(finalVideoUrl, {
+                    folder: 'youtube-shorts/final-videos',
+                    publicId: `youtube_${jobId}_${Date.now()}`,
+                    resourceType: 'video',
+                });
+                finalVideoUrl = uploadResult.url;
+            } catch (e) {
+                console.error('[YouTube] Permanent upload failed:', e);
+            }
+        }
+
+        // 8. Complete job
+        const completedJob = completeJob(
+            await this.deps.jobManager.getJob(jobId) as ReelJob,
+            finalVideoUrl,
+            manifest
+        );
+        await this.deps.jobManager.updateJob(jobId, {
+            status: 'completed',
+            finalVideoUrl,
+            manifest,
+        });
+
+        // 9. Notify user
+        if (completedJob.telegramChatId && this.deps.notificationClient) {
+            await this.deps.notificationClient.sendNotification(
+                completedJob.telegramChatId,
+                `✅ *Your YouTube Short is ready!*\n\n🎬 ${youtubeInput.title}\n⏱️ ${voiceoverDuration.toFixed(1)}s\n🎞️ ${segments.length} scenes\n\n${finalVideoUrl}`
+            );
+        }
+
+        // 10. Callback
+        await this.notifyCallback(completedJob);
+
+        return completedJob;
     }
 }
