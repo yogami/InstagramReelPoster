@@ -207,6 +207,8 @@ export class ReelOrchestrator {
                 steps,
                 async (stepName, ctx) => {
                     this.logMemoryUsage(stepName);
+                    // Update the job status for progress tracking
+                    await this.updateJobStatus(jobId, ctx.job.status, `Executing ${stepName}...`);
                 }
             );
 
@@ -647,7 +649,7 @@ export class ReelOrchestrator {
     private async updateJobStatus(jobId: string, status: ReelJobStatus, logMessage: string): Promise<void> {
         console.log(`[${jobId}] ${status}: ${logMessage}`);
         await this.deps.jobManager.updateJob(jobId, {
-            currentStep: status,
+            currentStep: logMessage,
             status: status
         });
     }

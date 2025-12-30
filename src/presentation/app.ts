@@ -188,7 +188,16 @@ function createLlmClient(config: Config) {
             config.personalClone.systemPrompt
         );
     }
-    return new GptLlmClient(config.llmApiKey, config.llmModel);
+
+    // Prioritize OpenRouter (Gemini) if configured, as it's often more reliable/cheap for this use case
+    if (config.openRouterApiKey) {
+        console.log(`🤖 Using OpenRouter LLM: ${config.openRouterModel}`);
+        return new GptLlmClient(config.openRouterApiKey, config.openRouterModel, config.openRouterBaseUrl);
+    }
+
+    // Fallback to OpenAI
+    console.log(`🤖 Using OpenAI LLM: ${config.llmModel}`);
+    return new GptLlmClient(config.llmApiKey, config.llmModel, config.llmBaseUrl);
 }
 
 function createTtsClient(config: Config) {
@@ -264,16 +273,20 @@ function createVideoRenderer(config: Config, cloudinaryClient: MediaStorageClien
         if (!cloudinaryClient) throw new Error('FFmpeg renderer requires Cloudinary configuration');
         const localRenderer = new FFmpegVideoRenderer(cloudinaryClient);
 
-        if (remoteRenderer) {
-            console.log('🎬 Video rendering: Remote FFmpeg (primary) → Local FFmpeg (fallback)');
-            return new FallbackVideoRenderer(remoteRenderer, localRenderer, 'Remote FFmpeg', 'Local FFmpeg');
+        const primaryChain = remoteRenderer
+            ? new FallbackVideoRenderer(remoteRenderer, localRenderer, 'Remote FFmpeg', 'Local FFmpeg')
+            : localRenderer;
+
+        if (config.timelineApiKey) {
+            console.log('🎬 Video rendering: FFmpeg-Chain (primary) → Timeline (fallback safety)');
+            return new FallbackVideoRenderer(primaryChain, timelineRenderer, 'FFmpeg', 'Timeline');
         }
 
         console.log('🎬 Using FFmpeg Video Renderer (Local)');
-        return localRenderer;
+        return primaryChain;
     }
 
-    // Default: 'shortstack' mode
+    // Mode: 'shotstack'
     if (remoteRenderer) {
         console.log('🎬 Video rendering: Remote (primary) → Timeline (fallback)');
         return new FallbackVideoRenderer(remoteRenderer, timelineRenderer, 'Remote', 'Timeline');

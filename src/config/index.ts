@@ -15,6 +15,12 @@ export interface Config {
     // Gpt-based LLM & Services
     llmApiKey: string;
     llmModel: string;
+    llmBaseUrl?: string;
+
+    // OpenRouter (Primary LLM option)
+    openRouterApiKey: string;
+    openRouterBaseUrl: string;
+    openRouterModel: string;
 
     // Voice Cloning TTS
     ttsCloningApiKey: string;
@@ -50,7 +56,7 @@ export interface Config {
     multiModelVideoModel: string;
 
     // Video Renderer
-    videoRenderer: 'shortstack' | 'ffmpeg';
+    videoRenderer: 'shotstack' | 'ffmpeg';
 
     // Timeline Rendering
     timelineApiKey: string;
@@ -155,13 +161,19 @@ export function loadConfig(): Config {
         testMode: getEnvVarBoolean('TEST_MODE', false),
 
         // LLM (Gpt)
-        llmApiKey: getEnvVar('OPENAI_API_KEY'),
-        llmModel: getEnvVar('OPENAI_MODEL', 'gpt-4.1'),
+        llmApiKey: getEnvVar('OPENAI_API_KEY', ''),
+        llmModel: getEnvVar('OPENAI_MODEL', 'gpt-4o'),
+        llmBaseUrl: getEnvVar('OPENAI_BASE_URL', 'https://api.openai.com/v1'),
+
+        // OpenRouter (Primary LLM)
+        openRouterApiKey: getEnvVar('OPENROUTER_API_KEY', ''),
+        openRouterBaseUrl: getEnvVar('OPENROUTER_BASE_URL', 'https://openrouter.ai/api/v1'),
+        openRouterModel: getEnvVar('OPENROUTER_MODEL', 'google/gemini-2.0-flash-exp:free'),
 
         // Voice Cloning TTS (Fish Audio)
-        ttsCloningApiKey: getEnvVar('FISH_AUDIO_API_KEY'),
+        ttsCloningApiKey: getEnvVar('FISH_AUDIO_API_KEY', ''),
         ttsCloningBaseUrl: getEnvVar('FISH_AUDIO_BASE_URL', 'https://api.fish.audio'),
-        ttsCloningVoiceId: getEnvVar('FISH_AUDIO_VOICE_ID'),
+        ttsCloningVoiceId: getEnvVar('FISH_AUDIO_VOICE_ID', ''),
         ttsCloningPromoVoiceId: getEnvVar('FISH_AUDIO_PROMO_VOICE_ID', '88b18e0d81474a0ca08e2ea6f9df5ff4'),
 
         // Music Catalog
@@ -192,10 +204,11 @@ export function loadConfig(): Config {
         multiModelVideoModel: getEnvVar('KIE_VIDEO_MODEL', 'kling-2.6/text-to-video'),
 
         // Video Renderer Select
-        videoRenderer: getEnvVar('VIDEO_RENDERER', 'shortstack') as 'shortstack' | 'ffmpeg',
+        // Video Renderer Select
+        videoRenderer: getEnvVar('VIDEO_RENDERER', 'shotstack') as 'shotstack' | 'ffmpeg',
 
         // Timeline (Shotstack)
-        timelineApiKey: getEnvVar('SHOTSTACK_API_KEY'),
+        timelineApiKey: getEnvVar('SHOTSTACK_API_KEY', ''),
         timelineBaseUrl: getEnvVar('SHOTSTACK_BASE_URL', 'https://api.shotstack.io/v1'),
 
         // Cloudinary
@@ -262,8 +275,8 @@ export function validateConfig(config: Config): string[] {
     if (!config.ttsCloningVoiceId) {
         errors.push('FISH_AUDIO_VOICE_ID (ttsCloningVoiceId) is required for TTS');
     }
-    if (config.videoRenderer === 'shortstack' && !config.timelineApiKey) {
-        errors.push('SHOTSTACK_API_KEY (timelineApiKey) is required when videoRenderer is "shortstack"');
+    if (config.videoRenderer === 'shotstack' && !config.timelineApiKey) {
+        errors.push('SHOTSTACK_API_KEY (timelineApiKey) is required when videoRenderer is "shotstack"');
     }
 
     if (config.videoRenderer === 'ffmpeg') {

@@ -39,7 +39,7 @@ export class FFmpegVideoRenderer implements IVideoRenderer {
             // 2. Build and run FFmpeg command
             console.log(`[FFmpeg] Processing video...`);
             const outputPath = path.join(jobDir, 'output.mp4');
-            await this.runFFmpeg(manifest, assets, outputPath);
+            await this.runFFmpeg(manifest, assets, jobDir);
 
             // 3. Upload to Cloudinary
             console.log(`[FFmpeg] Uploading result...`);
@@ -75,8 +75,11 @@ export class FFmpegVideoRenderer implements IVideoRenderer {
 
         const downloads = [
             this.downloadFile(manifest.voiceoverUrl, voiceoverPath),
-            this.downloadFile(manifest.subtitlesUrl, subtitlesPath),
         ];
+
+        if (manifest.subtitlesUrl) {
+            downloads.push(this.downloadFile(manifest.subtitlesUrl, subtitlesPath));
+        }
 
         if (manifest.musicUrl && musicPath) {
             downloads.push(this.downloadFile(manifest.musicUrl, musicPath));
@@ -113,11 +116,12 @@ export class FFmpegVideoRenderer implements IVideoRenderer {
 
     private async downloadFile(url: string, dest: string): Promise<void> {
         // Strip metadata prefixes (like 'turbo:')
-        const finalUrl = url.startsWith('turbo:') ? url.substring(6) : url;
+        let finalUrl = url.startsWith('turbo:') ? url.substring(6) : url;
+        finalUrl = finalUrl.trim();
 
         // Handle data URLs (base64) specifically for subtitles
         if (finalUrl.startsWith('data:')) {
-            const matches = finalUrl.match(new RegExp('^data:([A-Za-z-+/]+);base64,(.+)$'));
+            const matches = finalUrl.match(new RegExp('^data:([A-Za-z0-9\\-+/]+);base64,(.+)$'));
             if (matches && matches.length === 3) {
                 const buffer = Buffer.from(matches[2], 'base64');
                 fs.writeFileSync(dest, buffer);
@@ -140,6 +144,9 @@ export class FFmpegVideoRenderer implements IVideoRenderer {
                 method: 'GET',
                 responseType: 'stream',
                 timeout: 30000,
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+                }
             }).then(response => {
                 response.data.pipe(writer);
             }).catch(err => {
@@ -159,9 +166,10 @@ export class FFmpegVideoRenderer implements IVideoRenderer {
             imagePaths: string[];
             videoPaths: string[];
         },
-        outputPath: string
+        jobDir: string
     ): Promise<void> {
         return new Promise((resolve, reject) => {
+            const outputPath = path.join(jobDir, 'output.mp4');
             const cmd = ffmpeg();
 
             // Input 0: Audio (Voiceover)
@@ -225,8 +233,12 @@ export class FFmpegVideoRenderer implements IVideoRenderer {
             }
 
             // Burn subtitles into video
-            const subsFilter = `subtitles=${assets.subtitlesPath}:force_style='Fontname=Roboto,FontSize=24,PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,BorderStyle=1,Outline=1,Shadow=0,MarginV=60'`;
-            complexFilter.push(`[vbase]${subsFilter}[vburned]`);
+            let videoOutputTag = 'vbase';
+            if (assets.subtitlesPath && fs.existsSync(assets.subtitlesPath)) {
+                const subsFilter = `subtitles=${assets.subtitlesPath}:force_style='Fontname=Roboto,FontSize=24,PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,BorderStyle=1,Outline=1,Shadow=0,MarginV=60'`;
+                complexFilter.push(`[vbase]${subsFilter}[vburned]`);
+                videoOutputTag = 'vburned';
+            }
 
             // Mix Audio
             // Voiceover is [0:a], Music is [1:a] (if present)
@@ -240,7 +252,7 @@ export class FFmpegVideoRenderer implements IVideoRenderer {
                 complexFilter.push(`[0:a]anull[audio_out]`);
             }
 
-            cmd.complexFilter(complexFilter, ['vburned', 'audio_out']);
+            cmd.complexFilter(complexFilter, [videoOutputTag, 'audio_out']);
 
             cmd.outputOptions([
                 '-c:v libx264',
@@ -254,6 +266,8 @@ export class FFmpegVideoRenderer implements IVideoRenderer {
                 '-shortest',
                 '-movflags +faststart'
             ]);
+
+            cmd.outputOptions(['-y']); // Force overwrite
 
             cmd.save(outputPath)
                 .on('end', () => resolve())

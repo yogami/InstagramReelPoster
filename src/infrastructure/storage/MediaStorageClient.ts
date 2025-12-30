@@ -44,19 +44,48 @@ export class MediaStorageClient {
         try {
             // Case 1: Local file path
             if (!isRemote) {
-                console.log(`[MediaStorage] Local file detected, using chunked upload for robustness: ${url}`);
-                const result = (await cloudinary.uploader.upload_large(url, {
-                    folder,
-                    public_id: options.publicId,
-                    resource_type: resourceType,
-                    chunk_size: 6000000, // 6MB chunks
-                    overwrite: true,
-                })) as any;
+                const stats = fs.statSync(url);
+                const fileSizeInBytes = stats.size;
+                const fileSizeInMB = fileSizeInBytes / (1024 * 1024);
 
-                return {
-                    url: result.secure_url,
-                    publicId: result.public_id,
-                };
+                console.log(`[MediaStorage] Local file detected: ${url} (${fileSizeInMB.toFixed(2)} MB)`);
+
+                if (fileSizeInMB < 90) {
+                    // Use standard upload for files < 90MB (Cloudinary limit is usually 100MB for direct)
+                    // This returns a proper Promise and avoids race conditions
+                    const result = await cloudinary.uploader.upload(url, {
+                        folder,
+                        public_id: options.publicId,
+                        resource_type: resourceType,
+                        overwrite: true,
+                    });
+
+                    return {
+                        url: result.secure_url,
+                        publicId: result.public_id,
+                    };
+                } else {
+                    console.log(`[MediaStorage] File > 90MB, using chunked upload_large.`);
+                    // For large files, use upload_large. Note: verify if it returns Promise wrapped or Stream
+                    // In v2, it usually returns a Promise if no callback is passed, but behavior can be tricky.
+                    const result = (await cloudinary.uploader.upload_large(url, {
+                        folder,
+                        public_id: options.publicId,
+                        resource_type: resourceType,
+                        chunk_size: 6000000, // 6MB chunks
+                        overwrite: true,
+                    })) as any;
+
+                    // Fallback check
+                    if (!result.secure_url && result._events) {
+                        throw new Error('Cloudinary upload_large returned a Stream instead of a Result. Please check SDK version compatibility.');
+                    }
+
+                    return {
+                        url: result.secure_url,
+                        publicId: result.public_id,
+                    };
+                }
             }
 
             // Case 2: Remote URL
