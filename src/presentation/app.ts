@@ -8,6 +8,8 @@ import { MusicSelector } from '../application/MusicSelector';
 // Infrastructure imports
 import { WhisperTranscriptionClient } from '../infrastructure/transcription/WhisperTranscriptionClient';
 import { GptLlmClient } from '../infrastructure/llm/GptLlmClient';
+import { FallbackLlmClient } from '../infrastructure/llm/FallbackLlmClient';
+import { LocalLlmClient } from '../infrastructure/llm/LocalLlmClient';
 import { CloningTtsClient } from '../infrastructure/tts/CloningTtsClient';
 import { InMemoryMusicCatalogClient } from '../infrastructure/music/InMemoryMusicCatalogClient';
 import { SegmentMusicClient } from '../infrastructure/music/SegmentMusicClient';
@@ -39,7 +41,6 @@ import { IAnimatedVideoClient } from '../domain/ports/IAnimatedVideoClient';
 
 import { StandardTtsClient } from '../infrastructure/tts/StandardTtsClient';
 import { XttsClient } from '../infrastructure/tts/XttsClient';
-import { LocalLlmClient } from '../infrastructure/llm/LocalLlmClient';
 import { MockAnimatedVideoClient } from '../infrastructure/video/MockAnimatedVideoClient';
 
 // Growth Layer Imports
@@ -189,15 +190,18 @@ function createLlmClient(config: Config) {
         );
     }
 
-    // Prioritize OpenRouter (Gemini) if configured, as it's often more reliable/cheap for this use case
+    const openAiClient = new GptLlmClient(config.llmApiKey, config.llmModel, config.llmBaseUrl);
+
+    // If OpenRouter is configured, it acts as the automatic safety fallback
     if (config.openRouterApiKey) {
-        console.log(`🤖 Using OpenRouter LLM: ${config.openRouterModel}`);
-        return new GptLlmClient(config.openRouterApiKey, config.openRouterModel, config.openRouterBaseUrl);
+        const openRouterClient = new GptLlmClient(config.openRouterApiKey, config.openRouterModel, config.openRouterBaseUrl);
+        console.log(`🤖 LLM Layer: OpenAI (primary) → OpenRouter (automatic fallback: ${config.openRouterModel})`);
+        return new FallbackLlmClient(openAiClient, openRouterClient, 'OpenAI', 'OpenRouter');
     }
 
-    // Fallback to OpenAI
-    console.log(`🤖 Using OpenAI LLM: ${config.llmModel}`);
-    return new GptLlmClient(config.llmApiKey, config.llmModel, config.llmBaseUrl);
+    // Only OpenAI
+    console.log(`🤖 LLM Layer: OpenAI (primary only: ${config.llmModel})`);
+    return openAiClient;
 }
 
 function createTtsClient(config: Config) {
