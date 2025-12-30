@@ -1,11 +1,11 @@
 """
 FFmpeg Video Rendering Endpoint for Beam.cloud
 
-Updates (V8):
-- Fixed missing music bug by splitting voiceover stream for sidechain reuse.
-- Added volume compensation for amix (prevents 50% volume drop).
-- Refined Sidechain Compression: Loosened threshold for smoother transitions.
-- Added explicit stream mapping safety.
+Updates (V9):
+- Improved robustness for mixed video/image sequences.
+- Added support for static images in video_paths (uses -loop 1).
+- Added detailed FFmpeg error logging on failure.
+- Fixed duration handling for mixed assets.
 """
 
 from beta9 import endpoint, Image, Volume
@@ -62,8 +62,7 @@ def render_video(
     os.makedirs(job_dir, exist_ok=True)
     
     try:
-        print(f"[FFmpeg] Job {job_id}: Target Renderer V8 (Audio & Ducking Pro)")
-        print(f"[FFmpeg] Incoming Music URL: {music_url}")
+        print(f"[FFmpeg] Job {job_id}: Target Renderer V9 (Mixed Asset Pro)")
         
         # Download voiceover
         try:
@@ -78,7 +77,7 @@ def render_video(
         if music_url:
             try:
                 music_path = download_file(music_url, f"{job_dir}/music.mp3")
-                print(f"[FFmpeg] Music downloaded from {music_url[:50]}...")
+                print(f"[FFmpeg] Music downloaded.")
             except Exception as e:
                 print(f"[FFmpeg] Warning: Music download failed: {e}")
         
@@ -99,51 +98,55 @@ def render_video(
              except: 
                 print(f"[FFmpeg] Could not download logo")
 
-        video_paths = []
-        image_paths = []
+        # Process visuals into a unified timeline
+        visual_inputs = [] # List of {'type': 'video'|'image', 'path': str, 'duration': float}
         black_img = f"{job_dir}/black.png"
         from PIL import Image as PILImage
         PILImage.new('RGB', (1080, 1920), color='black').save(black_img)
         
         if animated_video_urls:
+            # Multi-clip animated mode (Direct Message)
+            clip_dur = voiceover_duration / len(animated_video_urls)
             for i, url in enumerate(animated_video_urls):
                 try: 
                     clean_url = url.replace("turbo:", "")
                     is_turbo = "turbo:" in url
                     suffix = ".png" if is_turbo else ".mp4"
-                    path = download_file(clean_url, f"{job_dir}/video_{i}{suffix}")
-                    
-                    if is_turbo:
-                        # Add to image_paths for Ken Burns motion
-                        # Estimate duration or get from somewhere? For now use 10s blocks
-                        image_paths.append({'path': path, 'start': i*10, 'end': (i+1)*10})
-                    else:
-                        video_paths.append(path)
-                except: 
-                    video_paths.append(black_img)
+                    path = download_file(clean_url, f"{job_dir}/visual_{i}{suffix}")
+                    visual_inputs.append({
+                        'type': 'image' if is_turbo or suffix == ".png" else 'video',
+                        'path': path,
+                        'duration': clip_dur
+                    })
+                except Exception as e:
+                    print(f"Error downloading clip {i}: {e}. Falling back to black.")
+                    visual_inputs.append({'type': 'image', 'path': black_img, 'duration': clip_dur})
         elif animated_video_url:
-             try: video_paths.append(download_file(animated_video_url, f"{job_dir}/source_video.mp4"))
-             except: pass
+             try: 
+                 path = download_file(animated_video_url, f"{job_dir}/source_video.mp4")
+                 visual_inputs.append({'type': 'video', 'path': path, 'duration': voiceover_duration})
+             except: 
+                 visual_inputs.append({'type': 'image', 'path': black_img, 'duration': voiceover_duration})
         elif segments:
             for i, seg in enumerate(segments):
-                try: path = download_file(seg['image_url'], f"{job_dir}/image_{i}.png")
-                except: path = black_img
-                image_paths.append({'path': path, 'start': seg['start'], 'end': seg['end']})
+                try: 
+                    path = download_file(seg['image_url'], f"{job_dir}/image_{i}.png")
+                    dur = max(seg['end'] - seg['start'], 0.1)
+                    visual_inputs.append({'type': 'image', 'path': path, 'duration': dur})
+                except: 
+                    visual_inputs.append({'type': 'image', 'path': black_img, 'duration': 1.0})
         
         # Unified Conclusion Slide
         if branding:
             conclusion_slide_path = f"{job_dir}/conclusion_slide.png"
             create_conclusion_slide(branding, conclusion_slide_path, logo_path)
-            conc_dur = 5.0
-            last_end = image_paths[-1]['end'] if image_paths else 0
-            image_paths.append({'path': conclusion_slide_path, 'start': last_end, 'end': last_end + conc_dur})
+            visual_inputs.append({'type': 'image', 'path': conclusion_slide_path, 'duration': 5.0})
 
-        # OVERSHOOT FIX
-        total_visual_dur = image_paths[-1]['end'] if image_paths else 0
+        # Ensure total duration matches voiceover
+        total_visual_dur = sum(v['duration'] for v in visual_inputs)
         if total_visual_dur < voiceover_duration:
-             needed = voiceover_duration - total_visual_dur + 0.5
-             if image_paths: image_paths[-1]['end'] += needed
-             total_visual_dur = image_paths[-1]['end'] if image_paths else 0
+             visual_inputs[-1]['duration'] += (voiceover_duration - total_visual_dur + 0.5)
+             total_visual_dur = sum(v['duration'] for v in visual_inputs)
 
         output_path = f"{job_dir}/output.mp4"
         cmd = build_ffmpeg_command(
@@ -151,8 +154,7 @@ def render_video(
             voiceover_duration=voiceover_duration,
             music_path=music_path,
             subtitles_path=subtitles_path,
-            video_paths=video_paths,
-            image_paths=image_paths,
+            visual_inputs=visual_inputs,
             logo_path=logo_path,
             logo_position=logo_position,
             total_duration=total_visual_dur,
@@ -161,16 +163,21 @@ def render_video(
         
         print(f"[FFmpeg] Executing command...")
         try:
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=540) # 9 min internal timeout
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=540)
         except subprocess.TimeoutExpired as te:
             print(f"[FFmpeg] CRITICAL: FFmpeg stalled for 9 minutes.")
-            if te.stderr: print(f"Last Stderr: {te.stderr[-1000:]}")
             raise Exception("FFmpeg timed out rendering (9 minute cap reached)")
         
         if result.returncode != 0:
-            print(f"[FFmpeg] ERROR (Code {result.returncode}): {result.stderr[-2000:]}")
-            raise Exception(f"FFmpeg failed")
+            print(f"[FFmpeg] ERROR (Code {result.returncode})")
+            print(f"STDOUT: {result.stdout[-1000:]}")
+            print(f"STDERR: {result.stderr[-2000:]}")
+            raise Exception(f"FFmpeg failed: {result.stderr[-500:]}")
         
+        # Check if output file exists and is not empty
+        if not os.path.exists(output_path) or os.path.getsize(output_path) == 0:
+            raise Exception("FFmpeg output file is empty or missing")
+
         cloudinary_url = os.environ.get("CLOUDINARY_URL")
         if cloudinary_url:
             video_url = upload_to_cloudinary(output_path, job_id, cloudinary_url)
@@ -236,7 +243,7 @@ def create_conclusion_slide(branding: dict, output_path: str, logo_path: str):
     img.save(output_path)
 
 def download_file(url: str, dest: str) -> str:
-    if not url: raise ValueError("URL is empty")
+    if not url or url.lower() == "undefined": raise ValueError(f"Invalid URL: {url}")
     if url.startswith('data:'):
         _, data = url.split(',', 1)
         with open(dest, 'wb') as f: f.write(base64.b64decode(data))
@@ -251,8 +258,7 @@ def build_ffmpeg_command(
     voiceover_duration: float,
     music_path: str,
     subtitles_path: str,
-    video_paths: list,
-    image_paths: list,
+    visual_inputs: list,
     logo_path: str,
     logo_position: str,
     total_duration: float,
@@ -270,62 +276,52 @@ def build_ffmpeg_command(
         cmd.extend(['-stream_loop', '-1', '-i', music_path])
         a_idx = 2
 
+    # Map all visual inputs
     v_start = a_idx
-    if video_paths:
-        if len(video_paths) == 1:
-            cmd.extend(['-stream_loop', '-1', '-i', video_paths[0]])
-            filter_complex.append(f'[{v_start}:v]scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1,format=yuv420p[vbase]')
+    for i, vis in enumerate(visual_inputs):
+        if vis['type'] == 'image':
+            # Images need loop+t to act like video in concat
+            cmd.extend(['-loop', '1', '-t', str(vis['duration']), '-i', vis['path']])
         else:
-            for vp in video_paths: cmd.extend(['-i', vp])
-            parts = ''
-            for i in range(len(video_paths)):
-                filter_complex.append(f'[{v_start+i}:v]scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1,format=yuv420p[v{i}]')
-                parts += f'[v{i}]'
-            filter_complex.append(f'{parts}concat=n={len(video_paths)}:v=1:a=0[vbase]')
-    elif image_paths:
-        img_outs = []
-        for i, img in enumerate(image_paths):
-            dur = max(img['end'] - img['start'], 0.1)
-            # Duration in frames (at 24 fps)
-            num_frames = int(dur * 24)
-            cmd.extend(['-loop', '1', '-t', str(dur), '-i', img['path']])
+            cmd.extend(['-i', vis['path']])
             
-            # Application of Ken Burns (Zoom/Pan) effect
-            # We scale up first to 1280x2276 to have margin for zooming/panning
-            zoom_cmd = (
-                f"[{v_start+i}:v]scale=1280:2276:force_original_aspect_ratio=increase,crop=1280:2276,"
+    # Normalize and Concat Visuals
+    vis_outs = []
+    for i, vis in enumerate(visual_inputs):
+        in_tag = f'[{v_start+i}:v]'
+        out_tag = f'[v_norm_{i}]'
+        
+        if vis['type'] == 'image':
+            # Apply Ken Burns to images
+            num_frames = int(vis['duration'] * 24)
+            norm_filter = (
+                f"{in_tag}scale=1280:2276:force_original_aspect_ratio=increase,crop=1280:2276,"
                 f"zoompan=z='min(zoom+0.0015,1.5)':d={num_frames}:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=1080x1920,"
-                f"format=yuv420p[im{i}]"
+                f"setpts=PTS-STARTPTS,format=yuv420p{out_tag}"
             )
-            filter_complex.append(zoom_cmd)
-            img_outs.append(f'[im{i}]')
-        filter_complex.append(f'{"".join(img_outs)}concat=n={len(image_paths)}:v=1:a=0[vbase]')
+        else:
+            # Normalize video
+            norm_filter = (
+                f"{in_tag}scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,"
+                f"setsar=1,setpts=PTS-STARTPTS,format=yuv420p{out_tag}"
+            )
+        filter_complex.append(norm_filter)
+        vis_outs.append(out_tag)
+    
+    # Concat all normalized visual streams
+    filter_complex.append(f'{"".join(vis_outs)}concat=n={len(visual_inputs)}:v=1:a=0[vbase]')
     
     v_tag = 'vbase'
     if subtitles_path:
         filter_complex.append(f"[{v_tag}]subtitles={subtitles_path}:force_style='FontName=Arial,FontSize=24,PrimaryColour=&H00FFFFFF,BackColour=&H80000000,BorderStyle=3,Outline=1,Shadow=0,MarginV=60'[vburned]")
         v_tag = 'vburned'
     
-    # AUDIO MIXING (V7 ULTIMATE)
-    # 0:a = Voiceover, 1:a = Music
-    
-    # Standardize VO
-    # Standardize VO
-    filter_complex.append(f'[0:a]aresample=44100,pan=stereo|c0=c0|c1=c1,volume=2.0[vo_pre]')
-    
-    # Split Voiceover: One for ducking control, one for the final mix
-    filter_complex.append(f'[vo_pre]asplit=2[vo_sidechain][vo_main]')
+    # AUDIO MIXING
+    filter_complex.append(f'[0:a]aresample=44100,pan=stereo|c0=c0|c1=c1,volume=2.0,asplit=2[vo_sidechain][vo_main]')
     
     if music_path:
-        # Standardize Music and apply initial volume (increased to 0.6 for better mixed presence)
         filter_complex.append(f'[1:a]aresample=44100,pan=stereo|c0=c0|c1=c1,volume=0.6[bg_standard]')
-        
-        # DUCKING: Reduce music volume when voiceover is detected.
-        # sidechaincompress: [music] [control] sidechaincompress
         filter_complex.append(f'[bg_standard][vo_sidechain]sidechaincompress=threshold=0.15:ratio=3:attack=50:release=600[bg_ducked]')
-        
-        # MIX: 'duration=first' ensures we stop when Voiceover ends
-        # amix=inputs=2 adds 0.5 multiplier to all inputs, so we compensate with volume=2.0
         filter_complex.append(f'[vo_main][bg_ducked]amix=inputs=2:duration=first:dropout_transition=2,volume=2.0[a_mixed]')
         a_tag = 'a_mixed'
     else:

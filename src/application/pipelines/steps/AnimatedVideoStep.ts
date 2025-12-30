@@ -119,12 +119,7 @@ export class AnimatedVideoStep implements PipelineStep {
             console.log(`[AnimatedVideo] Generating Turbo Clip (Image-based): ${options.theme.substring(0, 50)}...`);
 
             // Generate a high-quality Flux image instead of a heavy Video clip
-            const result = await this.imageService.generateImage(options.theme, {
-                quality: 'hd',
-                style: options.mood === 'cinematic' ? 'natural' : 'vivid'
-            });
-
-            const imageUrl = result.imageUrl;
+            const imageUrl = await this.imageService.generateImage(options.theme, options.mood);
 
             // To notify the renderer that this is an image that needs "Ken Burns" motion.
             // We use a "turbo:" prefix that the Beam renderer will strip but use for logic.
