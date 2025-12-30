@@ -112,9 +112,12 @@ export class FFmpegVideoRenderer implements IVideoRenderer {
     }
 
     private async downloadFile(url: string, dest: string): Promise<void> {
+        // Strip metadata prefixes (like 'turbo:')
+        const finalUrl = url.startsWith('turbo:') ? url.substring(6) : url;
+
         // Handle data URLs (base64) specifically for subtitles
-        if (url.startsWith('data:')) {
-            const matches = url.match(new RegExp('^data:([A-Za-z-+/]+);base64,(.+)$'));
+        if (finalUrl.startsWith('data:')) {
+            const matches = finalUrl.match(new RegExp('^data:([A-Za-z-+/]+);base64,(.+)$'));
             if (matches && matches.length === 3) {
                 const buffer = Buffer.from(matches[2], 'base64');
                 fs.writeFileSync(dest, buffer);
@@ -124,17 +127,26 @@ export class FFmpegVideoRenderer implements IVideoRenderer {
         }
 
         const writer = fs.createWriteStream(dest);
-        const response = await axios({
-            url,
-            method: 'GET',
-            responseType: 'stream',
-        });
-
-        response.data.pipe(writer);
 
         return new Promise((resolve, reject) => {
             writer.on('finish', resolve);
-            writer.on('error', reject);
+            writer.on('error', (err) => {
+                writer.close();
+                reject(err);
+            });
+
+            axios({
+                url: finalUrl,
+                method: 'GET',
+                responseType: 'stream',
+                timeout: 30000,
+            }).then(response => {
+                response.data.pipe(writer);
+            }).catch(err => {
+                writer.close();
+                // If it fails, we should still reject
+                reject(err);
+            });
         });
     }
 

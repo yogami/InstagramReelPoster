@@ -432,6 +432,10 @@ Respond with a JSON object:
      */
     private enforceWordLimits(segments: SegmentContent[], maxWords: number): SegmentContent[] {
         return segments.map((segment, index) => {
+            if (!segment.commentary) {
+                console.warn(`[LLM] Segment ${index + 1} is missing commentary. Using empty string.`);
+                segment.commentary = '';
+            }
             const words = segment.commentary.trim().split(/\s+/).filter((w: string) => w.length > 0);
             if (words.length <= maxWords) {
                 return segment;

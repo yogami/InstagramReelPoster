@@ -29,48 +29,51 @@ model_volume = Volume(name="flux1-model-cache", mount_path="/cache")
 _pipe = None
 
 def get_pipe():
-    """Lazy-load the model once and keep it in memory. Optimized for 24GB VRAM."""
+    """Lazy-load the model once and keep it in memory. Ultra-Optimized for 24GB."""
     global _pipe
     if _pipe is None:
         import torch
         from diffusers import FluxPipeline
         import os
         
-        print("[FLUX1] Initializing container & loading model (Optimized for 24GB)...")
+        print("[FLUX1] Initializing container (Ultra-Memory mode)...")
         os.environ["HF_HOME"] = "/cache"
         os.environ["TRANSFORMERS_CACHE"] = "/cache"
+        os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 
         # Load FLUX.1-schnell
-        # We use bfloat16 which is native for A10G/Ampere
         _pipe = FluxPipeline.from_pretrained(
             "black-forest-labs/FLUX.1-schnell",
             torch_dtype=torch.bfloat16,
             cache_dir="/cache"
         )
         
-        # CRITICAL: Enable model CPU offload to stay within 24GB limits
-        # This moves components between CPU and GPU as needed.
-        # It is the only way to reliably run Flux on A10G (24GB).
-        _pipe.enable_model_cpu_offload()
+        # NUCLEAR OPTION: Sequential offload (layer-by-layer)
+        # This is slower but guarantees it will fit on 24GB even with fragmentation
+        _pipe.enable_sequential_cpu_offload()
         
-        print("[FLUX1] Model loaded with CPU offload enabled")
+        # High-res optimizations
+        _pipe.enable_vae_tiling()
+        _pipe.enable_vae_slicing()
+        
+        print("[FLUX1] Model loaded with SEQUENTIAL offload and VAE tiling active")
     return _pipe
 
 
 @endpoint(
     name="flux1-image",
     image=image,
-    gpu="A10G",  # 24GB VRAM
-    memory="32Gi", # Increased system memory for offloading
+    gpu="A10G",
+    memory="32Gi",
     cpu=4,
     volumes=[model_volume],
-    keep_warm_seconds=180, # Reduced from 300 - release containers faster
+    keep_warm_seconds=60, # Release faster to keep GPU clean
     secrets=["HF_TOKEN"],
 )
 def generate_image(
     prompt: str,
     aspect_ratio: str = "9:16",
-    num_inference_steps: int = 4, # Schnell needs 4 steps
+    num_inference_steps: int = 4,
     guidance_scale: float = 0.0,
     quality: str = "standard",
 ) -> dict:
@@ -80,22 +83,19 @@ def generate_image(
     from io import BytesIO
     from PIL import Image as PILImage
     
-    # Get the stateful pipe
     pipe = get_pipe()
     
-    # Determine resolution
+    # Adjusted resolution to be more stable on A10G
     if aspect_ratio == "9:16":
-        width, height = (768, 1344) if quality == "hd" else (576, 1024)
+        width, height = (768, 1152) if quality == "hd" else (512, 896)
     elif aspect_ratio == "16:9":
-        width, height = (1344, 768) if quality == "hd" else (1024, 576)
+        width, height = (1152, 768) if quality == "hd" else (896, 512)
     else:
         width, height = (1024, 1024) if quality == "hd" else (768, 768)
     
-    print(f"[FLUX1] Generating image: '{prompt[:100]}...'")
+    print(f"[FLUX1] Generating image: {width}x{height} (Sequential mode)")
     
-    # Generate image
     with torch.inference_mode():
-        # Clean torch cache before generation to maximize available VRAM
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
             gc.collect()
@@ -117,12 +117,9 @@ def generate_image(
     buffer.seek(0)
     image_base64 = base64.b64encode(buffer.read()).decode("utf-8")
     
-    print(f"[FLUX1] Image generated successfully ({width}x{height})")
-    
-    # Aggressive cleanup after generation
+    # Aggressive cleanup
     del result
     del image
-    buffer.close()
     gc.collect()
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
@@ -132,4 +129,5 @@ def generate_image(
         "width": width,
         "height": height,
     }
+
 
