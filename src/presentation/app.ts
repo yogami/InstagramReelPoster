@@ -254,18 +254,31 @@ function createImageClients(config: Config): { primaryImageClient: IImageClient;
 
 
 function createVideoRenderer(config: Config, cloudinaryClient: MediaStorageClient | null): IVideoRenderer {
+    const timelineRenderer = new TimelineVideoRenderer(config.timelineApiKey, config.timelineBaseUrl);
+    const remoteEnabled = config.remoteRenderEnabled && config.fluxApiKey && config.remoteRenderEndpointUrl;
+    const remoteRenderer = remoteEnabled
+        ? new RemoteVideoRenderer(config.fluxApiKey, config.remoteRenderEndpointUrl)
+        : null;
+
     if (config.videoRenderer === 'ffmpeg') {
         if (!cloudinaryClient) throw new Error('FFmpeg renderer requires Cloudinary configuration');
+        const localRenderer = new FFmpegVideoRenderer(cloudinaryClient);
+
+        if (remoteRenderer) {
+            console.log('🎬 Video rendering: Remote FFmpeg (primary) → Local FFmpeg (fallback)');
+            return new FallbackVideoRenderer(remoteRenderer, localRenderer, 'Remote FFmpeg', 'Local FFmpeg');
+        }
+
         console.log('🎬 Using FFmpeg Video Renderer (Local)');
-        return new FFmpegVideoRenderer(cloudinaryClient);
+        return localRenderer;
     }
 
-    const timelineRenderer = new TimelineVideoRenderer(config.timelineApiKey, config.timelineBaseUrl);
-    if (config.remoteRenderEnabled && config.fluxApiKey && config.remoteRenderEndpointUrl) {
-        const remoteRenderer = new RemoteVideoRenderer(config.fluxApiKey, config.remoteRenderEndpointUrl);
+    // Default: 'shortstack' mode
+    if (remoteRenderer) {
         console.log('🎬 Video rendering: Remote (primary) → Timeline (fallback)');
         return new FallbackVideoRenderer(remoteRenderer, timelineRenderer, 'Remote', 'Timeline');
     }
+
     console.log('🎬 Video rendering: Timeline (primary)');
     return timelineRenderer;
 }
