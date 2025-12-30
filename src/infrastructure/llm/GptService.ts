@@ -7,8 +7,8 @@ export class GptService {
 
     constructor(
         apiKey: string,
-        model: string = 'gpt-4.1',
-        baseUrl: string = 'https://api.openai.com'
+        model: string = 'gpt-4o',
+        baseUrl: string = 'https://api.openai.com/v1'
     ) {
         if (!apiKey) {
             throw new Error('LLM API key is required');
@@ -53,7 +53,7 @@ export class GptService {
         jsonMode: boolean
     ): Promise<string> {
         const response = await axios.post(
-            `${this.baseUrl}/v1/chat/completions`,
+            `${this.baseUrl.replace(/\/$/, '')}/chat/completions`,
             {
                 model: this.model,
                 messages: [
