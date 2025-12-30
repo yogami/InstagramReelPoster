@@ -2,33 +2,35 @@ import { createApp } from './presentation/app';
 import { loadConfig, validateConfig } from './config';
 
 async function main(): Promise<void> {
-    console.log('🎬 Instagram Reel Poster - Starting...');
+    console.log('🎬 Instagram Reel Poster - Bootstrap Phase 0...');
 
-    // Load and validate configuration
-    const config = loadConfig();
-    const configErrors = validateConfig(config);
+    try {
+        // 1. Load and validate configuration
+        console.log('📋 Loading configuration...');
+        const config = loadConfig();
 
-    if (configErrors.length > 0) {
-        console.error('❌ Configuration errors:');
-        configErrors.forEach((error) => console.error(`  - ${error}`));
-        console.error('\nPlease check your .env file and set all required variables.');
+        console.log('🔍 Validating configuration...');
+        const configErrors = validateConfig(config);
+
+        if (configErrors.length > 0) {
+            console.error('❌ Configuration validation failed:');
+            configErrors.forEach((error) => console.error(`  - ${error}`));
+            process.exit(1);
+        }
+
+        // 2. Create and start the app
+        console.log('🚀 Initializing application components...');
+        const app = createApp(config);
+
+        app.listen(config.port, () => {
+            console.log(`✅ Server running on http://localhost:${config.port}`);
+            console.log(`   Environment: ${config.environment}`);
+            console.log(`   Renderer: ${config.videoRenderer}`);
+        });
+    } catch (error) {
+        console.error('💥 Fatal error during bootstrap:', error);
         process.exit(1);
     }
-
-    // Create and start the app
-    const app = createApp(config);
-
-    app.listen(config.port, () => {
-        console.log(`✅ Server running on http://localhost:${config.port}`);
-        console.log(`   Environment: ${config.environment}`);
-        console.log('');
-        console.log('📡 Endpoints:');
-        console.log(`   POST /process-reel    - Start a new reel generation job`);
-        console.log(`   GET  /jobs/:jobId     - Check job status and results`);
-        console.log(`   GET  /jobs            - List all jobs`);
-        console.log(`   GET  /health          - Health check`);
-        console.log('');
-    });
 }
 
 main().catch((error) => {

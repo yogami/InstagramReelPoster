@@ -28,8 +28,22 @@ export class JobManager {
 
         if (redisUrl) {
             console.log('⚡ Connecting to Redis for job storage...');
-            this.redis = new Redis(redisUrl);
-        } else {
+            this.redis = new Redis(redisUrl, {
+                maxRetriesPerRequest: 3,
+                connectTimeout: 10000, // 10s
+                retryStrategy: (times) => {
+                    if (times > 3) return null; // stop retrying after 3 attempts
+                    return Math.min(times * 200, 2000);
+                }
+            });
+            this.redis.on('error', (err) => {
+                console.error('❌ Redis connection error:', err.message);
+            });
+            this.redis.on('connect', () => {
+                console.log('✅ Redis connected successfully');
+            });
+        }
+        else {
             this.ensureDataDir();
             this.loadFromDisk();
         }

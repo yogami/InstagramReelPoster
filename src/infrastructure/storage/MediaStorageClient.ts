@@ -3,6 +3,7 @@ import axios from 'axios';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+import { v4 as uuidv4 } from 'uuid';
 
 /**
  * Media storage client for uploading files and getting public URLs.
@@ -77,7 +78,8 @@ export class MediaStorageClient {
                 const isSizeError = error.message?.includes('too large') || error.http_code === 400;
                 if (isSizeError && (resourceType === 'video' || resourceType === 'auto')) {
                     console.warn(`[MediaStorage] Remote video too large for direct fetch (>${(104857600 / 1024 / 1024).toFixed(0)}MB). Attempting local buffer + chunked upload...`);
-                    return await this.downloadAndUploadLarge(url, folder, options.publicId, resourceType);
+                    const safeResourceType = resourceType === 'auto' ? 'video' : resourceType as 'image' | 'video' | 'raw';
+                    return await this.downloadAndUploadLarge(url, folder, options.publicId, safeResourceType);
                 }
                 throw error;
             }
@@ -95,53 +97,41 @@ export class MediaStorageClient {
         url: string,
         folder: string,
         publicId?: string,
-        resourceType: any = 'video'
+        resourceType: 'image' | 'video' | 'raw' = 'video'
     ): Promise<{ url: string; publicId: string }> {
-        const tempDir = path.join(process.cwd(), 'temp');
-        if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
-        const tempPath = path.join(tempDir, `large_asset_${Date.now()}.mp4`);
+        const tempPath = path.join(os.tmpdir(), `asset_${uuidv4()}.tmp`);
+        console.log(`[MediaStorage] Buffering large asset to: ${tempPath}`);
 
         try {
-            console.log(`[MediaStorage] Buffering large remote asset to: ${tempPath}`);
+            // 1. Download to local file
             const response = await axios({
                 url,
                 method: 'GET',
                 responseType: 'stream',
-                timeout: 600000 // 10 minutes for large downloads
+                timeout: 300000, // 5 minutes (reduced from 10 for better fail-fast)
             });
 
             const writer = fs.createWriteStream(tempPath);
 
-            await new Promise((resolve, reject) => {
-                response.data.on('error', (err: Error) => {
+            await new Promise<void>((resolve, reject) => {
+                let hasError = false;
+                const handleError = (err: Error) => {
+                    if (hasError) return;
+                    hasError = true;
                     writer.close();
-                    reject(new Error(`Download stream error: ${err.message}`));
-                });
-                writer.on('error', (err: Error) => {
-                    writer.close();
-                    reject(new Error(`Write stream error: ${err.message}`));
-                });
-                writer.on('finish', resolve);
-                writer.on('close', resolve);
+                    reject(err);
+                };
+
+                response.data.on('error', (err: Error) => handleError(new Error(`Download stream error: ${err.message}`)));
+                writer.on('error', (err: Error) => handleError(new Error(`Write stream error: ${err.message}`)));
+                writer.on('finish', () => resolve());
 
                 response.data.pipe(writer);
             });
 
-            // Ensure file handle is released and FS is synced
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            // 2. Upload to Cloudinary using chunked upload
+            console.log(`[MediaStorage] Uploading buffered asset to Cloudinary (${resourceType})...`);
 
-            if (!fs.existsSync(tempPath)) {
-                throw new Error(`Buffering failed. File not found at ${tempPath}`);
-            }
-
-            const stats = fs.statSync(tempPath);
-            if (stats.size === 0) {
-                throw new Error('Buffering failed. Downloaded file is empty.');
-            }
-
-            console.log(`[MediaStorage] File ready for chunked upload (${(stats.size / 1024 / 1024).toFixed(2)} MB)`);
-
-            // Use upload_large but wrap carefully to catch any emitted stream errors
             const result = await new Promise((resolve, reject) => {
                 cloudinary.uploader.upload_large(tempPath, {
                     folder,
@@ -150,28 +140,35 @@ export class MediaStorageClient {
                     chunk_size: 6000000,
                     overwrite: true,
                 }, (error, result) => {
-                    if (error) reject(error);
-                    else resolve(result);
+                    if (error) {
+                        console.error(`[MediaStorage] Cloudinary upload_large error:`, error);
+                        reject(error);
+                    } else {
+                        resolve(result);
+                    }
                 });
             }) as any;
 
-            console.log(`[MediaStorage] Chunked upload successful: ${result.secure_url}`);
+            if (!result || !result.secure_url) {
+                throw new Error('Cloudinary upload_large failed: No secure_url in response');
+            }
 
             return {
                 url: result.secure_url,
                 publicId: result.public_id,
             };
         } catch (error) {
-            console.error(`[MediaStorage] downloadAndUploadLarge failed:`, error);
+            console.error(`[MediaStorage] downloadAndUploadLarge failed:`, error instanceof Error ? error.message : error);
             throw error;
         } finally {
+            // Clean up temp file
             try {
                 if (fs.existsSync(tempPath)) {
                     fs.unlinkSync(tempPath);
                     console.log(`[MediaStorage] Cleaned up temp file: ${tempPath}`);
                 }
-            } catch (cleanupError) {
-                console.warn(`[MediaStorage] Cleanup failed for ${tempPath}:`, cleanupError);
+            } catch (err) {
+                console.warn(`[MediaStorage] Failed to cleanup temp file ${tempPath}:`, err);
             }
         }
     }

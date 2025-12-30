@@ -109,6 +109,7 @@ export function createDependencies(config: Config): {
     growthInsightsService: GrowthInsightsService;
     cloudinaryClient: MediaStorageClient | null;
 } {
+    console.log('🏗️  Creating dependency graph...');
     const cloudinaryClient = createCloudinaryClient(config);
     const llmClient = createLlmClient(config);
     const ttsClient = createTtsClient(config);
@@ -119,17 +120,14 @@ export function createDependencies(config: Config): {
     const videoRenderer = createVideoRenderer(config, cloudinaryClient);
     const animatedVideoClient = createAnimatedVideoClient(config);
     const musicSelector = createMusicSelector(config);
+
+    console.log('📦 Initializing JobManager...');
     const jobManager = new JobManager(config.minReelSeconds, config.maxReelSeconds, config.redisUrl);
+
     const notificationClient = createNotificationClient(config);
     const websiteScraperClient = config.featureFlags.usePlaywrightScraper
         ? new EnhancedWebsiteScraper()
         : new WebsiteScraperClient();
-
-    if (config.featureFlags.usePlaywrightScraper) {
-        console.log('🕷️ Using Enhanced Playwright Scraper');
-    } else {
-        console.log('🕷️ Using Standard HTTP Scraper');
-    }
 
     // Growth Layer Services
     const hookAndStructureService = new HookAndStructureService(llmClient);
@@ -160,7 +158,9 @@ export function createDependencies(config: Config): {
 
     console.log(`📡 Callback configured: Header = ${deps.callbackHeader}, Token = ${deps.callbackToken ? (deps.callbackToken.substring(0, 5) + '...') : 'None'} `);
 
+    console.log('⚙️  Wiring up ReelOrchestrator...');
     const orchestrator = new ReelOrchestrator(deps);
+    console.log('✅ Dependency graph complete');
     return { jobManager, orchestrator, growthInsightsService, cloudinaryClient };
 }
 
