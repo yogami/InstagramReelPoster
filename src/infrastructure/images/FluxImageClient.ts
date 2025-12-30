@@ -45,58 +45,75 @@ export class FluxImageClient implements IImageClient {
         // Add FLUX-native quality boosters
         const enhancedPrompt = `${cleanedPrompt}. Style: Cinematic, 8k, photorealistic, ultra-detailed. Aspect Ratio: 9:16 Vertical.`;
 
-        try {
-            console.log(`[Flux FLUX1] Generating image...`);
-            const startTime = Date.now();
+        const maxRetries = 1;
+        let lastError: Error | null = null;
 
-            const response = await axios.post(
-                this.endpointUrl,
-                {
-                    prompt: enhancedPrompt,
-                    aspect_ratio: '9:16',
-                },
-                {
-                    headers: {
-                        'Authorization': `Bearer ${this.apiKey}`,
-                        'Content-Type': 'application/json',
+        for (let attempt = 0; attempt <= maxRetries; attempt++) {
+            try {
+                console.log(`[Flux FLUX1] Generating image (attempt ${attempt + 1})...`);
+                const startTime = Date.now();
+
+                const response = await axios.post(
+                    this.endpointUrl,
+                    {
+                        prompt: enhancedPrompt,
+                        aspect_ratio: '9:16',
                     },
-                    timeout: this.timeout,
-                }
-            );
+                    {
+                        headers: {
+                            'Authorization': `Bearer ${this.apiKey}`,
+                            'Content-Type': 'application/json',
+                        },
+                        timeout: this.timeout,
+                    }
+                );
 
-            const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+                const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
 
-            // Log response structure for debugging
-            console.log(`[Flux FLUX1] Response received:`, {
-                status: response.status,
-                dataType: typeof response.data,
-                dataKeys: response.data ? Object.keys(response.data) : [],
-                dataPreview: JSON.stringify(response.data).substring(0, 200)
-            });
-
-            // Extract image from response - support multiple formats
-            const imageUrl = this.extractImageUrl(response.data);
-
-            console.log(`[Flux FLUX1] Image generated in ${elapsed}s`);
-
-            return { imageUrl };
-        } catch (error) {
-            if (axios.isAxiosError(error)) {
-                const status = error.response?.status;
-                const responseData = error.response?.data;
-                const message = responseData?.error || responseData?.message || error.message;
-
-                console.error(`[Flux FLUX1] Generation failed (${status}):`, {
-                    message,
-                    raw: JSON.stringify(responseData || {}).substring(0, 500),
-                    code: error.code
+                // Log response structure for debugging
+                console.log(`[Flux FLUX1] Response received:`, {
+                    status: response.status,
+                    dataType: typeof response.data,
+                    dataKeys: response.data ? Object.keys(response.data) : [],
+                    dataPreview: JSON.stringify(response.data).substring(0, 200)
                 });
 
-                throw new Error(`Flux image generation failed (${status}): ${message || 'Empty response'}`);
+                // Extract image from response - support multiple formats
+                const imageUrl = this.extractImageUrl(response.data);
+
+                console.log(`[Flux FLUX1] Image generated in ${elapsed}s`);
+
+                return { imageUrl };
+            } catch (error) {
+                if (axios.isAxiosError(error)) {
+                    const status = error.response?.status;
+                    const responseData = error.response?.data;
+                    const message = responseData?.error || responseData?.message || error.message;
+                    const isOOM = message?.includes('OutOfMemoryError') || message?.includes('CUDA out of memory');
+
+                    console.error(`[Flux FLUX1] Generation failed (${status}):`, {
+                        message,
+                        raw: JSON.stringify(responseData || {}).substring(0, 500),
+                        code: error.code
+                    });
+
+                    // Retry on OOM (transient GPU memory issue)
+                    if (isOOM && attempt < maxRetries) {
+                        console.warn(`[Flux FLUX1] OOM detected, waiting 8s before retry...`);
+                        await new Promise(resolve => setTimeout(resolve, 8000));
+                        lastError = new Error(`Flux image generation failed (${status}): ${message || 'Empty response'}`);
+                        continue;
+                    }
+
+                    throw new Error(`Flux image generation failed (${status}): ${message || 'Empty response'}`);
+                }
+                throw error;
             }
-            throw error;
         }
+
+        throw lastError || new Error('Flux image generation failed after retries');
     }
+
 
     /**
      * Extracts image URL/base64 from Flux response.

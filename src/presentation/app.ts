@@ -214,22 +214,44 @@ function createImageClients(config: Config): { primaryImageClient: IImageClient;
         config.multiModelImageBaseUrl
     );
 
+    // Stock is always available as ultimate fallback (if API key exists)
+    const stockClient = config.stockApiKey
+        ? new StockImageClient(config.stockApiKey)
+        : null;
+
     let primaryImageClient: IImageClient;
+
     if (config.fluxEnabled && config.fluxApiKey && config.fluxEndpointUrl) {
         const fluxClient = new FluxImageClient(config.fluxApiKey, config.fluxEndpointUrl);
-        primaryImageClient = new FallbackImageClient(fluxClient, multiModelImageClient, 'Flux', 'MultiModel');
-        console.log('✅ Image generation: Flux (primary) → MultiModel (fallback)');
+
+        // 2-tier chain: Flux -> MultiModel
+        const fluxMultiModelChain = new FallbackImageClient(fluxClient, multiModelImageClient, 'Flux', 'MultiModel');
+
+        // 3-tier chain: (Flux -> MultiModel) -> Stock
+        if (stockClient) {
+            primaryImageClient = new FallbackImageClient(fluxMultiModelChain, stockClient, 'Flux+MultiModel', 'Stock');
+            console.log('✅ Image generation: Flux (primary) → MultiModel → Stock (ultimate fallback)');
+        } else {
+            primaryImageClient = fluxMultiModelChain;
+            console.log('✅ Image generation: Flux (primary) → MultiModel (fallback)');
+        }
     } else {
-        primaryImageClient = multiModelImageClient;
-        console.log('✅ Image generation: MultiModel (primary)');
+        // No Flux: MultiModel -> Stock
+        if (stockClient) {
+            primaryImageClient = new FallbackImageClient(multiModelImageClient, stockClient, 'MultiModel', 'Stock');
+            console.log('✅ Image generation: MultiModel (primary) → Stock (fallback)');
+        } else {
+            primaryImageClient = multiModelImageClient;
+            console.log('✅ Image generation: MultiModel (primary only)');
+        }
     }
 
-    const fallbackImageClient = config.stockApiKey
-        ? new StockImageClient(config.stockApiKey)
-        : primaryImageClient;
+    // fallbackImageClient is kept for backward compatibility (used by some steps separately)
+    const fallbackImageClient = stockClient || primaryImageClient;
 
     return { primaryImageClient, fallbackImageClient };
 }
+
 
 function createVideoRenderer(config: Config, cloudinaryClient: MediaStorageClient | null): IVideoRenderer {
     if (config.videoRenderer === 'ffmpeg') {

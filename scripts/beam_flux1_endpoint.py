@@ -64,7 +64,7 @@ def get_pipe():
     memory="32Gi", # Increased system memory for offloading
     cpu=4,
     volumes=[model_volume],
-    keep_warm_seconds=300, # Keep warm longer to avoid expensive reload
+    keep_warm_seconds=180, # Reduced from 300 - release containers faster
     secrets=["HF_TOKEN"],
 )
 def generate_image(
@@ -76,6 +76,7 @@ def generate_image(
 ) -> dict:
     import torch
     import base64
+    import gc
     from io import BytesIO
     from PIL import Image as PILImage
     
@@ -97,6 +98,7 @@ def generate_image(
         # Clean torch cache before generation to maximize available VRAM
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
+            gc.collect()
             
         result = pipe(
             prompt=prompt,
@@ -117,7 +119,11 @@ def generate_image(
     
     print(f"[FLUX1] Image generated successfully ({width}x{height})")
     
-    # Explicitly clear cache after generation
+    # Aggressive cleanup after generation
+    del result
+    del image
+    buffer.close()
+    gc.collect()
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
     
@@ -126,3 +132,4 @@ def generate_image(
         "width": width,
         "height": height,
     }
+
