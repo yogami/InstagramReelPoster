@@ -51,6 +51,11 @@ export class WebsiteScraperClient implements IWebsiteScraperClient {
                 await this.scrapeSubpages(url, analysis);
             }
 
+            // Verify top images really exist (avoid 404/html responses)
+            if (analysis.scrapedMedia && analysis.scrapedMedia.length > 0) {
+                analysis.scrapedMedia = await this.validateMediaAssets(analysis.scrapedMedia);
+            }
+
             // Detect site type and extract personal info if applicable
             this.detectAndExtractSiteInfo(analysis, html);
 
@@ -900,6 +905,46 @@ export class WebsiteScraperClient implements IWebsiteScraperClient {
      */
     private isAbsoluteUrl(url: string): boolean {
         return url.startsWith('http://') || url.startsWith('https://') || url.startsWith('//');
+    }
+
+    /**
+     * Verifies that media assets are accessible and are valid images (not 404/html).
+     * Limits check to top 5 candidates to preserve performance.
+     */
+    private async validateMediaAssets(assets: ScrapedMedia[]): Promise<ScrapedMedia[]> {
+        const validated: ScrapedMedia[] = [];
+        // Only check top 5 to check speed
+        const toCheck = assets.slice(0, 5);
+        const remaining = assets.slice(5);
+
+        for (const asset of toCheck) {
+            try {
+                // Quick HEAD request
+                const response = await axios.head(asset.url, {
+                    timeout: 2000,
+                    validateStatus: (status) => status === 200
+                });
+
+                const contentType = response.headers['content-type'];
+                const contentLength = response.headers['content-length'];
+
+                // Must be image content type
+                if (contentType && contentType.startsWith('image/')) {
+                    // Skip tiny tracking pixels (less than 500 bytes)
+                    if (contentLength && parseInt(contentLength as string) < 500) {
+                        continue;
+                    }
+                    validated.push(asset);
+                } else {
+                    console.warn(`[WebsiteScraper] Skipping invalid image type for ${asset.url}: ${contentType}`);
+                }
+            } catch (error) {
+                console.warn(`[WebsiteScraper] Skipping inaccessible image ${asset.url}`);
+            }
+        }
+
+        // Return validated top candidates + unchecked remaining (low priority)
+        return [...validated, ...remaining];
     }
 }
 
