@@ -15,6 +15,7 @@ export type ReelJobStatus =
     | 'planning'
     | 'generating_commentary'
     | 'synthesizing_voiceover'
+    | 'analyzing_scenes'
     | 'selecting_music'
     | 'generating_images'
     | 'generating_animated_video'
@@ -208,13 +209,14 @@ export function createReelJob(
         throw new Error('ReelJob id cannot be empty');
     }
 
-    // Validate: either sourceAudioUrl, transcript, or websitePromoInput must be provided
+    // Validate: at least one valid input source must be provided
     const hasAudio = input.sourceAudioUrl && input.sourceAudioUrl.trim().length > 0;
     const hasTranscript = input.transcript && input.transcript.trim().length > 0;
     const hasWebsitePromo = input.websitePromoInput && input.websitePromoInput.websiteUrl.trim().length > 0;
+    const hasYouTubeShort = input.youtubeShortInput && input.youtubeShortInput.scenes.length > 0;
 
-    if (!hasAudio && !hasTranscript && !hasWebsitePromo) {
-        throw new Error('ReelJob requires either sourceAudioUrl, transcript, or websitePromoInput');
+    if (!hasAudio && !hasTranscript && !hasWebsitePromo && !hasYouTubeShort) {
+        throw new Error('ReelJob requires either sourceAudioUrl, transcript, websitePromoInput, or youtubeShortInput');
     }
 
     // Validate consent for website promo
@@ -247,8 +249,10 @@ export function createReelJob(
         reelMode: input.reelMode,
         forceMode: input.forceMode,
         websitePromoInput: hasWebsitePromo ? input.websitePromoInput : undefined,
+        youtubeShortInput: hasYouTubeShort ? input.youtubeShortInput : undefined,
         language: input.language || 'en',
         voiceId: input.voiceId,
+        providedCommentary: input.providedCommentary,
         description: input.description,
         createdAt: now,
         updatedAt: now,

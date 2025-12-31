@@ -12,7 +12,7 @@ async function main() {
     try {
         const input = {
             websiteUrl: 'https://berlinailabs.de',
-            category: 'service' as const,
+            category: 'tech' as const,
             consent: true,
             language: 'de'
         };

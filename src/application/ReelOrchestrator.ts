@@ -55,6 +55,7 @@ import { MediaStorageClient } from '../infrastructure/storage/MediaStorageClient
 import { TrainingDataCollector } from '../infrastructure/training/TrainingDataCollector';
 import { ChatService } from '../presentation/services/ChatService';
 import { getConfig } from '../config';
+import { YouTubeSceneAnalyzer } from '../infrastructure/youtube/YouTubeSceneAnalyzer';
 
 // Pipeline Imports
 import { createJobContext, executePipeline } from './pipelines/PipelineInfrastructure';
@@ -670,7 +671,8 @@ export class ReelOrchestrator {
 
     /**
      * Processes a YouTube Short job.
-     * Generates TTS for each scene, creates images, renders final video.
+     * Generates TTS for narration, creates VIDEO clips via Kie.ai, renders final video.
+     * This is a separate slice from Instagram reels - uses VIDEO generation, not images.
      */
     private async processYouTubeShortJob(jobId: string, job: ReelJob): Promise<ReelJob> {
         const youtubeInput = job.youtubeShortInput;
@@ -678,69 +680,191 @@ export class ReelOrchestrator {
             throw new Error('YouTube Short input is required');
         }
 
+        if (!this.deps.animatedVideoClient) {
+            throw new Error('AnimatedVideoClient is required for YouTube Shorts (Kie.ai integration)');
+        }
+
         this.logMemoryUsage('Start YouTube Short Pipeline');
 
-        // 1. Generate full narration text
+        // 1. Generate TTS for full narration (with speed adjustment if needed)
         const fullNarration = youtubeInput.scenes.map(s => s.narration).join(' ');
         await this.updateJobStatus(jobId, 'synthesizing_voiceover', 'Generating voiceover...');
 
-        // 2. Generate TTS for full narration
         const voiceId = job.voiceId || getConfig().ttsCloningVoiceId;
-        const ttsResult = await this.deps.ttsClient.synthesize(fullNarration, { voiceId });
-        const voiceoverUrl = ttsResult.audioUrl;
-        const voiceoverDuration = ttsResult.durationSeconds || youtubeInput.totalDurationSeconds;
+        const targetDuration = youtubeInput.totalDurationSeconds;
+
+        // First pass: synthesize at normal speed to measure duration
+        let ttsResult = await this.deps.ttsClient.synthesize(fullNarration, { voiceId });
+        let voiceoverUrl = ttsResult.audioUrl;
+        let actualTtsDuration = ttsResult.durationSeconds || targetDuration;
+
+        // If TTS exceeds target by >10%, re-synthesize with calculated speed
+        const durationOverrun = actualTtsDuration / targetDuration;
+        if (durationOverrun > 1.1) {
+            // Cap speed at 1.8x to maintain quality (Fish Audio supports up to 2.0)
+            const requiredSpeed = Math.min(durationOverrun, 1.8);
+            console.log(`[${jobId}] TTS overrun: ${actualTtsDuration.toFixed(1)}s vs target ${targetDuration}s. Re-synthesizing at ${requiredSpeed.toFixed(2)}x speed...`);
+
+            await this.updateJobStatus(jobId, 'synthesizing_voiceover', `Adjusting narration speed (${requiredSpeed.toFixed(1)}x)...`);
+            ttsResult = await this.deps.ttsClient.synthesize(fullNarration, { voiceId, speed: requiredSpeed });
+            voiceoverUrl = ttsResult.audioUrl;
+            actualTtsDuration = ttsResult.durationSeconds || (targetDuration / requiredSpeed);
+        }
 
         await this.deps.jobManager.updateJob(jobId, {
             voiceoverUrl,
-            voiceoverDurationSeconds: voiceoverDuration,
+            voiceoverDurationSeconds: actualTtsDuration,
         });
 
-        // 3. Generate images for each scene
-        await this.updateJobStatus(jobId, 'generating_images', 'Creating scene visuals...');
-        const primaryImage = this.deps.primaryImageClient || this.deps.fallbackImageClient;
-        const segments: Segment[] = [];
-        let currentTime = 0;
+        console.log(`[${jobId}] TTS finalized: ${actualTtsDuration.toFixed(1)}s (target: ${targetDuration}s)`);
 
-        for (let i = 0; i < youtubeInput.scenes.length; i++) {
-            const scene = youtubeInput.scenes[i];
-            const sceneDuration = scene.durationSeconds || 10;
+        // 2. Analyze scenes using LLM for accurate prompt enhancement
+        await this.updateJobStatus(jobId, 'analyzing_scenes', 'Analyzing scenes for visual accuracy...');
+        const sceneAnalyzer = new YouTubeSceneAnalyzer();
 
-            // Generate image
-            let imageUrl: string | undefined;
-            try {
-                const imageResult = await primaryImage.generateImage(scene.visualPrompt);
-                imageUrl = imageResult.imageUrl;
-                if (this.deps.storageClient && imageUrl && !imageUrl.includes('cloudinary')) {
-                    const uploaded = await this.deps.storageClient.uploadImage(imageUrl, {
-                        folder: 'instagram-reels/youtube-images',
-                        publicId: `youtube_${jobId}_scene${i}`,
-                    });
-                    imageUrl = uploaded.url;
-                }
-            } catch (error) {
-                console.warn(`[${jobId}] Failed to generate image for scene ${i}:`, error);
-            }
+        // Build full script text for context
+        const fullScriptText = youtubeInput.scenes.map(s =>
+            `[${s.title}]\nVisual: ${s.visualPrompt}\nNarration: ${s.narration}`
+        ).join('\n\n');
 
-            segments.push(createSegment({
-                index: i,
-                commentary: scene.narration,
-                imagePrompt: scene.visualPrompt,
-                imageUrl: imageUrl || '',
-                startSeconds: currentTime,
-                endSeconds: currentTime + sceneDuration,
-                caption: scene.title,
-            }));
+        const scriptAnalysis = await sceneAnalyzer.analyzeScript(
+            youtubeInput.title,
+            youtubeInput.scenes,
+            youtubeInput.tone || 'epic',
+            fullScriptText
+        );
 
-            currentTime += sceneDuration;
+        // Log analysis results
+        for (const analyzed of scriptAnalysis.scenes) {
+            console.log(`[${jobId}] Scene "${analyzed.original.title}" → ${analyzed.assetType.toUpperCase()}`);
+            console.log(`[${jobId}]   Enhanced: ${analyzed.enhancedPrompt.substring(0, 100)}...`);
+        }
+        if (scriptAnalysis.warnings.length > 0) {
+            console.warn(`[${jobId}] Analysis warnings:`, scriptAnalysis.warnings);
         }
 
-        await this.deps.jobManager.updateJob(jobId, { segments });
+        // 3. Calculate proportional scene durations based on actual TTS length
+        const durationRatio = actualTtsDuration / targetDuration;
 
-        // 4. Select music (ambient for YouTube Shorts)
+        // 4. Generate VIDEO or IMAGE for each scene based on analysis
+        await this.updateJobStatus(jobId, 'generating_animated_video', 'Creating scene visuals...');
+        const segments: Segment[] = [];
+        const videoClipUrls: string[] = [];
+        let currentTime = 0;
+
+        const primaryImage = this.deps.primaryImageClient || this.deps.fallbackImageClient;
+
+        for (let i = 0; i < scriptAnalysis.scenes.length; i++) {
+            const analyzed = scriptAnalysis.scenes[i];
+            const originalScene = analyzed.original;
+            const sceneDuration = (originalScene.durationSeconds || 10) * durationRatio;
+
+            console.log(`[${jobId}] Scene ${i + 1}/${scriptAnalysis.scenes.length}: ${sceneDuration.toFixed(1)}s (${analyzed.assetType})`);
+
+            if (analyzed.assetType === 'video') {
+                // Generate VIDEO clips via Kie.ai
+                const clipsNeeded = Math.ceil(sceneDuration / 10);
+                const clipDuration = clipsNeeded > 1 ? 10 : (sceneDuration <= 5 ? 5 : 10);
+
+                for (let clipIdx = 0; clipIdx < clipsNeeded; clipIdx++) {
+                    try {
+                        const clipPrompt = clipIdx === 0
+                            ? analyzed.enhancedPrompt
+                            : `${analyzed.enhancedPrompt} (continuation, part ${clipIdx + 1})`;
+
+                        const videoResult = await this.deps.animatedVideoClient!.generateAnimatedVideo({
+                            durationSeconds: clipDuration,
+                            theme: clipPrompt,
+                            storyline: originalScene.narration,
+                            mood: analyzed.visualSpec.mood || youtubeInput.tone || 'epic',
+                        });
+
+                        let videoUrl = videoResult.videoUrl;
+
+                        // Upload to Cloudinary for persistent storage
+                        if (this.deps.storageClient && videoUrl && !videoUrl.includes('cloudinary')) {
+                            const uploaded = await this.deps.storageClient.uploadVideo(videoUrl, {
+                                folder: 'youtube-shorts/scene-clips',
+                                publicId: `youtube_${jobId}_scene${i}_clip${clipIdx}`,
+                            });
+                            videoUrl = uploaded.url;
+                        }
+
+                        videoClipUrls.push(videoUrl);
+                        console.log(`[${jobId}] Clip ${videoClipUrls.length} generated: ${videoUrl.substring(0, 60)}...`);
+
+                    } catch (error) {
+                        console.error(`[${jobId}] Failed to generate video for scene ${i}, clip ${clipIdx}:`, error);
+                        // Use fallback placeholder video
+                        videoClipUrls.push('https://res.cloudinary.com/djol0rpn5/video/upload/v1734612999/samples/elephants.mp4');
+                    }
+                }
+
+                // Create segment for this scene using actual clip duration
+                const segmentDuration = clipsNeeded * clipDuration;
+                segments.push(createSegment({
+                    index: i,
+                    commentary: originalScene.narration,
+                    imagePrompt: originalScene.visualPrompt,
+                    // Store first clip URL as "imageUrl" for compatibility, but mark as video
+                    imageUrl: videoClipUrls[videoClipUrls.length - clipsNeeded] || '',
+                    startSeconds: currentTime,
+                    endSeconds: currentTime + segmentDuration,
+                    caption: originalScene.title,
+                }));
+
+                currentTime += segmentDuration;
+            } else {
+                // Generate IMAGE via Flux and apply Ken Burns motion
+                try {
+                    const imageResult = await primaryImage.generateImage(analyzed.enhancedPrompt);
+                    let imageUrl = imageResult.imageUrl;
+
+                    // Upload to Cloudinary
+                    if (this.deps.storageClient && imageUrl && !imageUrl.includes('cloudinary')) {
+                        const uploaded = await this.deps.storageClient.uploadImage(imageUrl, {
+                            folder: 'youtube-shorts/scene-images',
+                            publicId: `youtube_${jobId}_scene${i}_image`,
+                        });
+                        imageUrl = uploaded.url;
+                    }
+
+                    // For images, we still need video clips for the renderer
+                    // Use Ken Burns effect by marking with turbo: prefix
+                    videoClipUrls.push(`turbo:${imageUrl}`);
+                    console.log(`[${jobId}] Image generated for scene ${i + 1}: ${imageUrl.substring(0, 60)}...`);
+
+                } catch (error) {
+                    console.error(`[${jobId}] Failed to generate image for scene ${i}:`, error);
+                    videoClipUrls.push('turbo:https://res.cloudinary.com/djol0rpn5/image/upload/v1734612999/samples/landscapes/nature-mountains.jpg');
+                }
+
+                segments.push(createSegment({
+                    index: i,
+                    commentary: originalScene.narration,
+                    imagePrompt: originalScene.visualPrompt,
+                    imageUrl: videoClipUrls[videoClipUrls.length - 1].replace('turbo:', '') || '',
+                    startSeconds: currentTime,
+                    endSeconds: currentTime + sceneDuration,
+                    caption: originalScene.title,
+                }));
+
+                currentTime += sceneDuration;
+            }
+        }
+
+        // Mark job as using animated video mode
+        await this.deps.jobManager.updateJob(jobId, {
+            segments,
+            isAnimatedVideoMode: true,
+            animatedVideoUrls: videoClipUrls,
+        });
+
+        // 5. Select music (epic/cinematic for YouTube Shorts)
         await this.updateJobStatus(jobId, 'selecting_music', 'Selecting background music...');
         const musicResult = await this.deps.musicSelector.selectMusic(
-            ['ambient', 'cinematic', 'epic'],
-            voiceoverDuration,
+            ['epic', 'cinematic', 'ambient'],
+            actualTtsDuration,
             youtubeInput.tone || 'epic'
         );
 
@@ -752,24 +876,28 @@ export class ReelOrchestrator {
             });
         }
 
-        // 5. Build manifest
+        // 6. Build manifest with VIDEO clips instead of images
         await this.updateJobStatus(jobId, 'building_manifest', 'Preparing video manifest...');
         const manifest = createReelManifest({
-            durationSeconds: voiceoverDuration,
+            durationSeconds: actualTtsDuration,
             voiceoverUrl,
             musicUrl: musicResult?.track.audioUrl,
             segments,
             subtitlesUrl: '',
         });
 
+        // Mark manifest as video-based for renderer
+        (manifest as any).isVideoMode = true;
+        (manifest as any).videoClipUrls = videoClipUrls;
+
         await this.deps.jobManager.updateJob(jobId, { manifest });
 
-        // 6. Render video
+        // 7. Render final video (concatenate clips + audio)
         await this.updateJobStatus(jobId, 'rendering', 'Rendering final video...');
         const renderResult = await this.deps.videoRenderer.render(manifest);
         let finalVideoUrl = renderResult.videoUrl;
 
-        // 7. Upload to permanent storage
+        // 8. Upload to permanent storage
         if (this.deps.storageClient && finalVideoUrl && !finalVideoUrl.includes('cloudinary')) {
             try {
                 await this.updateJobStatus(jobId, 'uploading', 'Saving to permanent storage...');
@@ -784,7 +912,7 @@ export class ReelOrchestrator {
             }
         }
 
-        // 8. Complete job
+        // 9. Complete job
         const completedJob = completeJob(
             await this.deps.jobManager.getJob(jobId) as ReelJob,
             finalVideoUrl,
@@ -796,15 +924,15 @@ export class ReelOrchestrator {
             manifest,
         });
 
-        // 9. Notify user
+        // 10. Notify user
         if (completedJob.telegramChatId && this.deps.notificationClient) {
             await this.deps.notificationClient.sendNotification(
                 completedJob.telegramChatId,
-                `✅ *Your YouTube Short is ready!*\n\n🎬 ${youtubeInput.title}\n⏱️ ${voiceoverDuration.toFixed(1)}s\n🎞️ ${segments.length} scenes\n\n${finalVideoUrl}`
+                `✅ *Your YouTube Short is ready!*\n\n🎬 ${youtubeInput.title}\n⏱️ ${actualTtsDuration.toFixed(1)}s\n🎞️ ${videoClipUrls.length} video clips\n\n${finalVideoUrl}`
             );
         }
 
-        // 10. Callback
+        // 11. Callback
         await this.notifyCallback(completedJob);
 
         return completedJob;

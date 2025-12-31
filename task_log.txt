@@ -1,0 +1,49 @@
+Received task <83892e1a-ed6d-49f7-af54-041eaffd4254>
+[FFmpeg] Job 47b7019a: Target Renderer V14 (Production Parity)
+[FFmpeg] Voiceover downloaded. Duration: 1.549188s
+[FFmpeg] Debug: Final Tags: V= A=
+[FFmpeg] Executing command: ffmpeg -y -hide_banner -loglevel info -i 
+/cache/render_47b7019a/voiceover.mp3 -loop 1 -t 1.549188 -i 
+/cache/render_47b7019a/visual_0.png -filter_complex 
+[1:v]scale=1280:2276:force_original_aspect_ratio=increase,crop=1280:2276,
+zoompan=z='min(zoom+0.0015,1.5)':d=37:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zo
+om/2)':s=1080x1920,setpts=PTS-STARTPTS,format=yuv420p;concat=n=1:v=1:a=0;
+[0:a]aresample=44100,pan=stereo|c0=c0|c1=c1,volume=2.0 -map  -map  -t 
+1.549188 -c:v libx264 -preset veryfast -c:a aac -b:a 192k -ac 2 -pix_fmt 
+yuv420p -movflags +faststart /cache/render_47b7019a/output.mp4
+Traceback (most recent call last):
+  File 
+"/usr/local/lib/python3.10/dist-packages/beta9/runner/endpoint.py", line 
+295, in _call_function
+    response_body = self.handler(
+  File "/usr/local/lib/python3.10/dist-packages/beta9/runner/common.py", 
+line 304, in __call__
+    result = self.handler(*handler_args, **handler_kwargs)
+  File 
+"/usr/local/lib/python3.10/dist-packages/beta9/abstractions/endpoint.py",
+line 588, in __call__
+    return self.local(*args, **kwargs)
+  File 
+"/usr/local/lib/python3.10/dist-packages/beta9/abstractions/endpoint.py",
+line 593, in local
+    return self.func(*args, **kwargs)
+  File "/mnt/code/scripts/beam_ffmpeg_parity_verified.py", line 183, in 
+render_video
+    video_url = upload_to_cloudinary(output_path, job_id, cloudinary_url)
+  File "/mnt/code/scripts/beam_ffmpeg_parity_verified.py", line 341, in 
+upload_to_cloudinary
+    r = cloudinary.uploader.upload(file_path, resource_type="video", 
+folder="instagram-reels/renders", public_id=f"re_{job_id}")
+  File "/usr/local/lib/python3.10/dist-packages/cloudinary/uploader.py", 
+line 198, in upload
+    return call_cacheable_api("upload", params, file=file, **options)
+  File "/usr/local/lib/python3.10/dist-packages/cloudinary/uploader.py", 
+line 834, in call_cacheable_api
+    result = call_api(action, params, http_headers, return_error, 
+unsigned, file, timeout, **options)
+  File "/usr/local/lib/python3.10/dist-packages/cloudinary/uploader.py", 
+line 921, in call_api
+    raise exception_class(result["error"]["message"])
+cloudinary.exceptions.BadRequest: Unsupported video format or file
+Task <83892e1a-ed6d-49f7-af54-041eaffd4254> finished
+Goodbye! 👋

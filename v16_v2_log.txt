@@ -1,0 +1,64 @@
+Received task <f6b15442-ce86-4e56-9ffb-6fe6b353ddea>
+[FFmpeg] ===== Job 30f698cf: V16-FRESH-2024-12-30 =====
+[FFmpeg] voiceover_url: 
+https://www.w3schools.com/html/horse.mp3...
+[FFmpeg] segments: 0
+[FFmpeg] animated_video_urls: 1
+[FFmpeg] Voiceover duration: 1.549188s
+[FFmpeg] Processing 1 animated clips
+[FFmpeg] Visual 0: image, 1.549188s
+[FFmpeg] Total visual inputs: 1, total duration: 1.549188s
+[FFmpeg] Filter complex: 
+[1:v]scale=1280:2276:force_original_aspect_ratio=increase,crop=128
+0:2276,zoompan=z='min(zoom+0.0015,1.5)':d=37:x='iw/2-(iw/zoom/2)':
+y='ih/2-(ih/zoom/2)':s=1080x1920,setpts=PTS-STARTPTS,format=yuv420
+p;concat=n=1:v=1:a=0;[0:a]aresample=44100,volume=2.0...
+[FFmpeg] Video tag: , Audio tag: 
+[FFmpeg] Command (36 args): ffmpeg -y -hide_banner -loglevel info 
+-i /cache/render_30f698cf/voiceover.mp3 -loop 1 -t 1.549188 -i 
+/cache/render_30f698cf/visual_0.png -filter_complex 
+[1:v]scale=1280:2276:force_original_aspect_ratio=increase,crop=128
+0:2276,zoompan=z='min(zoom+0.0015,1.5)':d=37:x='iw/2-(iw/zoom/2)':
+y='ih/2-(ih/zoom/2)':s=1080x1920,setpts=PTS-STARTPTS,format=yuv420
+p;concat=n=1:v=1:a=0;[0:a]aresample=44100,volume=2.0 -map  -map  
+-t...
+[FFmpeg] Success! Output size: 331119 bytes
+[FFmpeg] Uploading to Cloudinary...
+[FFmpeg] FATAL ERROR: Unsupported video format or file
+Traceback (most recent call last):
+  File 
+"/usr/local/lib/python3.10/dist-packages/beta9/runner/endpoint.py"
+, line 295, in _call_function
+    response_body = self.handler(
+  File 
+"/usr/local/lib/python3.10/dist-packages/beta9/runner/common.py", 
+line 304, in __call__
+    result = self.handler(*handler_args, **handler_kwargs)
+  File 
+"/usr/local/lib/python3.10/dist-packages/beta9/abstractions/endpoi
+nt.py", line 588, in __call__
+    return self.local(*args, **kwargs)
+  File 
+"/usr/local/lib/python3.10/dist-packages/beta9/abstractions/endpoi
+nt.py", line 593, in local
+    return self.func(*args, **kwargs)
+  File "/mnt/code/scripts/beam_ffmpeg_v16.py", line 209, in 
+render_video
+    r = cloudinary.uploader.upload(
+  File 
+"/usr/local/lib/python3.10/dist-packages/cloudinary/uploader.py", 
+line 198, in upload
+    return call_cacheable_api("upload", params, file=file, 
+**options)
+  File 
+"/usr/local/lib/python3.10/dist-packages/cloudinary/uploader.py", 
+line 834, in call_cacheable_api
+    result = call_api(action, params, http_headers, return_error, 
+unsigned, file, timeout, **options)
+  File 
+"/usr/local/lib/python3.10/dist-packages/cloudinary/uploader.py", 
+line 921, in call_api
+    raise exception_class(result["error"]["message"])
+cloudinary.exceptions.BadRequest: Unsupported video format or file
+Task <f6b15442-ce86-4e56-9ffb-6fe6b353ddea> finished
+Goodbye! 👋

@@ -1,0 +1,47 @@
+/Users/user1000/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+Received task <e27d4d67-b1a0-455b-9b49-40c6e7359b4c>
+[V20] ===== Job f83d82b9 =====
+[V20] Voiceover duration: 1.549188s
+[V20] Image downloaded
+[V20] Filter string: 
+[1:v]scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080
+:1920:(ow-iw)/2:(oh-ih)/2,setsar=1,format=yuv420p;[0:a]aresample=4
+4100,volume=2.0
+[V20] Video out tag: 
+[V20] Audio out tag: 
+[V20] FFmpeg command: ffmpeg -y -hide_banner -loglevel info -i 
+/cache/render_f83d82b9/voiceover.mp3 -loop 1 -t 1.549188 -i 
+/cache/render_f83d82b9/image.png -filter_complex 
+[1:v]scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080
+:1920:(ow-iw)/2:(oh-ih)/2,setsar=1,format=yuv420p;[0:a]aresample=4
+4100,volume=2.0 -map  -map  -t 1.549188 -c:v libx264 -profile:v 
+baseline -level 3.0 -preset veryfast -b:v 2M -c:a aac -b:a 128k 
+-ar 44100 -ac 2 -pix_fmt yuv420p -movflags +faststart 
+/cache/render_f83d82b9/output.mp4
+[V20] Output size: 119123 bytes
+[V20] Format: 
+[V20] ERROR: Invalid format: 
+Traceback (most recent call last):
+  File 
+"/usr/local/lib/python3.10/dist-packages/beta9/runner/endpoint.py"
+, line 295, in _call_function
+    response_body = self.handler(
+  File 
+"/usr/local/lib/python3.10/dist-packages/beta9/runner/common.py", 
+line 304, in __call__
+    result = self.handler(*handler_args, **handler_kwargs)
+  File 
+"/usr/local/lib/python3.10/dist-packages/beta9/abstractions/endpoi
+nt.py", line 588, in __call__
+    return self.local(*args, **kwargs)
+  File 
+"/usr/local/lib/python3.10/dist-packages/beta9/abstractions/endpoi
+nt.py", line 593, in local
+    return self.func(*args, **kwargs)
+  File "/mnt/code/scripts/beam_ffmpeg_v20.py", line 154, in 
+render_video
+    raise Exception(f"Invalid format: {verify.stdout}")
+Exception: Invalid format: 
+Task <e27d4d67-b1a0-455b-9b49-40c6e7359b4c> finished
+Goodbye! 👋

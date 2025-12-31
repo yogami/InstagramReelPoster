@@ -554,7 +554,17 @@ export class WebsiteScraperClient implements IWebsiteScraperClient {
         // Also extract og:image if present (usually high quality)
         const ogImageMatch = html.match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i);
         if (ogImageMatch) {
-            const ogImageUrl = ogImageMatch[1];
+            let ogImageUrl = ogImageMatch[1];
+
+            // Convert relative OG URLs to absolute
+            if (ogImageUrl && !ogImageUrl.startsWith('http') && !ogImageUrl.startsWith('data:')) {
+                try {
+                    ogImageUrl = new URL(ogImageUrl, sourceUrl).href;
+                } catch {
+                    // skip
+                }
+            }
+
             if (!images.some(img => img.url === ogImageUrl)) {
                 images.unshift({
                     url: ogImageUrl,

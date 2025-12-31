@@ -269,12 +269,26 @@ export class EnhancedWebsiteScraper implements IWebsiteScraperClient {
                         }
 
                         if (obj.logo) {
-                            analysis.logoUrl = typeof obj.logo === 'string' ? obj.logo : obj.logo.url;
+                            let logoUrl = typeof obj.logo === 'string' ? obj.logo : obj.logo.url;
+                            if (logoUrl && !logoUrl.startsWith('http') && !logoUrl.startsWith('data:')) {
+                                try {
+                                    logoUrl = new URL(logoUrl, page.url()).href;
+                                } catch { }
+                            }
+                            analysis.logoUrl = logoUrl;
                         }
 
                         if (obj.image) {
-                            const imgUrl = typeof obj.image === 'string' ? obj.image : obj.image.url;
+                            let imgUrl = typeof obj.image === 'string' ? obj.image : obj.image.url;
                             if (imgUrl) {
+                                // Convert relative URLs to absolute
+                                if (!imgUrl.startsWith('http') && !imgUrl.startsWith('data:')) {
+                                    try {
+                                        imgUrl = new URL(imgUrl, page.url()).href;
+                                    } catch {
+                                        // skip
+                                    }
+                                }
                                 analysis.scrapedMedia = [{
                                     url: imgUrl,
                                     width: 1920,
@@ -302,6 +316,10 @@ export class EnhancedWebsiteScraper implements IWebsiteScraperClient {
                         // Some schemas put reservation link in 'acceptsReservations' string (link) or just boolean
                         if (obj.acceptsReservations && typeof obj.acceptsReservations === 'string' && obj.acceptsReservations.startsWith('http')) {
                             analysis.reservationLink = obj.acceptsReservations;
+                        } else if (obj.acceptsReservations && typeof obj.acceptsReservations === 'string') {
+                            try {
+                                analysis.reservationLink = new URL(obj.acceptsReservations, page.url()).href;
+                            } catch { }
                         }
                     }
                 }

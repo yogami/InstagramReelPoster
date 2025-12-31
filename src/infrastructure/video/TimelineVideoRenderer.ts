@@ -915,6 +915,11 @@ export class TimelineVideoRenderer implements IVideoRenderer {
      * @returns Base64 data URI or undefined if fetch fails
      */
     private async fetchImageAsBase64(imageUrl: string): Promise<string | undefined> {
+        if (imageUrl.startsWith('data:')) {
+            console.log('[Timeline] Logo is already a data URI, returning directly');
+            return imageUrl;
+        }
+
         try {
             console.log(`[Timeline] Fetching logo for base64 conversion: ${imageUrl}`);
 
