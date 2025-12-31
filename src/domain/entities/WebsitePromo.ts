@@ -7,6 +7,27 @@
  */
 
 /**
+ * Type of website detected for content-aware promo generation.
+ */
+export type SiteType = 'business' | 'personal';
+
+/**
+ * Personal information extracted from portfolio/personal sites.
+ */
+export interface PersonalInfo {
+    /** Full name of the individual */
+    fullName: string;
+    /** Professional title or tagline (e.g., "AI Engineer", "Designer") */
+    title: string;
+    /** Bio or about text (200 chars max) */
+    bio?: string;
+    /** Core skills (3-5 max) */
+    skills: string[];
+    /** Headshot/profile image URL (highest priority visual) */
+    headshotUrl?: string;
+}
+
+/**
  * Supported business categories for promotional reels.
  * Each category has optimized hooks, showcases, and CTAs.
  */
@@ -157,6 +178,12 @@ export interface WebsiteAnalysis {
     deliveryLinks?: { platform: string, url: string }[];
     /** Price range (e.g. "€€") */
     priceRange?: string;
+
+    // Site Type Detection
+    /** Detected site type (business or personal) */
+    siteType?: SiteType;
+    /** Personal information (only populated if siteType === 'personal') */
+    personalInfo?: PersonalInfo;
 }
 
 /**

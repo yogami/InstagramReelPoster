@@ -7,6 +7,7 @@ import {
     TestimonialsContent,
     ScrapedMedia,
 } from '../../domain/entities/WebsitePromo';
+import { detectSiteType, extractPersonalInfo } from '../../domain/services/SiteTypeDetector';
 
 /**
  * Website scraper client using axios + cheerio for HTML parsing.
@@ -49,6 +50,9 @@ export class WebsiteScraperClient implements IWebsiteScraperClient {
             if (options?.includeSubpages) {
                 await this.scrapeSubpages(url, analysis);
             }
+
+            // Detect site type and extract personal info if applicable
+            this.detectAndExtractSiteInfo(analysis);
 
             return analysis;
         } catch (error) {
@@ -782,4 +786,55 @@ export class WebsiteScraperClient implements IWebsiteScraperClient {
 
         return uniqueEmails[0];
     }
+
+    /**
+     * Detects site type and extracts personal information if applicable.
+     * Mutates the analysis object in place.
+     */
+    private detectAndExtractSiteInfo(analysis: WebsiteAnalysis): void {
+        const detectionResult = detectSiteType(
+            analysis.heroText,
+            analysis.aboutContent || '',
+            analysis.keywords,
+            !!analysis.openingHours,
+            !!analysis.address,
+            !!analysis.pricingContent
+        );
+
+        analysis.siteType = detectionResult.siteType;
+
+        console.log(`[WebsiteScraper] Site type detected: ${detectionResult.siteType} (confidence: ${detectionResult.confidence.toFixed(2)}, signals: ${detectionResult.signals.join(', ')})`);
+
+        // If personal site, extract personal information
+        if (detectionResult.siteType === 'personal') {
+            const personalInfo = extractPersonalInfo(
+                analysis.heroText,
+                analysis.aboutContent || '',
+                analysis.keywords
+            );
+
+            // Prioritize headshot images
+            if (analysis.scrapedMedia && analysis.scrapedMedia.length > 0) {
+                const headshot = analysis.scrapedMedia.find(
+                    m => m.altText && (
+                        m.altText.toLowerCase().includes('profile') ||
+                        m.altText.toLowerCase().includes('headshot') ||
+                        m.altText.toLowerCase().includes(personalInfo.fullName.toLowerCase().split(' ')[0]) // First name
+                    )
+                );
+
+                if (headshot) {
+                    personalInfo.headshotUrl = headshot.url;
+                } else {
+                    // Use first hero image as fallback
+                    const heroImage = analysis.scrapedMedia.find(m => m.isHero);
+                    personalInfo.headshotUrl = heroImage?.url || analysis.scrapedMedia[0]?.url;
+                }
+            }
+
+            analysis.personalInfo = personalInfo;
+            console.log(`[WebsiteScraper] Personal info extracted: ${personalInfo.fullName} - ${personalInfo.title}`);
+        }
+    }
 }
+
