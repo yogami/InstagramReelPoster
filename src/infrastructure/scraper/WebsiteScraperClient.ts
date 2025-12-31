@@ -52,7 +52,7 @@ export class WebsiteScraperClient implements IWebsiteScraperClient {
             }
 
             // Detect site type and extract personal info if applicable
-            this.detectAndExtractSiteInfo(analysis);
+            this.detectAndExtractSiteInfo(analysis, html);
 
             return analysis;
         } catch (error) {
@@ -791,7 +791,7 @@ export class WebsiteScraperClient implements IWebsiteScraperClient {
      * Detects site type and extracts personal information if applicable.
      * Mutates the analysis object in place.
      */
-    private detectAndExtractSiteInfo(analysis: WebsiteAnalysis): void {
+    private detectAndExtractSiteInfo(analysis: WebsiteAnalysis, html: string): void {
         const detectionResult = detectSiteType(
             analysis.heroText,
             analysis.aboutContent || '',
@@ -835,6 +835,55 @@ export class WebsiteScraperClient implements IWebsiteScraperClient {
             analysis.personalInfo = personalInfo;
             console.log(`[WebsiteScraper] Personal info extracted: ${personalInfo.fullName} - ${personalInfo.title}`);
         }
+
+        // Extract social links (especially useful for personal sites)
+        analysis.socialLinks = this.extractSocialLinks(html, analysis.sourceUrl);
+        if (analysis.socialLinks && Object.keys(analysis.socialLinks).length > 0) {
+            console.log(`[WebsiteScraper] Social links found:`, analysis.socialLinks);
+        }
+    }
+
+    /**
+     * Extracts social media profile URLs from HTML.
+     */
+    private extractSocialLinks(html: string, baseUrl: string): { linkedin?: string; github?: string; twitter?: string; instagram?: string } | undefined {
+        const $ = cheerio.load(html);
+        const links: { linkedin?: string; github?: string; twitter?: string; instagram?: string } = {};
+
+        // Find all anchor tags
+        $('a[href]').each((_, element) => {
+            const href = $(element).attr('href');
+            if (!href) return;
+
+            const fullUrl = this.isAbsoluteUrl(href) ? href : new URL(href, baseUrl).toString();
+            const lowerUrl = fullUrl.toLowerCase();
+
+            // LinkedIn
+            if ((lowerUrl.includes('linkedin.com/in/') || lowerUrl.includes('linkedin.com/company/')) && !links.linkedin) {
+                links.linkedin = fullUrl;
+            }
+            // GitHub
+            else if (lowerUrl.includes('github.com/') && !lowerUrl.includes('github.com/sponsors') && !links.github) {
+                links.github = fullUrl;
+            }
+            // Twitter/X
+            else if ((lowerUrl.includes('twitter.com/') || lowerUrl.includes('x.com/')) && !links.twitter) {
+                links.twitter = fullUrl;
+            }
+            // Instagram
+            else if (lowerUrl.includes('instagram.com/') && !links.instagram) {
+                links.instagram = fullUrl;
+            }
+        });
+
+        return Object.keys(links).length > 0 ? links : undefined;
+    }
+
+    /**
+     * Checks if a URL is absolute.
+     */
+    private isAbsoluteUrl(url: string): boolean {
+        return url.startsWith('http://') || url.startsWith('https://') || url.startsWith('//');
     }
 }
 
