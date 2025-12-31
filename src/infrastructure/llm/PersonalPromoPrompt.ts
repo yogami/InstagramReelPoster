@@ -113,15 +113,22 @@ export function parsePersonalPromoResponse(rawResponse: string): PromoScriptPlan
         }
 
         const scenes: PromoSceneContent[] = parsed.scenes.map((scene: any, index: number) => {
-            if (!scene.narration || !scene.visualKeywords) {
-                throw new Error(`Scene ${index + 1} missing required fields`);
+            // VALIDATION: Check required fields exist and are non-empty
+            if (!scene.narration || typeof scene.narration !== 'string' || scene.narration.trim() === '') {
+                throw new Error(`Scene ${index + 1} missing or empty narration field`);
             }
 
+            if (!scene.visualKeywords || typeof scene.visualKeywords !== 'string' || scene.visualKeywords.trim() === '') {
+                throw new Error(`Scene ${index + 1} missing or empty visualKeywords field`);
+            }
+
+            // MAP to PromoSceneContent shape (imagePrompt, subtitle, narration)
             return {
                 role: scene.role || (['hook', 'showcase', 'cta'][index] as 'hook' | 'showcase' | 'cta'),
                 duration: scene.duration || 5,
                 narration: scene.narration.trim(),
-                visualKeywords: scene.visualKeywords.trim()
+                subtitle: scene.narration.trim(), // Use narration as subtitle for personal promos
+                imagePrompt: scene.visualKeywords.trim(), // Map visual keywords to image prompt
             };
         });
 
