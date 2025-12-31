@@ -184,6 +184,16 @@ export interface WebsiteAnalysis {
     siteType?: SiteType;
     /** Personal information (only populated if siteType === 'personal') */
     personalInfo?: PersonalInfo;
+
+    // Social Media Links (especially relevant for personal sites)
+    /** Social media profile URLs */
+    socialLinks?: {
+        linkedin?: string;
+        github?: string;
+        twitter?: string;
+        instagram?: string;
+        website?: string;
+    };
 }
 
 /**
