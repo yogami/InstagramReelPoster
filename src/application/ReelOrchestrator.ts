@@ -615,16 +615,41 @@ export class ReelOrchestrator {
         // Populate branding for Info Slides if we have data
         if (websiteAnalysis) {
             const template = getPromptTemplate(category);
-            manifest.branding = {
-                logoUrl: websiteAnalysis.logoUrl || manifest.logoUrl || '',
-                businessName: businessName,
-                address: websiteAnalysis.address,
-                hours: websiteAnalysis.openingHours,
-                phone: websiteAnalysis.phone,
-                email: websiteAnalysis.email,
-                ctaText: template?.cta || 'Mehr erfahren', // Use category CTA or fallback
-                qrCodeUrl: websiteAnalysis.reservationLink || job.websitePromoInput?.websiteUrl,
-            };
+            const isPersonalSite = websiteAnalysis.siteType === 'personal';
+
+            // For personal sites: use social links, portfolio URL
+            // For business sites: use business contact info
+            if (isPersonalSite) {
+                const socialText = [];
+                if (websiteAnalysis.socialLinks?.linkedin) socialText.push(`LinkedIn: ${websiteAnalysis.socialLinks.linkedin}`);
+                if (websiteAnalysis.socialLinks?.github) socialText.push(`GitHub: ${websiteAnalysis.socialLinks.github}`);
+                if (websiteAnalysis.socialLinks?.twitter) socialText.push(`Twitter: ${websiteAnalysis.socialLinks.twitter}`);
+
+                manifest.branding = {
+                    logoUrl: websiteAnalysis.personalInfo?.headshotUrl || websiteAnalysis.logoUrl || manifest.logoUrl || '',
+                    businessName: businessName,
+                    address: undefined, // No physical address for personal sites
+                    hours: undefined, // No business hours
+                    phone: undefined, // No phone number
+                    email: websiteAnalysis.email, // Keep email if available
+                    ctaText: 'View Portfolio', // Personal CTA
+                    qrCodeUrl: websiteAnalysis.sourceUrl, // Main portfolio URL, not reservation
+                };
+
+                console.log(`[PersonalPromo] Branding configured for personal site: email=${websiteAnalysis.email}, socials=${socialText.join(', ')}`);
+            } else {
+                // Business site: use existing logic
+                manifest.branding = {
+                    logoUrl: websiteAnalysis.logoUrl || manifest.logoUrl || '',
+                    businessName: businessName,
+                    address: websiteAnalysis.address,
+                    hours: websiteAnalysis.openingHours,
+                    phone: websiteAnalysis.phone,
+                    email: websiteAnalysis.email,
+                    ctaText: template?.cta || 'Mehr erfahren',
+                    qrCodeUrl: websiteAnalysis.reservationLink || job.websitePromoInput?.websiteUrl,
+                };
+            }
         };
 
         // Populate Overlays for Restaurant Pivot (Rating + QR)

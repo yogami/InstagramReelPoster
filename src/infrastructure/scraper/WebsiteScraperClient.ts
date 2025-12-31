@@ -815,20 +815,36 @@ export class WebsiteScraperClient implements IWebsiteScraperClient {
 
             // Prioritize headshot images
             if (analysis.scrapedMedia && analysis.scrapedMedia.length > 0) {
-                const headshot = analysis.scrapedMedia.find(
-                    m => m.altText && (
-                        m.altText.toLowerCase().includes('profile') ||
-                        m.altText.toLowerCase().includes('headshot') ||
-                        m.altText.toLowerCase().includes(personalInfo.fullName.toLowerCase().split(' ')[0]) // First name
-                    )
-                );
+                const firstName = personalInfo.fullName.split(' ')[0].toLowerCase();
+
+                // Priority 1: High confidence match in URL or AltText
+                const headshot = analysis.scrapedMedia.find(m => {
+                    const isSvg = m.url.toLowerCase().endsWith('.svg');
+                    if (isSvg) return false; // Headshots are rarely SVGs
+
+                    const urlLower = m.url.toLowerCase();
+                    const altLower = (m.altText || '').toLowerCase();
+
+                    return (
+                        urlLower.includes('profile') ||
+                        urlLower.includes('headshot') ||
+                        urlLower.includes(firstName) ||
+                        altLower.includes('profile') ||
+                        altLower.includes('headshot') ||
+                        altLower.includes(firstName)
+                    );
+                });
 
                 if (headshot) {
                     personalInfo.headshotUrl = headshot.url;
+                    console.log(`[WebsiteScraper] Found headshot candidate: ${headshot.url}`);
                 } else {
-                    // Use first hero image as fallback
-                    const heroImage = analysis.scrapedMedia.find(m => m.isHero);
-                    personalInfo.headshotUrl = heroImage?.url || analysis.scrapedMedia[0]?.url;
+                    // Priority 2: Use hero image if not SVG
+                    const heroImage = analysis.scrapedMedia.find(m => m.isHero && !m.url.toLowerCase().endsWith('.svg'));
+                    // Priority 3: First valid non-SVG image
+                    const firstImage = analysis.scrapedMedia.find(m => !m.url.toLowerCase().endsWith('.svg'));
+
+                    personalInfo.headshotUrl = heroImage?.url || firstImage?.url;
                 }
             }
 
