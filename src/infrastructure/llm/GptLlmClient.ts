@@ -450,4 +450,39 @@ Return JSON:
 
         return bestCategory;
     }
+
+    /**
+     * Generates a personal portfolio/promo reel script from website content.
+     * Uses content-driven approach without rigid templates.
+     */
+    async generatePersonalPromoScript(
+        analysis: WebsiteAnalysis,
+        personalName: string,
+        language: string
+    ): Promise<PromoScriptPlan> {
+        const { buildPersonalPromoPrompt, parsePersonalPromoResponse } = await import('./PersonalPromoPrompt');
+
+        const prompt = buildPersonalPromoPrompt(analysis, personalName, language);
+        const systemPrompt = 'You are an expert personal brand strategist creating authentic, no-BS promo videos for professionals.';
+
+        try {
+            const response = await this.llmService.chatCompletion(prompt, systemPrompt, { jsonMode: true });
+            const result = parsePersonalPromoResponse(response);
+
+            console.log(`[PersonalPromo] Generated script for ${personalName}: "${result.coreMessage}"`);
+
+            return {
+                ...result,
+                language,
+                compliance: {
+                    source: 'public-website',
+                    consent: true,
+                    scrapedAt: new Date(),
+                }
+            };
+        } catch (error) {
+            console.error(`[PersonalPromo] Script generation failed:`, error);
+            throw new Error(`Failed to generate personal promo script: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+    }
 }

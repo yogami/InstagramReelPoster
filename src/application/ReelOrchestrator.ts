@@ -388,10 +388,17 @@ export class ReelOrchestrator {
             // Step 1: Scrape and analyze website
             const websiteAnalysis = await this.scrapeWebsiteForPromo(jobId, websiteInput.websiteUrl);
 
-            // Step 2: Detect business category
-            const category = await this.detectCategoryForPromo(jobId, websiteInput, websiteAnalysis);
+            // Step 2: Detect business category (skip for personal sites)
+            const siteType = websiteAnalysis.siteType || 'business';
+            let category: BusinessCategory | undefined = undefined;
 
-            // Step 3: Generate promo script
+            if (siteType === 'business') {
+                category = await this.detectCategoryForPromo(jobId, websiteInput, websiteAnalysis);
+            } else {
+                console.log(`[${jobId}] Personal site detected, skipping category detection`);
+            }
+
+            // Step 3: Generate promo script (routing happens inside)
             const { promoScript, businessName } = await this.generatePromoContent(
                 jobId, websiteInput, websiteAnalysis, category
             );
@@ -473,9 +480,51 @@ export class ReelOrchestrator {
         jobId: string,
         websiteInput: WebsitePromoInput,
         websiteAnalysis: WebsiteAnalysis,
-        category: BusinessCategory
+        category?: BusinessCategory
     ): Promise<{ promoScript: PromoScriptPlan; businessName: string }> {
         await this.updateJobStatus(jobId, 'generating_commentary', 'Creating promotional script...');
+
+        // Check site type and route accordingly
+        const siteType = websiteAnalysis.siteType || 'business';
+
+        if (siteType === 'personal') {
+            // PERSONAL SITE FLOW - Content-driven, no templates
+            console.log(`[${jobId}] Detected personal site, using content-driven script generation`);
+
+            if (!websiteAnalysis.personalInfo) {
+                throw new Error('Personal info is required for personal site promo generation');
+            }
+
+            if (!this.deps.llmClient.generatePersonalPromoScript) {
+                throw new Error('LlmClient.generatePersonalPromoScript is required for personal promo mode');
+            }
+
+            const personalName = websiteAnalysis.personalInfo.fullName;
+            const promoScript = await this.deps.llmClient.generatePersonalPromoScript(
+                websiteAnalysis,
+                personalName,
+                websiteInput.language || 'en'
+            );
+
+            // Include logo/headshot if present
+            if (websiteInput.logoUrl) {
+                promoScript.logoUrl = websiteInput.logoUrl;
+                promoScript.logoPosition = websiteInput.logoPosition || 'end';
+            } else if (websiteAnalysis.personalInfo.headshotUrl) {
+                promoScript.logoUrl = websiteAnalysis.personalInfo.headshotUrl;
+                promoScript.logoPosition = 'end';
+            }
+
+            await this.deps.jobManager.updateJob(jobId, { promoScriptPlan: promoScript });
+            console.log(`[${jobId}] Personal promo script generated for ${personalName}: "${promoScript.coreMessage}"`);
+
+            return { promoScript, businessName: personalName };
+        }
+
+        // BUSINESS SITE FLOW - Template-based
+        if (!category) {
+            throw new Error('Category is required for business promo generation');
+        }
 
         const businessName = websiteInput.businessName || websiteAnalysis.detectedBusinessName || 'Local Business';
         const template = getPromptTemplate(category);
@@ -507,7 +556,7 @@ export class ReelOrchestrator {
         jobId: string,
         job: ReelJob,
         promoScript: PromoScriptPlan,
-        category: BusinessCategory,
+        category: BusinessCategory | undefined,
         businessName: string
     ): Promise<ReelJob> {
         const segmentContent = this.convertPromoScenesToSegments(promoScript);
@@ -529,7 +578,7 @@ export class ReelOrchestrator {
             segmentContent,
             fullCommentary,
             targetDuration,
-            category,
+            category: category || 'service', // Default to 'service' for personal sites
             promoScript,
             voiceId: promoVoiceId
         });
@@ -545,7 +594,7 @@ export class ReelOrchestrator {
         });
 
         // Finalize (Render + Notify)
-        return await this.finalizePromoJob(jobId, job, manifest, category, businessName);
+        return await this.finalizePromoJob(jobId, job, manifest, category || 'service', businessName);
     }
 
     /**

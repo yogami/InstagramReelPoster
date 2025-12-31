@@ -272,4 +272,18 @@ export interface ILlmClient {
         businessName: string,
         language: string
     ): Promise<PromoScriptPlan>;
+
+    /**
+     * Generates a personal portfolio/promo reel script from website content.
+     * Creates authentic, content-driven narrative without rigid templates.
+     * @param analysis Scraped website content with personal info
+     * @param personalName Individual's full name
+     * @param language Output language (e.g., 'en', 'de')
+     * @returns Generated personal promo script plan
+     */
+    generatePersonalPromoScript?(
+        analysis: WebsiteAnalysis,
+        personalName: string,
+        language: string
+    ): Promise<PromoScriptPlan>;
 }
