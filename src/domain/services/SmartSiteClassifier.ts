@@ -3,31 +3,39 @@ import { PythonClassifierAdapter } from '../../infrastructure/intelligence/Pytho
 
 export class SmartSiteClassifier {
     private pythonAdapter: PythonClassifierAdapter;
+    private usePythonClassifier: boolean;
 
     constructor() {
         this.pythonAdapter = new PythonClassifierAdapter();
+        // Toggle Python classifier - disabled in production for speed (CPU inference is slow)
+        // Set USE_PYTHON_CLASSIFIER=true to enable
+        this.usePythonClassifier = process.env.USE_PYTHON_CLASSIFIER === 'true';
     }
 
     public async classify(page: NormalizedPage): Promise<SiteClassification> {
-        // 1. Try SOTA WebOrganizer Classification
-        try {
-            console.log('🧠 Invoking WebOrganizer (Python)...');
-            // Combine hero text + meta for context
-            const mainText = `${page.hero.headline} ${page.hero.subhead} ${page.meta.description}`;
+        // 1. Try SOTA WebOrganizer Classification (if enabled)
+        if (this.usePythonClassifier) {
+            try {
+                console.log('🧠 Invoking WebOrganizer (Python)...');
+                // Combine hero text + meta for context
+                const mainText = `${page.hero.headline} ${page.hero.subhead} ${page.meta.description}`;
 
-            const result = await this.pythonAdapter.classify(mainText, {
-                contacts: page.contact
-            });
+                const result = await this.pythonAdapter.classify(mainText, {
+                    contacts: page.contact
+                });
 
-            if (result.topic !== 'Unknown' && !result.error) {
-                console.log('✅ WebOrganizer Result:', result);
-                return this.mapWebOrganizerToSiteClassification(result, page);
+                if (result.topic !== 'Unknown' && !result.error) {
+                    console.log('✅ WebOrganizer Result:', result);
+                    return this.mapWebOrganizerToSiteClassification(result, page);
+                }
+            } catch (e) {
+                console.warn('⚠️ WebOrganizer failed, falling back to heuristics:', e);
             }
-        } catch (e) {
-            console.warn('⚠️ WebOrganizer failed, falling back to heuristics:', e);
+        } else {
+            console.log('⚡ Using fast heuristic classifier (Python disabled)');
         }
 
-        // 2. Fallback to Heuristics
+        // 2. Use Fast Heuristics (default in production)
         return this.heuristicClassify(page);
     }
 
