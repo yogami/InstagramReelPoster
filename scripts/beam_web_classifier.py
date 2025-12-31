@@ -52,7 +52,8 @@ def get_models():
             "text2text-generation",
             model="google/flan-t5-xl",
             device=0 if device == "cuda" else -1,
-            torch_dtype=torch.float16 if device == "cuda" else torch.float32
+            torch_dtype=torch.bfloat16 if device == "cuda" else torch.float32,
+            model_kwargs={"low_cpu_mem_usage": True}
         )
         
         _models = {
@@ -93,6 +94,10 @@ def classify_website(
     """
     import torch
     import gc
+    import os
+    
+    # Optimize PyTorch memory fragmentation
+    os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
     
     models = get_models()
     generator = models["generator"]
