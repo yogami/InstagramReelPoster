@@ -24,7 +24,7 @@ FLUX OPTIMIZATION (Static Image Reels):
 - STATIC POWER: Designed for slow zoom/pan in post-production (creates motion illusion)
 - ASPECT: 9:16 vertical portrait format
 - STYLE: Ultra-detailed, photorealistic with high stylization
-- VISUAL HOOKS: Integrate text overlays into scene naturally (carved stone, neon glow, floating text)
+- VISUAL HOOKS: Focus on symbolic, text-free imagery that tells a story without words. Avoid generating characters or signs with text.
 - QUALITY: Cinematic lighting, 8k resolution, atmospheric depth`;
 
 export const REEL_MODE_DETECTION_PROMPT = `Analyze the transcript and determine if the user wants an ANIMATED VIDEO REEL (story-driven, scene-by-scene) or a standard IMAGE-BASED REEL.
@@ -203,6 +203,7 @@ For each commentary segment, generate:
    FORMAT: "[detailed scene description], moody cinematic lighting, high contrast shadows, ultra-detailed, photorealistic, 9:16 vertical portrait"
 2. caption: Short 3-5 word text overlay.
 3. continuityTags: Object with visual consistency and motion trackers.
+4. **IMAGE POLICY**: Purely visual. ZERO text, ZERO letters, ZERO logos, ZERO symbols. All text will be technical overlays in post. Any generated text is a failure.
 
 SCENE CONTINUITY RULES:
 - Index 0: Establish anchor (location, lighting, style).

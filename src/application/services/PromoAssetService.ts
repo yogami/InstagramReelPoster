@@ -297,7 +297,7 @@ export class PromoAssetService {
                         try {
                             // Strict text prevention by appending negative prompt instruction
                             const stylePrefix = segment.visualStyle ? `Style: ${segment.visualStyle}. ` : '';
-                            const strictPrompt = stylePrefix + segment.imagePrompt + " --no text, letters, watermark, signature";
+                            const strictPrompt = `${stylePrefix}${segment.imagePrompt}. Ensure the image contains NO text, NO letters, NO words, NO signage, and NO watermarks. Purely visual composition.`;
                             const { imageUrl } = await this.deps.primaryImageClient.generateImage(strictPrompt);
                             finalImageUrl = imageUrl;
                         } catch (primaryError) {

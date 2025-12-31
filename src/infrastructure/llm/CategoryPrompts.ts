@@ -51,13 +51,13 @@ export const CATEGORY_PROMPTS: Record<BusinessCategory, CategoryPromptTemplate> 
         hook: "Is your business stuck in the analog past?",
         showcase: "Cutting-edge AI, future-proof strategy, automated growth",
         cta: "Scale with Berlin's tech leaders",
-        visuals: "abstract data streams, glowing neural networks, futuristic clean office, abstract geometric shapes, sleek holographic UI",
+        visuals: "Minimalist modern laboratory, clean white workspace, high-end workstations with multiple monitors, team of researchers in deep focus (no white coats), sleek server racks with subtle status lights, authentic tech hub atmosphere",
     },
     agency: {
         hook: "Stop guessing with your marketing budget.",
         showcase: "Data-driven results, expert strategy, proven growth",
         cta: "Partner with Berlin's growth engine",
-        visuals: "modern agency office, strategy whiteboard, analytics dashboard on screen, team brainstorming, high-end macbook setup",
+        visuals: "Sun-drenched loft office, creative mood board with sketches, focused strategic planning session, modern designer desks, authentic team collaboration, high-end photography of real work environment",
     },
 };
 

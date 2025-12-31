@@ -240,11 +240,8 @@ export class TimelineVideoRenderer implements IVideoRenderer {
                     },
                     start: segment.start,
                     length: segment.end - segment.start,
-                    fit: 'cover' as const, // Ensures fills the frame without stretching
+                    fit: 'cover' as const,
                     position: 'center' as const,
-                    transition: {
-                        in: index === 0 ? 'fade' as const : undefined,
-                    },
                     effect: zoomEffect,
                 };
             });
@@ -468,9 +465,6 @@ export class TimelineVideoRenderer implements IVideoRenderer {
                     start: seg.start,
                     length: length,
                     position: 'center',
-                    transition: {
-                        in: 'zoom' as const,
-                    }
                 };
             })
             .filter(Boolean) as TimelineClip[];

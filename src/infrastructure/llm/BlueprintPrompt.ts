@@ -26,7 +26,8 @@ Your job is to write the Voiceover (NARRAION) and Visual descriptions for each s
    - 'zoom_screenshot': Describe the UI element to show.
    - 'quote_animation': Describe a clean abstract background suitable for text overlay.
    - 'cinematic_broll': Describe the action/scene.
-5. Output strict JSON.
+5. **CRITICAL:** All \`imagePrompt\` descriptions MUST be purely visual. DO NOT include any text, letters, symbols, or signatures. All text will be added as a separate technical layer.
+6. Output strict JSON.
 
 **BLUEPRINT BEATS:**
 ${beatsJson}
