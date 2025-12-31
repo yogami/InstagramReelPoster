@@ -1,0 +1,33 @@
+Running Python Adapter Test...
+[WebOrganizer] /Users/user1000/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[WebOrganizer] WARNING:transformers_modules.WebOrganizer.TopicClassifier.8d158c9d514cdc21a7c8e9bd94e5dc483d49e024.modeling:Override attn_implementation='sdpa' to 'eager' as use_memory_efficient_attention=True
+
+[WebOrganizer] WARNING:WebOrganizer:WebOrganizer models not found (simulation mode): please install xformers
+
+[WebOrganizer] INFO:WebOrganizer:Falling back to Zero-Shot Classification...
+
+[WebOrganizer] Device set to use mps:0
+
+SaaS Result: {
+  topic: 'Science & Technology',
+  format: 'Portfolio',
+  confidence: 0.21384134888648987
+}
+[WebOrganizer] /Users/user1000/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[WebOrganizer] WARNING:transformers_modules.WebOrganizer.TopicClassifier.8d158c9d514cdc21a7c8e9bd94e5dc483d49e024.modeling:Override attn_implementation='sdpa' to 'eager' as use_memory_efficient_attention=True
+
+[WebOrganizer] WARNING:WebOrganizer:WebOrganizer models not found (simulation mode): please install xformers
+
+[WebOrganizer] INFO:WebOrganizer:Falling back to Zero-Shot Classification...
+
+[WebOrganizer] Device set to use mps:0
+
+Plumber Result: {
+  topic: 'Home/Hobbies',
+  format: 'Local Service',
+  confidence: 0.28106534481048584
+}

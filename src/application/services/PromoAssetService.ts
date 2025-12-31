@@ -205,6 +205,7 @@ export class PromoAssetService {
                 commentary: c.commentary,
                 imagePrompt: c.imagePrompt,
                 caption: c.caption,
+                visualStyle: c.visualStyle,
             })
         );
     }
@@ -295,7 +296,8 @@ export class PromoAssetService {
                     if (this.deps.primaryImageClient) {
                         try {
                             // Strict text prevention by appending negative prompt instruction
-                            const strictPrompt = segment.imagePrompt + " --no text, letters, watermark, signature";
+                            const stylePrefix = segment.visualStyle ? `Style: ${segment.visualStyle}. ` : '';
+                            const strictPrompt = stylePrefix + segment.imagePrompt + " --no text, letters, watermark, signature";
                             const { imageUrl } = await this.deps.primaryImageClient.generateImage(strictPrompt);
                             finalImageUrl = imageUrl;
                         } catch (primaryError) {

@@ -9,47 +9,48 @@ import { WebhookLinkedInPosterService } from '../src/infrastructure/linkedin/Web
 import { LinkedInPostPayload } from '../src/domain/ports/ILinkedInPosterService';
 
 async function postBlogToLinkedIn() {
-    const webhookUrl = 'https://hook.eu2.make.com/aksewbm7gh4md34mfygdn7ssvl8d7p8l';
-    const apiKey = 'yamigopal';
+    // 1. Configuration
+    const WEBHOOK_URL = 'https://hook.eu2.make.com/aksewbm7gh4md34mfygdn7ssvl8d7p8l';
+    const API_KEY = 'yamigopal'; // In production, use env var
 
-    console.log('🚀 Posting blog announcement to LinkedIn...');
+    // Blog Article Details
+    const ARTICLE_TITLE = "From URL to Video: A SOTA Architecture for Automated Promo Reels";
+    const ARTICLE_DESCRIPTION = "How we built a system that turns any website into a high-converting video reel using a 'Blueprint First' approach.";
+    const ARTICLE_URL = "https://berlinailabs.de/blog/sotavideo.html";
 
-    const posterService = new WebhookLinkedInPosterService(webhookUrl, apiKey);
+    // 2. Prepare Payload
+    const content = `🎧 From Setlist to Video: How I tauto-generate promo reels
 
-    const blogUrl = 'https://berlinailabs.de/blog/ai-engineering-best-practices.html';
+I'm a musician first, engineer second.
 
-    const content = `🔧 New Blog Post: AI Engineering Best Practices
+When I started building AI tools, I noticed something: AI is a terrible improviser. If you let it run wild, it writes a 20-minute drum solo that nobody wants to hear.
 
-Building AI systems that actually work in production requires more than clever algorithms. It demands engineering discipline, systematic thinking, and a commitment to craftsmanship.
+So I stopped trying to make the "Smartest" model and just gave it a better Setlist.
 
-In our latest article, Yami Gopal from Berlin AI Labs shares the core principles that guide our work:
+I wrote a quick breakdown of how I use "Blueprints" to keep my AI on beat. No complex jargon, just the flow.
 
-✅ The "peer planner" approach for thoughtful project planning
-✅ Test first development that catches bugs before they happen
-✅ Clean code philosophy for maintainable systems
-✅ Structured bug fixing protocols (Red, Green, Refactor)
-✅ Quality gates that prevent technical debt
+Check it out if you're into building stuff:
+${ARTICLE_URL}
 
-These practices are not just theory. They are the foundation of every reliable AI solution we deliver to our clients.
-
-Read the full article: ${blogUrl}
-
-#AIEngineering #SoftwareCraftsmanship #BerlinAILabs #TestDrivenDevelopment #CleanCode #AI #MachineLearning #SoftwareEngineering #TDD #CodeQuality`;
+#BuildingInPublic #Engineering #MusicAndTech #BerlinAILabs #KeepItSimple`;
 
     const payload: LinkedInPostPayload = {
-        type: 'ARTICLE',
         content: content,
         visibility: 'PUBLIC' as const,
+        type: 'ARTICLE',
         media: {
-            originalUrl: blogUrl,
-            title: 'AI Engineering Best Practices: Building Reliable Systems with Craftsmanship',
-            description: 'How structured planning, test driven development, and code quality standards create AI systems you can trust. A practical guide from Berlin AI Labs.',
-            thumbnail: {
-                fileName: '',
-                data: null
-            }
+            title: 'From URL to Video: The "Setlist" Architecture',
+            description: ARTICLE_DESCRIPTION,
+            originalUrl: ARTICLE_URL
         }
     };
+
+    // 3. Send to Make.com
+    console.log(`[🚀] Posting article to LinkedIn via Make.com...`);
+    console.log(`    Title: ${ARTICLE_TITLE}`);
+
+    // Initialize the service
+    const posterService = new WebhookLinkedInPosterService(WEBHOOK_URL, API_KEY);
 
     try {
         const result = await posterService.postToLinkedIn(payload);

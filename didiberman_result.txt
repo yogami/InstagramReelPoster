@@ -1,0 +1,21 @@
+/Users/user1000/gitprojects/InstagramReelPoster/node_modules/ts-node/src/index.ts:859
+    return new TSError(diagnosticText, diagnosticCodes, diagnostics);
+           ^
+TSError: ⨯ Unable to compile TypeScript:
+src/domain/services/PageNormalizer.ts(84,22): error TS2339: Property 'cta' does not exist on type 'WebsiteAnalysis'.
+src/domain/services/PageNormalizer.ts(86,32): error TS2339: Property 'cta' does not exist on type 'WebsiteAnalysis'.
+src/domain/services/PageNormalizer.ts(87,32): error TS2339: Property 'cta' does not exist on type 'WebsiteAnalysis'.
+src/domain/services/PageNormalizer.ts(88,32): error TS2339: Property 'cta' does not exist on type 'WebsiteAnalysis'.
+
+    at createTSError (/Users/user1000/gitprojects/InstagramReelPoster/node_modules/ts-node/src/index.ts:859:12)
+    at reportTSError (/Users/user1000/gitprojects/InstagramReelPoster/node_modules/ts-node/src/index.ts:863:19)
+    at getOutput (/Users/user1000/gitprojects/InstagramReelPoster/node_modules/ts-node/src/index.ts:1077:36)
+    at Object.compile (/Users/user1000/gitprojects/InstagramReelPoster/node_modules/ts-node/src/index.ts:1433:41)
+    at Module.m._compile (/Users/user1000/gitprojects/InstagramReelPoster/node_modules/ts-node/src/index.ts:1617:30)
+    at Module._extensions..js (node:internal/modules/cjs/loader:1892:10)
+    at Object.require.extensions.<computed> [as .ts] (/Users/user1000/gitprojects/InstagramReelPoster/node_modules/ts-node/src/index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1480:32)
+    at Module._load (node:internal/modules/cjs/loader:1299:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14) {
+  diagnosticCodes: [ 2339, 2339, 2339, 2339 ]
+}

@@ -164,6 +164,10 @@ export interface WebsiteAnalysis {
     siteDNA?: SiteDNA;
     /** Scraped media assets (images) from the website */
     scrapedMedia?: ScrapedMedia[];
+    /** Scraped CTA details */
+    cta?: { text: string; link?: string; type?: 'contact' | 'signup' | 'buy' | 'demo' };
+    /** Scraped Contact details */
+    contact?: { email?: string; phone?: string; address?: string };
 
     // Restaurant Specific Fields
     /** Signature dish detected (e.g. "Gefüllte Knödel") */
@@ -226,6 +230,8 @@ export interface PromoSceneContent {
     subtitle: string;
     /** Scene role: hook, showcase, or cta */
     role: 'hook' | 'showcase' | 'cta';
+    /** Visual style for the renderer */
+    visualStyle?: string;
 }
 
 /**

@@ -11,6 +11,8 @@ export interface ManifestSegment {
     caption?: string;
     /** FLUX optimization: zoom/pan effect for this segment */
     zoomEffect?: 'slow_zoom_in' | 'slow_zoom_out' | 'ken_burns_left' | 'ken_burns_right' | 'static';
+    /** SOTA Visual Style (e.g. quote_animation) */
+    visualStyle?: string;
 }
 
 /**
@@ -119,6 +121,7 @@ export function createReelManifest(params: {
             imageUrl: seg.imageUrl || '', // Allow empty if animated
             caption: seg.caption,
             zoomEffect: seg.zoomEffect, // Pass through segment-level zoom
+            visualStyle: seg.visualStyle,
         }));
     }
 

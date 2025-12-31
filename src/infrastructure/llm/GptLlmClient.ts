@@ -24,6 +24,7 @@ import {
     detectCategoryFromKeywords,
     getMusicStyle,
     getRandomViralHook,
+    CATEGORY_PROMPTS,
 } from './CategoryPrompts';
 import {
     REEL_MODE_DETECTION_PROMPT,
@@ -33,6 +34,7 @@ import { GptService } from './GptService';
 import { ParableGenerator } from './ParableGenerator';
 import { StandardReelGenerator } from './StandardReelGenerator';
 import { buildPersonalPromoPrompt, parsePersonalPromoResponse } from './PersonalPromoPrompt';
+import { buildBlueprintPrompt, parseBlueprintResponse } from './BlueprintPrompt'; // Added
 
 // ============================================
 // MAIN CLIENT CLASS
@@ -281,10 +283,11 @@ Return JSON with format: { "category": "cafe|gym|shop|service|restaurant|studio|
     async generatePromoScript(
         analysis: WebsiteAnalysis,
         category: BusinessCategory,
-        template: CategoryPromptTemplate,
-        businessName: string,
-        language: string
+        language: string = 'en'
     ): Promise<PromoScriptPlan> {
+        // Derive omitted arguments
+        const template = CATEGORY_PROMPTS[category] || CATEGORY_PROMPTS['service'];
+        const businessName = analysis.detectedBusinessName || 'the business';
         const langMap: Record<string, string> = {
             'en': 'English (Expat/International Berlin style)',
             'de': 'German (Local Berlin/Berliner Schnauze style)'
@@ -458,9 +461,9 @@ Return JSON:
      */
     async generatePersonalPromoScript(
         analysis: WebsiteAnalysis,
-        personalName: string,
-        language: string
+        language: string = 'en'
     ): Promise<PromoScriptPlan> {
+        const personalName = analysis.personalInfo?.fullName || 'the professional';
         const prompt = buildPersonalPromoPrompt(analysis, personalName, language);
         const systemPrompt = 'You are an expert personal brand strategist creating authentic, no-BS promo videos for professionals.';
 
@@ -482,6 +485,27 @@ Return JSON:
         } catch (error) {
             console.error(`[PersonalPromo] Script generation failed:`, error);
             throw new Error(`Failed to generate personal promo script: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+    }
+
+    /**
+     * Generates a script from a strict VideoBlueprint.
+     */
+    async generateScriptFromBlueprint(
+        blueprint: import('../../domain/entities/Intelligence').VideoBlueprint,
+        language?: string
+    ): Promise<PromoScriptPlan> {
+        const prompt = buildBlueprintPrompt(blueprint, language);
+        const systemPrompt = "You are a specialized video scriptwriter implementation a strict blueprint.";
+
+        try {
+            const response = await this.llmService.chatCompletion(prompt, systemPrompt, { jsonMode: true });
+            const result = parseBlueprintResponse(response, blueprint);
+            console.log(`[Blueprint] Generated script for ${blueprint.classification.type}`);
+            return result;
+        } catch (error) {
+            console.error(`[Blueprint] Script generation failed:`, error);
+            throw new Error(`Failed to generate script from blueprint: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
     }
 }

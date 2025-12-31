@@ -1,0 +1,49 @@
+🚀 Testing didiberman.com (Intelligence Layer)...
+
+1. Normalizing...
+   Hero: Didi Berman
+   CTA: Book a Call
+
+2. Classifying...
+🧠 Invoking WebOrganizer (Python)...
+[WebOrganizer] /Users/user1000/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[WebOrganizer] WARNING:transformers_modules.WebOrganizer.TopicClassifier.8d158c9d514cdc21a7c8e9bd94e5dc483d49e024.modeling:Override attn_implementation='sdpa' to 'eager' as use_memory_efficient_attention=True
+
+[WebOrganizer] WARNING:WebOrganizer:WebOrganizer models not found (simulation mode): please install xformers
+
+[WebOrganizer] INFO:WebOrganizer:Falling back to Zero-Shot Classification...
+
+[WebOrganizer] Device set to use mps:0
+
+✅ WebOrganizer Result: {
+  topic: 'Science & Technology',
+  format: 'Portfolio',
+  confidence: 0.3860222101211548
+}
+✅ Classification: PORTFOLIO (AUTHORITY)
+   Reasoning: [
+  'WebOrganizer Topic: Science & Technology',
+  'WebOrganizer Format: Portfolio'
+]
+
+3. Generating Blueprint...
+   Blueprint Strategy: PORTFOLIO
+   Beats:
+   - [HOOK] (5s) Style: zoom_screenshot
+     Instruction: Introduce the person and their expertise.
+   - [PROOF] (5s) Style: scroll_capture
+     Instruction: Showcase 2-3 key projects or skills.
+   - [CTA] (5s) Style: kinetic_text
+     Instruction: Call to action for hiring/contact.
+
+🤖 LLM: Generating script based on Blueprint...
+
+4. Final Script Plan (Preview):
+   Core Message: Boost your business with Expert Cloud Engineering.
+   Scene 1 [zoom_screenshot]: [HOOK] Introduce the person and their expertise. (Voiceover matching zoom_screenshot visual)
+   Scene 2 [scroll_capture]: [PROOF] Showcase 2-3 key projects or skills. (Voiceover matching scroll_capture visual)
+   Scene 3 [kinetic_text]: [CTA] Call to action for hiring/contact. (Voiceover matching kinetic_text visual)
+
+✅ SUCCESS: Site handled correctly by SOTA pipeline.

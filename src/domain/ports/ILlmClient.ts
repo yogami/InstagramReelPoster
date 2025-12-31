@@ -47,6 +47,8 @@ export interface SegmentContent {
     imagePrompt: string;
     /** Optional caption for subtitles */
     caption?: string;
+    /** Visual style from Blueprint (e.g., quote_animation) */
+    visualStyle?: string;
 
     /** Visual specifications for image generation */
     visualSpecs?: {
@@ -261,29 +263,35 @@ export interface ILlmClient {
      * Creates hook → showcase → CTA structure based on category template.
      * @param analysis Scraped website content
      * @param category Detected or provided business category
-     * @param template Category-specific prompt template
-     * @param businessName Business name
+     * @param language Output language (e.g., 'en', 'de')
      * @returns Generated promo script plan
      */
     generatePromoScript?(
         analysis: WebsiteAnalysis,
         category: BusinessCategory,
-        template: CategoryPromptTemplate,
-        businessName: string,
-        language: string
+        language?: string
     ): Promise<PromoScriptPlan>;
 
     /**
      * Generates a personal portfolio/promo reel script from website content.
      * Creates authentic, content-driven narrative without rigid templates.
      * @param analysis Scraped website content with personal info
-     * @param personalName Individual's full name
      * @param language Output language (e.g., 'en', 'de')
      * @returns Generated personal promo script plan
      */
     generatePersonalPromoScript?(
         analysis: WebsiteAnalysis,
-        personalName: string,
-        language: string
+        language?: string
+    ): Promise<PromoScriptPlan>;
+
+    /**
+     * Generates a script from a strict VideoBlueprint.
+     * Part of the new Intelligence Layer.
+     * @param blueprint The structural blueprint
+     * @param language Output language
+     */
+    generateScriptFromBlueprint?(
+        blueprint: import('../entities/Intelligence').VideoBlueprint,
+        language?: string
     ): Promise<PromoScriptPlan>;
 }

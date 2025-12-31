@@ -19,6 +19,8 @@ export interface Segment {
     caption?: string;
     /** FLUX optimization: zoom/pan effect for post-production motion */
     zoomEffect?: 'slow_zoom_in' | 'slow_zoom_out' | 'ken_burns_left' | 'ken_burns_right' | 'static';
+    /** Visual style from Blueprint (e.g., quote_animation) */
+    visualStyle?: string;
 }
 
 /**
@@ -33,6 +35,7 @@ export function createSegment(params: {
     imageUrl?: string;
     caption?: string;
     zoomEffect?: 'slow_zoom_in' | 'slow_zoom_out' | 'ken_burns_left' | 'ken_burns_right' | 'static';
+    visualStyle?: string;
 }): Segment {
     if (params.index < 0) {
         throw new Error('Segment index must be non-negative');
@@ -59,6 +62,7 @@ export function createSegment(params: {
         imageUrl: params.imageUrl,
         caption: params.caption?.trim(),
         zoomEffect: params.zoomEffect,
+        visualStyle: params.visualStyle,
     };
 }
 

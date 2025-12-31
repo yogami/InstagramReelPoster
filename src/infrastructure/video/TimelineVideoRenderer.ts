@@ -153,7 +153,7 @@ export class TimelineVideoRenderer implements IVideoRenderer {
      * Submits a manifest for video rendering and waits for completion.
      */
     async render(manifest: ReelManifest): Promise<RenderResult> {
-        const timelineEdit = await this.mapManifestToTimelineEdit(manifest);
+        const timelineEdit = await this.createTimelinePayload(manifest);
         const renderId = await this.startRender(timelineEdit);
         const videoUrl = await this.pollForCompletion(renderId);
 
@@ -163,10 +163,8 @@ export class TimelineVideoRenderer implements IVideoRenderer {
         };
     }
 
-    /**
-     * Maps our internal ReelManifest to Timeline Edit API format.
-     */
-    private async mapManifestToTimelineEdit(manifest: ReelManifest): Promise<TimelineEdit> {
+    public async createTimelinePayload(manifest: ReelManifest): Promise<TimelineEdit> { // Renamed and Made PUBLIC for testing
+        const isTurbo = manifest.zoomType === 'slow_zoom_in'; // Or explicit turbo flag
         // Track 1: Images (bottom layer)
         // Track 1: Visuals (Video or Images)
         let visualClips: TimelineClip[];
@@ -233,7 +231,7 @@ export class TimelineVideoRenderer implements IVideoRenderer {
         } else if (manifest.segments) {
             // Image Path - FLUX Optimization: Use segment-level or manifest-level zoom effects
             visualClips = manifest.segments.map((segment, index) => {
-                const zoomEffect = this.resolveZoomEffect(segment.zoomEffect, index, manifest.zoomType, manifest.zoomSequence);
+                const zoomEffect = this.resolveZoomEffect(segment.zoomEffect, index, manifest.zoomType, manifest.zoomSequence, segment.visualStyle);
                 return {
                     asset: {
                         type: 'image' as const,
@@ -494,12 +492,26 @@ export class TimelineVideoRenderer implements IVideoRenderer {
         segmentZoom: string | undefined,
         segmentIndex: number,
         manifestZoom: string | undefined,
-        zoomSequence: string[] | undefined
+        zoomSequence: string[] | undefined,
+        visualStyle?: string // New SOTA Visual Style
     ): 'zoomIn' | 'zoomOut' | 'slideLeft' | 'slideRight' | undefined {
         // Priority:
-        // 1. zoomSequence (if available for this index) - Enforces plan-level variety
-        // 2. segmentZoom (if manually set/overridden in segment)
-        // 3. manifestZoom (default fallback)
+        // 0. Visual Style (Most explicit intent)
+        // 1. zoomSequence
+        // 2. segmentZoom
+        // 3. manifestZoom
+
+        if (visualStyle) {
+            switch (visualStyle) {
+                case 'zoom_screenshot': return 'zoomIn';
+                case 'scroll_capture': return 'slideLeft'; // slideUp not supported by Timeline effect type
+                case 'split_ui': return 'slideLeft';
+                case 'kinetic_text': return 'zoomIn'; // Kinetic text handled via overlay, but image should zoom
+                case 'cinematic_broll': return 'zoomIn';
+                case 'logo_button': return 'zoomOut';
+                case 'quote_animation': return 'zoomIn';
+            }
+        }
 
         let zoomType = segmentZoom || manifestZoom;
 
@@ -509,25 +521,14 @@ export class TimelineVideoRenderer implements IVideoRenderer {
         }
 
         switch (zoomType) {
-            case 'slow_zoom_in':
-                return 'zoomIn';
-            case 'slow_zoom_out':
-                return 'zoomOut';
-            case 'ken_burns':
-                // Ken Burns approximated as alternating zoom in/out
-                return segmentIndex % 2 === 0 ? 'zoomIn' : 'zoomOut';
-            case 'ken_burns_left':
-                return 'slideLeft';
-            case 'ken_burns_right':
-                return 'slideRight';
-            case 'alternating':
-                // Alternate between zoom in and out for visual variety
-                return segmentIndex % 2 === 0 ? 'zoomIn' : 'zoomOut';
-            case 'static':
-                return undefined; // No effect for static images
-            default:
-                // Default to zoom in for visual dynamism
-                return 'zoomIn';
+            case 'slow_zoom_in': return 'zoomIn';
+            case 'slow_zoom_out': return 'zoomOut';
+            case 'ken_burns': return segmentIndex % 2 === 0 ? 'zoomIn' : 'zoomOut';
+            case 'ken_burns_left': return 'slideLeft';
+            case 'ken_burns_right': return 'slideRight';
+            case 'alternating': return segmentIndex % 2 === 0 ? 'zoomIn' : 'zoomOut';
+            case 'static': return undefined;
+            default: return 'zoomIn';
         }
     }
 

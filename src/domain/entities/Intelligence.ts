@@ -95,7 +95,9 @@ export type BeatStyle =
     | 'logo_grid'        // Quick flash of logos
     | 'scroll_capture'   // Scrolling down a page
     | 'product_close_up' // Product specific
-    | 'cinematic_broll'; // Stock/B-roll footage
+    | 'cinematic_broll'  // Stock/B-roll footage
+    | 'quote_animation'  // Animated text for testimonials
+    | 'logo_button';     // Focus on CTA button
 
 /**
  * A single "beat" or scene in the video story.
@@ -108,6 +110,7 @@ export interface StoryBeat {
 
     // Content mapping
     contentSource: string; // Dot notation path to NormalizedPage (e.g. 'hero.subhead')
+    contentValue?: string | any; // Resolved actual content from the page
 
     // Instructions for the Generator/LLM
     scriptInstruction: string; // What should the narration cover?

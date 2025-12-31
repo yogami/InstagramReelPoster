@@ -25,6 +25,29 @@ jest.mock('../../../src/application/pipelines/PipelineInfrastructure', () => ({
     executePipeline: jest.fn().mockResolvedValue({}),
 }));
 
+// Mock Intelligence Layer
+const mockNormalize = jest.fn();
+const mockClassify = jest.fn();
+const mockCreateBlueprint = jest.fn();
+
+jest.mock('../../../src/domain/services/PageNormalizer', () => ({
+    PageNormalizer: jest.fn().mockImplementation(() => ({
+        normalize: mockNormalize
+    }))
+}));
+
+jest.mock('../../../src/domain/services/SmartSiteClassifier', () => ({
+    SmartSiteClassifier: jest.fn().mockImplementation(() => ({
+        classify: mockClassify
+    }))
+}));
+
+jest.mock('../../../src/domain/services/BlueprintFactory', () => ({
+    BlueprintFactory: jest.fn().mockImplementation(() => ({
+        create: mockCreateBlueprint
+    }))
+}));
+
 
 describe('ReelOrchestrator', () => {
     let orchestrator: ReelOrchestrator;
@@ -105,6 +128,34 @@ describe('ReelOrchestrator', () => {
                 jobId: 'job-123',
                 category: 'cafe'
             }));
+        });
+
+        test('should use Intelligence Layer for script generation', async () => {
+            const mockJobId = 'job-123';
+            const mockAnalysis = { heroText: 'Test', siteType: 'business' } as any;
+            const mockInput = { language: 'en' } as any;
+
+            mockNormalize.mockReturnValue({ normalized: true });
+            mockClassify.mockReturnValue({ type: 'SAAS', intent: 'FAST_EASY' });
+            mockCreateBlueprint.mockReturnValue({ beats: [] });
+
+            // Mock the new LLM method
+            const mockLlmClient = orchestrator['deps'].llmClient as any;
+            mockLlmClient.generateScriptFromBlueprint = jest.fn().mockResolvedValue({
+                coreMessage: 'Script via Intelligence Layer',
+                scenes: [],
+                businessName: 'Test Biz'
+            });
+
+            const result = await (orchestrator as any).generatePromoContent(
+                mockJobId, mockInput, mockAnalysis
+            );
+
+            expect(mockNormalize).toHaveBeenCalledWith(mockAnalysis);
+            expect(mockClassify).toHaveBeenCalledWith({ normalized: true });
+            expect(mockCreateBlueprint).toHaveBeenCalled();
+            expect(mockLlmClient.generateScriptFromBlueprint).toHaveBeenCalled();
+            expect(result.promoScript.businessName).toBe('Test Biz');
         });
 
         test('should handle errors via OrchestratorErrorService', async () => {

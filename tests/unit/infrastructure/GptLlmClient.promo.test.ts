@@ -74,8 +74,6 @@ describe('GptLlmClient.generatePromoScript', () => {
         const result = await client.generatePromoScript(
             analysis,
             category,
-            template,
-            businessName,
             language
         );
 

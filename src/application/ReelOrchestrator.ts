@@ -56,6 +56,9 @@ import { TrainingDataCollector } from '../infrastructure/training/TrainingDataCo
 import { ChatService } from '../presentation/services/ChatService';
 import { getConfig } from '../config';
 import { YouTubeSceneAnalyzer } from '../infrastructure/youtube/YouTubeSceneAnalyzer';
+import { PageNormalizer } from '../domain/services/PageNormalizer';
+import { SmartSiteClassifier } from '../domain/services/SmartSiteClassifier';
+import { BlueprintFactory } from '../domain/services/BlueprintFactory';
 
 // Pipeline Imports
 import { createJobContext, executePipeline } from './pipelines/PipelineInfrastructure';
@@ -482,60 +485,42 @@ export class ReelOrchestrator {
         websiteAnalysis: WebsiteAnalysis,
         category?: BusinessCategory
     ): Promise<{ promoScript: PromoScriptPlan; businessName: string }> {
-        await this.updateJobStatus(jobId, 'generating_commentary', 'Creating promotional script...');
-
-        // Check site type and route accordingly
-        const siteType = websiteAnalysis.siteType || 'business';
-
-        if (siteType === 'personal') {
-            // PERSONAL SITE FLOW - Content-driven, no templates
-            console.log(`[${jobId}] Detected personal site, using content-driven script generation`);
-
-            if (!websiteAnalysis.personalInfo) {
-                throw new Error('Personal info is required for personal site promo generation');
-            }
-
-            if (!this.deps.llmClient.generatePersonalPromoScript) {
-                throw new Error('LlmClient.generatePersonalPromoScript is required for personal promo mode');
-            }
-
-            const personalName = websiteAnalysis.personalInfo.fullName;
-            const promoScript = await this.deps.llmClient.generatePersonalPromoScript(
-                websiteAnalysis,
-                personalName,
-                websiteInput.language || 'en'
-            );
-
-            // Include logo/headshot if present
-            if (websiteInput.logoUrl) {
-                promoScript.logoUrl = websiteInput.logoUrl;
-                promoScript.logoPosition = websiteInput.logoPosition || 'end';
-            } else if (websiteAnalysis.personalInfo.headshotUrl) {
-                promoScript.logoUrl = websiteAnalysis.personalInfo.headshotUrl;
-                promoScript.logoPosition = 'end';
-            }
-
-            await this.deps.jobManager.updateJob(jobId, { promoScriptPlan: promoScript });
-            console.log(`[${jobId}] Personal promo script generated for ${personalName}: "${promoScript.coreMessage}"`);
-
-            return { promoScript, businessName: personalName };
+        if (!websiteAnalysis) {
+            throw new Error('Website analysis is required for promo content generation');
         }
 
-        // BUSINESS SITE FLOW - Template-based
-        if (!category) {
-            throw new Error('Category is required for business promo generation');
+        console.log('🧠 Running Intelligence Layer (Normalize -> Classify -> Blueprint)...');
+
+        // 1. Normalize
+        const normalizer = new PageNormalizer();
+        const normalizedPage = normalizer.normalize(websiteAnalysis);
+
+        // 2. Classify
+        const classifier = new SmartSiteClassifier();
+        const classification = await classifier.classify(normalizedPage);
+        console.log('🔍 Site Classification:', JSON.stringify(classification, null, 2));
+
+        // 3. Blueprint
+        const blueprintFactory = new BlueprintFactory();
+        const blueprint = blueprintFactory.create(normalizedPage, classification);
+        console.log('📐 Video Blueprint Beats:', JSON.stringify(blueprint.beats.map(b => b.kind), null, 2));
+
+        // 4. Generate Script via LLM
+        if (!this.deps.llmClient.generateScriptFromBlueprint) {
+            throw new Error('LLM Client does not support generateScriptFromBlueprint');
+        }
+        const promoScript = await this.deps.llmClient.generateScriptFromBlueprint(blueprint, websiteInput.language);
+
+        // Enrich with business name
+        // Priority: Input > Analysis > LLM > Default
+        let businessName = websiteInput.businessName || websiteAnalysis.detectedBusinessName || promoScript.businessName;
+
+        if (!businessName || businessName === 'Brand') {
+            businessName = 'My Business';
         }
 
-        const businessName = websiteInput.businessName || websiteAnalysis.detectedBusinessName || 'Local Business';
-        const template = getPromptTemplate(category);
-
-        if (!this.deps.llmClient.generatePromoScript) {
-            throw new Error('LlmClient.generatePromoScript is required for website promo mode');
-        }
-
-        const promoScript = await this.deps.llmClient.generatePromoScript(
-            websiteAnalysis, category, template, businessName, websiteInput.language || 'en'
-        );
+        // Enrich script object
+        promoScript.businessName = businessName;
 
         // Include logo from input if present
         if (websiteInput.logoUrl) {
@@ -544,9 +529,12 @@ export class ReelOrchestrator {
         }
 
         await this.deps.jobManager.updateJob(jobId, { promoScriptPlan: promoScript });
-        console.log(`[${jobId}] Promo script generated: "${promoScript.coreMessage}" with ${promoScript.scenes.length} scenes`);
+        console.log(`[${jobId}] Script generated: "${promoScript.coreMessage}" via Blueprint`);
 
-        return { promoScript, businessName };
+        return {
+            promoScript,
+            businessName
+        };
     }
 
     /**
@@ -738,8 +726,8 @@ export class ReelOrchestrator {
         return promoScript.scenes.map(scene => ({
             commentary: scene.narration,
             imagePrompt: scene.imagePrompt,
-            // Disabled caption to prevent "random text" overlays in TimelineRenderer
-            caption: undefined,
+            caption: scene.subtitle,
+            visualStyle: scene.visualStyle // Propagate style
         }));
     }
 

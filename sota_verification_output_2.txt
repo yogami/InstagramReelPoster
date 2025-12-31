@@ -1,0 +1,35 @@
+🚀 Verifying SOTA Intelligence Pipeline...
+
+1. Normalizing...
+
+2. Classifying (Python SOTA)...
+🧠 Invoking WebOrganizer (Python)...
+[WebOrganizer] /Users/user1000/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+[WebOrganizer] WARNING:transformers_modules.WebOrganizer.TopicClassifier.8d158c9d514cdc21a7c8e9bd94e5dc483d49e024.modeling:Override attn_implementation='sdpa' to 'eager' as use_memory_efficient_attention=True
+
+[WebOrganizer] WARNING:WebOrganizer:WebOrganizer models not found (simulation mode): please install xformers
+INFO:WebOrganizer:Falling back to Zero-Shot Classification...
+
+[WebOrganizer] Device set to use mps:0
+
+✅ WebOrganizer Result: {
+  topic: 'Science & Technology',
+  format: 'Portfolio',
+  confidence: 0.9019199013710022
+}
+   Type: PORTFOLIO
+   Intent: AUTHORITY
+   Reasoning: [
+  'WebOrganizer Topic: Science & Technology',
+  'WebOrganizer Format: Portfolio'
+]
+
+3. Generating Blueprint...
+   Blueprint Beats:
+   - [HOOK] intro (5s) Style: zoom_screenshot
+   - [PROOF] work (5s) Style: scroll_capture
+   - [CTA] cta (5s) Style: kinetic_text
+
+❌ FAILURE: Pipeline did not match expected SOTA logic.
