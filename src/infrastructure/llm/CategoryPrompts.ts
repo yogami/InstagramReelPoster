@@ -47,6 +47,18 @@ export const CATEGORY_PROMPTS: Record<BusinessCategory, CategoryPromptTemplate> 
         cta: "Start your journey within",
         visuals: "Minimalist zen garden, incense smoke, meditator in silhouette, sacred geometry, morning mist",
     },
+    tech: {
+        hook: "Is your business stuck in the analog past?",
+        showcase: "Cutting-edge AI, future-proof strategy, automated growth",
+        cta: "Scale with Berlin's tech leaders",
+        visuals: "abstract data streams, glowing neural networks, futuristic clean office, abstract geometric shapes, sleek holographic UI",
+    },
+    agency: {
+        hook: "Stop guessing with your marketing budget.",
+        showcase: "Data-driven results, expert strategy, proven growth",
+        cta: "Partner with Berlin's growth engine",
+        visuals: "modern agency office, strategy whiteboard, analytics dashboard on screen, team brainstorming, high-end macbook setup",
+    },
 };
 
 /**
@@ -60,6 +72,8 @@ export const CATEGORY_KEYWORDS: Record<BusinessCategory, string[]> = {
     studio: ['studio', 'creative', 'photography', 'art', 'design', 'recording', 'music', 'dance', 'tattoo'],
     service: ['service', 'professional', 'expert', 'consultation', 'booking', 'appointment', 'therapist', 'consultant'],
     spiritual: ['meditation', 'wellness', 'spiritual', 'healing', 'yoga', 'mindfulness', 'retreat', 'insight', 'wisdom'],
+    tech: ['software', 'app', 'platform', 'ai', 'artificial intelligence', 'data', 'cloud', 'digital', 'saas', 'automation', 'tech', 'cyber'],
+    agency: ['agency', 'marketing', 'consulting', 'strategy', 'digital', 'branding', 'design', 'growth', 'advertising', 'media'],
 };
 
 /**
@@ -73,6 +87,8 @@ export const CATEGORY_MUSIC_STYLES: Record<BusinessCategory, string> = {
     restaurant: 'berlin-techno-minimal',
     studio: 'creative-electronic',
     spiritual: 'deep-ambient-flute-sitar',
+    tech: 'tech', // Updated to match 'tech' tag in catalog
+    agency: 'modern-corporate-upbeat',
 };
 
 /**
@@ -92,6 +108,8 @@ export function detectCategoryFromKeywords(keywords: string[]): {
         restaurant: 0,
         studio: 0,
         spiritual: 0,
+        tech: 0,
+        agency: 0,
     };
 
     const normalizedKeywords = keywords.map(kw => kw.toLowerCase());
@@ -142,8 +160,8 @@ export const VIRAL_HOOKS: ViralHook[] = [
         id: 'curiosity-gap',
         name: 'The Curiosity Gap',
         description: 'Open a loop that the viewer MUST watch to close. (Zeigefinger Effect)',
-        structureInstruction: '1. CURIOSITY HOOK (4s): Start with a specific statement about what makes this place different, but DO NOT reveal the answer immediately. "Why THIS cafe beats chains..."',
-        visualInstruction: 'Visual: A normal scene that SUDDENLY freezes or zooms in on a detail, creating a "Wait, what?" moment.'
+        structureInstruction: '1. CURIOSITY HOOK (4s): Start with a specific statement about what makes this place different, but DO NOT reveal the answer immediately. "Why THIS [business type] beats the others..."',
+        visualInstruction: 'Visual: A normal scene that SUDDENLY freezes or zooms in on a detail, creating a "Wait, what?" moment. No text.'
     },
     {
         id: 'pattern-interrupt',
@@ -163,15 +181,15 @@ export const VIRAL_HOOKS: ViralHook[] = [
         id: 'social-proof-friction',
         name: 'Social Proof Friction',
         description: 'Challenge the viewer to judge standard vs. excellence.',
-        structureInstruction: '1. JUDGMENT HOOK (4s): Pause the scroll with a challenge. "Swipe if you settle for average. Stay if you want Berlin s best."',
-        visualInstruction: 'Visual: Dark pattern overlay text: "Swipe to judge" or "Skip if not the best" with a forced pause moment.'
+        structureInstruction: '1. JUDGMENT HOOK (4s): Pause the scroll with a challenge. "Swipe if you settle for average. Stay if you want Berlin\'s best."',
+        visualInstruction: 'Visual: A split screen comparing "average" vs "excellence". High contrast.'
     },
     {
         id: 'fomo-loop',
         name: 'The FOMO Loop',
         description: 'Urgency + seamless looping mechanism.',
-        structureInstruction: '1. FOMO HOOK (4s): Immediate scarcity. "Last 3 tables for Friday..." or "Winter menu ends tomorrow."',
-        visualInstruction: 'Visual: A "SOLD OUT" sign flipping or a calendar date circling rapidly. High urgency.'
+        structureInstruction: '1. FOMO HOOK (4s): Immediate scarcity. "Limited capacity..." or "Offer ends soon..."',
+        visualInstruction: 'Visual: High urgency movement, hourglass sand running out, or busy scene. No text.'
     }
 ];
 

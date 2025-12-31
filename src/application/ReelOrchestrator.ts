@@ -564,6 +564,7 @@ export class ReelOrchestrator {
 
         // Populate branding for Info Slides if we have data
         if (websiteAnalysis) {
+            const template = getPromptTemplate(category);
             manifest.branding = {
                 logoUrl: websiteAnalysis.logoUrl || manifest.logoUrl || '',
                 businessName: businessName,
@@ -571,6 +572,7 @@ export class ReelOrchestrator {
                 hours: websiteAnalysis.openingHours,
                 phone: websiteAnalysis.phone,
                 email: websiteAnalysis.email,
+                ctaText: template?.cta || 'Mehr erfahren', // Use category CTA or fallback
                 qrCodeUrl: websiteAnalysis.reservationLink || job.websitePromoInput?.websiteUrl,
             };
         };
@@ -661,7 +663,8 @@ export class ReelOrchestrator {
         return promoScript.scenes.map(scene => ({
             commentary: scene.narration,
             imagePrompt: scene.imagePrompt,
-            caption: scene.subtitle || scene.narration.substring(0, 100),
+            // Disabled caption to prevent "random text" overlays in TimelineRenderer
+            caption: undefined,
         }));
     }
 

@@ -649,23 +649,42 @@ export class WebsiteScraperClient implements IWebsiteScraperClient {
      * Detects address from text content.
      */
     private detectAddress(text: string): string | undefined {
-        // Look for pattern: <Street> <Number>, <Zip> <City>
-        // Example: "Friedrichstr. 123, 10117 Berlin"
+        // Blacklist for GDPR/Privacy policy noise that often gets picked up
+        const blacklist = ['erhoben', 'datenschutz', 'cookie', 'freiwillig', 'required', 'pflichtfeld', 'newsletter', 'email', 'e-mail'];
+
+        const isValidCandidate = (candidate: string) => {
+            const lower = candidate.toLowerCase();
+            if (candidate.length < 10) return false;
+            if (candidate.length > 120) return false; // Too long to be just an address
+            if (blacklist.some(term => lower.includes(term))) return false;
+            return true;
+        };
+
+        // 1. Strict Pattern: <Street> <Number>, <Zip> <City> (German Format)
+        // Must contain 5-digit zip code
         const addressPattern = /([A-ZÄÖÜ][a-zäöüß\s.-]+\s\d+[a-z]?,?\s*\d{5}\s*[A-ZÄÖÜ][a-zäöüß\s-]+)/;
         const match = text.match(addressPattern);
         if (match) {
-            return match[1];
+            if (isValidCandidate(match[1])) return match[1];
         }
 
-        // Fallback: Look for labels (English, German)
-        const labels = [/address[:\s]+/i, /anschrift[:\s]+/i, /standort[:\s]+/i, /adresse[:\s]+/i];
+        // 2. Label Fallback
+        const labels = [
+            /(?:^|\s)anschrift[:\s]+/i,
+            /(?:^|\s)standort[:\s]+/i,
+            /(?:^|\s)adresse[:\s]+/i,
+            /(?:^|\s)visit us[:\s]+/i
+        ];
+
         for (const label of labels) {
             const labelMatch = text.match(label);
             if (labelMatch) {
                 const start = labelMatch.index! + labelMatch[0].length;
                 const snippet = text.substring(start, start + 100).trim();
-                const clean = snippet.split(/[.!]/)[0].trim();
-                if (clean.length > 5) return clean;
+                // Take content up to first newline, dot or specific delimiters
+                const clean = snippet.split(/[\n.!|]/)[0].trim();
+
+                if (isValidCandidate(clean)) return clean;
             }
         }
 
@@ -693,14 +712,25 @@ export class WebsiteScraperClient implements IWebsiteScraperClient {
      * Detects phone number from text.
      */
     private detectPhone(text: string): string | undefined {
-        // Look for labels first (higher confidence)
-        const labels = [/phone[:\s]*/i, /tel[:\s]*/i, /telefon[:\s]*/i, /mobil[:\s]*/i, /call[:\s]*/i];
+        // 1. Strict International Mobile Format (Targeting the +49 176... report)
+        // Matches: +49 176 1234567, +49-176-1234567
+        // Allow spaces, dashes, dots between digits
+        const strictMobile = /(?:\+49|0049)[-. \s]?[1-9]\d{1,4}[-. \s]?\d+(?:[-. \s]?\d+)+/;
+        const mobileMatch = text.match(strictMobile);
+        if (mobileMatch) {
+            const cleaned = mobileMatch[0].replace(/[^\d+]/g, '');
+            if (cleaned.length >= 10) return mobileMatch[0].trim();
+        }
+
+        // 2. Label Search
+        const labels = [/phone[:\s]*/i, /tel[:\s]*/i, /telefon[:\s]*/i, /mobil[:\s]*/i, /call[:\s]*/i, /kontakt[:\s]*/i];
         for (const label of labels) {
             const labelMatch = text.match(label);
             if (labelMatch) {
                 const start = labelMatch.index! + labelMatch[0].length;
-                const snippet = text.substring(start, start + 30).trim();
-                const phoneMatch = snippet.match(/(?:\+?\d{1,3}[-. \s]?)?\(?\d{2,5}\)?[-. \s]?\d{3,10}[-. \s]?\d{0,5}/);
+                const snippet = text.substring(start, start + 50).trim();
+                // Look for phone-like sequence
+                const phoneMatch = snippet.match(/(?:\+?\d{1,3}[-. \s]?)?\(?\d{1,5}\)?(?:[-. \s]?\d{1,5}){1,6}/);
                 if (phoneMatch) {
                     const cleaned = phoneMatch[0].replace(/[^\d+]/g, '');
                     if (cleaned.length >= 8) return phoneMatch[0].trim();
@@ -708,13 +738,6 @@ export class WebsiteScraperClient implements IWebsiteScraperClient {
             }
         }
 
-        // Raw pattern match fallback
-        const phonePattern = /(?:\+?\d{1,3}[-. \s]?)?\(?\d{2,5}\)?[-. \s]?\d{3,10}[-. \s]?\d{0,5}/;
-        const matches = text.match(phonePattern);
-        if (matches) {
-            const cleaned = matches[0].replace(/[^\d+]/g, '');
-            if (cleaned.length >= 8) return matches[0].trim();
-        }
         return undefined;
     }
 
@@ -728,12 +751,11 @@ export class WebsiteScraperClient implements IWebsiteScraperClient {
         }
 
         // 2. Collect from raw text
-        const emailPattern = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
-        const textMatches = text.match(emailPattern);
-        if (textMatches) {
-            for (const match of textMatches) {
-                emails.push(match.toLowerCase());
-            }
+        // Use a strict regex that avoids capturing surrounding words
+        const emailPattern = /(?:\s|^)([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})(?:\s|$|[.,!?;:])/g;
+        const textMatches = text.matchAll(emailPattern);
+        for (const match of textMatches) {
+            emails.push(match[1].toLowerCase());
         }
 
         if (emails.length === 0) return undefined;

@@ -47,6 +47,7 @@ export interface ReelManifest {
         hours?: string;
         phone?: string;
         email?: string;
+        ctaText?: string; // Specific Call-To-Action text (e.g. "Book Now", "Shop Local")
         qrCodeUrl?: string;  // URL for QR code (reservation/booking link)
     };
     /** specialized overlays like rating badges or QR codes */

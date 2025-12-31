@@ -620,9 +620,8 @@ export class TimelineVideoRenderer implements IVideoRenderer {
             contactParts.push(`✉️ ${branding.email}`);
         }
 
-        // Determine CTA text - Only use restaurant-specific CTA if QR code exists
-        // For non-restaurant sites, use generic "Mehr erfahren" (Learn more)
-        const ctaText = qrCodeDataUri ? 'TISCH RESERVIEREN? SCAN!' : 'MEHR ERFAHREN';
+        // Determine CTA text - Use manifest CTA or fallback
+        const ctaText = branding.ctaText || 'MEHR ERFAHREN';
         const showCTA = qrCodeDataUri || contactParts.length > 0;
 
         // Build QR section - this is the DOMINANT element
