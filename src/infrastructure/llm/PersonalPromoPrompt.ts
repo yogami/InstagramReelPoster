@@ -31,21 +31,21 @@ export function buildPersonalPromoPrompt(
 **TASK:**
 Generate a 15-second personal promo reel script ${languageInstruction} that authentically represents ${personalName}'s expertise and value proposition.
 
-**STRUCTURE (3 scenes, 5 seconds each):**
+**STRUCTURE (3 scenes, 6 seconds each):**
 
-**Scene 1 - HOOK (5s):**
+**Scene 1 - HOOK (6s):**
 - Open with ${personalName}'s name and ONE specific accomplishment or unique angle
 - Must grab attention immediately
 - NO generic intros like "Meet..." or "This is..."
 - Example: "Sarah Chen. Built AI systems for 2M+ users. Zero downtime."
 
-**Scene 2 - SHOWCASE (5s):**
+**Scene 2 - SHOWCASE (6s):**
 - Highlight 2-3 specific skills or differentiators
 - Use concrete, tangible descriptions
 - NO fluff or buzzwords
 - Example: "MLOps pipelines. Production-scale inference. Real-time monitoring."
 
-**Scene 3 - CTA (5s):**
+**Scene 3 - CTA (6s):**
 - Direct call-to-action
 - Make it personal and specific to their work
 - Example: "Need scalable AI? Let's build." OR "Portfolio at [name].com"
@@ -71,19 +71,19 @@ Scene 3: Contact info overlay, professional setting
   "scenes": [
     {
       "role": "hook",
-      "duration": 5,
+      "duration": 6,
       "narration": "EXACTLY what to say (10 words max)",
       "visualKeywords": "Visual style for Scene 1"
     },
     {
       "role": "showcase",
-      "duration": 5,
+      "duration": 6,
       "narration": "EXACTLY what to say (10 words max)",
       "visualKeywords": "Visual style for Scene 2"
     },
     {
       "role": "cta",
-      "duration": 5,
+      "duration": 6,
       "narration": "EXACTLY what to say (10 words max)",
       "visualKeywords": "Visual style for Scene 3"
     }
@@ -125,7 +125,7 @@ export function parsePersonalPromoResponse(rawResponse: string): PromoScriptPlan
             // MAP to PromoSceneContent shape (imagePrompt, subtitle, narration)
             return {
                 role: scene.role || (['hook', 'showcase', 'cta'][index] as 'hook' | 'showcase' | 'cta'),
-                duration: scene.duration || 5,
+                duration: scene.duration || 6, // Increased to 6s to prevent audio cutoff
                 narration: scene.narration.trim(),
                 subtitle: scene.narration.trim(), // Use narration as subtitle for personal promos
                 imagePrompt: scene.visualKeywords.trim(), // Map visual keywords to image prompt
