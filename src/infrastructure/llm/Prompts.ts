@@ -439,3 +439,38 @@ Response Format (JSON):
 }
 `;
 
+export const EXTRACT_CONTACT_INFO_PROMPT = `Extract structured contact and business information from the following raw website text.
+
+Website Text:
+"""
+{{scrapedText}}
+"""
+
+TASK:
+1. Identify the Business Name.
+2. Find the clear, primary Phone Number.
+3. Find the official Email address.
+4. Find the physical Address (formatted precisely).
+5. Extract the Opening Hours (delineated by day or summarized clearly).
+6. Find any Social Media tags (Instagram, Facebook).
+
+RULES:
+- If a piece of information is missing, use null.
+- Be precise. Do not hallucinate.
+- For opening hours, format each day on a new line if possible.
+- For the address, include the full street, city, and postal code.
+
+Respond ONLY with a JSON object:
+{
+  "businessName": "...",
+  "phone": "...",
+  "email": "...",
+  "address": "...",
+  "openingHours": "...",
+  "socials": {
+    "instagram": "...",
+    "facebook": "..."
+  }
+}
+`;
+

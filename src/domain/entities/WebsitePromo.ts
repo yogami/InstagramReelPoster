@@ -164,6 +164,8 @@ export interface WebsiteAnalysis {
     siteDNA?: SiteDNA;
     /** Scraped media assets (images) from the website */
     scrapedMedia?: ScrapedMedia[];
+    /** Raw text content for LLM extraction */
+    rawText?: string;
     /** Scraped CTA details */
     cta?: { text: string; link?: string; type?: 'contact' | 'signup' | 'buy' | 'demo' };
     /** Scraped Contact details */
@@ -196,6 +198,7 @@ export interface WebsiteAnalysis {
         github?: string;
         twitter?: string;
         instagram?: string;
+        facebook?: string;
         website?: string;
     };
 }

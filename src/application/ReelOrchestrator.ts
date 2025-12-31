@@ -59,6 +59,8 @@ import { YouTubeSceneAnalyzer } from '../infrastructure/youtube/YouTubeSceneAnal
 import { PageNormalizer } from '../domain/services/PageNormalizer';
 import { SmartSiteClassifier } from '../domain/services/SmartSiteClassifier';
 import { BlueprintFactory } from '../domain/services/BlueprintFactory';
+import { WebsiteIntelligenceService } from '../domain/services/WebsiteIntelligenceService';
+import { GptService } from '../infrastructure/llm/GptService';
 
 // Pipeline Imports
 import { createJobContext, executePipeline } from './pipelines/PipelineInfrastructure';
@@ -489,9 +491,38 @@ export class ReelOrchestrator {
             throw new Error('Website analysis is required for promo content generation');
         }
 
-        console.log('🧠 Running Intelligence Layer (Normalize -> Classify -> Blueprint)...');
+        console.log('🧠 Running Intelligence Layer (Extract -> Normalize -> Classify -> Blueprint)...');
 
-        // 1. Normalize
+        // 1. Sophisticated Extraction (LLM-based)
+        if (websiteAnalysis.rawText) {
+            try {
+                const config = getConfig();
+                const gptService = new GptService(config.openRouterApiKey || config.llmApiKey, 'gpt-4o');
+                const intelService = new WebsiteIntelligenceService(gptService);
+                const extraIntel = await intelService.extractSophisticatedContactInfo(websiteAnalysis.rawText);
+
+                // Merge sophisticated info (Overwrites heuristic regex results if LLM found something)
+                if (extraIntel.detectedBusinessName) websiteAnalysis.detectedBusinessName = extraIntel.detectedBusinessName;
+                if (extraIntel.phone) websiteAnalysis.phone = extraIntel.phone;
+                if (extraIntel.email) websiteAnalysis.email = extraIntel.email;
+                if (extraIntel.address) websiteAnalysis.address = extraIntel.address;
+                if (extraIntel.openingHours) websiteAnalysis.openingHours = extraIntel.openingHours;
+                if (extraIntel.socialLinks) {
+                    websiteAnalysis.socialLinks = websiteAnalysis.socialLinks
+                        ? { ...websiteAnalysis.socialLinks, ...extraIntel.socialLinks }
+                        : extraIntel.socialLinks;
+                }
+                console.log(`[${jobId}] Sophisticated extraction complete:`, {
+                    phone: !!websiteAnalysis.phone,
+                    hours: !!websiteAnalysis.openingHours,
+                    address: !!websiteAnalysis.address
+                });
+            } catch (err) {
+                console.warn(`[${jobId}] Sophisticated extraction failed, continuing with scraped info:`, err);
+            }
+        }
+
+        // 2. Normalize
         const normalizer = new PageNormalizer();
         const normalizedPage = normalizer.normalize(websiteAnalysis);
 

@@ -157,6 +157,20 @@ export class EnhancedWebsiteScraper implements IWebsiteScraperClient {
                 analysis.logoUrl = await this.extractLogo(page, url);
             }
 
+            // Extract raw text for sophisticated LLM processing
+            analysis.rawText = await page.evaluate(() => {
+                // Focus on meaningful text areas (headers, footer, main content)
+                const body = document.querySelector('body');
+                if (!body) return '';
+
+                // Remove script/style tags to clean up
+                const clone = body.cloneNode(true);
+                const toRemove = clone.querySelectorAll('script, style, noscript, iframe, svg, nav');
+                toRemove.forEach((el: any) => el.remove());
+
+                return clone.innerText.substring(0, 10000); // Limit to 10k chars for LLM safety
+            });
+
             console.log('[Playwright] Scrape complete:', {
                 hasPhone: !!analysis.phone,
                 hasEmail: !!analysis.email,

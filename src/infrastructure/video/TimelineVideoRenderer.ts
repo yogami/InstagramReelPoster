@@ -199,6 +199,7 @@ export class TimelineVideoRenderer implements IVideoRenderer {
                     start: start,
                     length: length,
                     fit: 'cover',
+                    position: 'center',
                     effect: isTurbo ? 'zoomIn' : undefined,
                 });
             }
@@ -239,10 +240,10 @@ export class TimelineVideoRenderer implements IVideoRenderer {
                     },
                     start: segment.start,
                     length: segment.end - segment.start,
-                    fit: 'cover' as const, // Switched to cover for more cinematic feel
+                    fit: 'cover' as const, // Ensures fills the frame without stretching
+                    position: 'center' as const,
                     transition: {
                         in: index === 0 ? 'fade' as const : undefined,
-                        // REMOVED out: fade to prevent "black gap" where text overlays persist
                     },
                     effect: zoomEffect,
                 };
@@ -317,7 +318,7 @@ export class TimelineVideoRenderer implements IVideoRenderer {
             length: Math.min(manifest.durationSeconds, visualEndTime), // Stop captions when branding starts
             position: 'bottom',
             offset: {
-                y: 0.15 // Offset from bottom (normalized ~15% up?)
+                y: 0.15
             }
         };
 
@@ -469,7 +470,6 @@ export class TimelineVideoRenderer implements IVideoRenderer {
                     position: 'center',
                     transition: {
                         in: 'zoom' as const,
-                        out: 'fade' as const
                     }
                 };
             })
