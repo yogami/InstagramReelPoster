@@ -3,7 +3,7 @@ import { IImageClient, ImageGenerationResult, ImageGenerationOptions } from '../
 
 /**
  * Flux image generation client for self-hosted FLUX1 model.
- * Calls a deployed FLUX1 endpoint on Flux infrastructure.
+ * Calls a deployed FLUX1 endpoint on Beam.cloud infrastructure.
  */
 export class FluxImageClient implements IImageClient {
     private readonly apiKey: string;
@@ -13,7 +13,7 @@ export class FluxImageClient implements IImageClient {
     constructor(
         apiKey: string,
         endpointUrl: string,
-        timeout: number = 180000 // FLUX can take 30-60s, increased for cold starts
+        timeout: number = 300000 // 5 minutes - Beam.cloud cold starts can take 2-3 min
     ) {
         if (!apiKey) {
             throw new Error('Flux API key is required');
@@ -44,7 +44,7 @@ export class FluxImageClient implements IImageClient {
         // Add FLUX-native quality boosters
         const enhancedPrompt = `${cleanedPrompt}. Style: Cinematic, 8k, photorealistic, ultra-detailed. Aspect Ratio: 9:16 Vertical.`;
 
-        const maxRetries = 1;
+        const maxRetries = 2; // Increased retries for cold start resilience
         let lastError: Error | null = null;
 
         for (let attempt = 0; attempt <= maxRetries; attempt++) {
@@ -89,22 +89,25 @@ export class FluxImageClient implements IImageClient {
                     const responseData = error.response?.data;
                     const message = responseData?.error || responseData?.message || error.message;
                     const isOOM = message?.includes('OutOfMemoryError') || message?.includes('CUDA out of memory');
+                    const isTimeout = error.code === 'ECONNABORTED' || message?.includes('timeout');
+                    const isColdStart = error.code === 'ECONNRESET' || error.code === 'ETIMEDOUT';
 
-                    console.error(`[Flux FLUX1] Generation failed (${status}):`, {
+                    console.error(`[Flux FLUX1] Generation failed (${status || error.code}):`, {
                         message,
                         raw: JSON.stringify(responseData || {}).substring(0, 500),
                         code: error.code
                     });
 
-                    // Retry on OOM (transient GPU memory issue)
-                    if (isOOM && attempt < maxRetries) {
-                        console.warn(`[Flux FLUX1] OOM detected, waiting 8s before retry...`);
-                        await new Promise(resolve => setTimeout(resolve, 8000));
-                        lastError = new Error(`Flux image generation failed (${status}): ${message || 'Empty response'}`);
+                    // Retry on OOM, timeout, or cold start issues
+                    if ((isOOM || isTimeout || isColdStart) && attempt < maxRetries) {
+                        const waitTime = isTimeout ? 10000 : 8000; // Wait longer after timeout
+                        console.warn(`[Flux FLUX1] ${isTimeout ? 'Timeout' : isOOM ? 'OOM' : 'Cold start'} detected, waiting ${waitTime / 1000}s before retry...`);
+                        await new Promise(resolve => setTimeout(resolve, waitTime));
+                        lastError = new Error(`Flux image generation failed (${status || error.code}): ${message || 'Empty response'}`);
                         continue;
                     }
 
-                    throw new Error(`Flux image generation failed (${status}): ${message || 'Empty response'}`);
+                    throw new Error(`Flux image generation failed (${status || error.code}): ${message || 'Empty response'}`);
                 }
                 throw error;
             }
