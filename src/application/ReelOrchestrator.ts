@@ -628,9 +628,9 @@ export class ReelOrchestrator {
                 manifest.branding = {
                     logoUrl: websiteAnalysis.personalInfo?.headshotUrl || websiteAnalysis.logoUrl || manifest.logoUrl || '',
                     businessName: businessName,
-                    address: undefined, // No physical address for personal sites
-                    hours: undefined, // No business hours
-                    phone: undefined, // No phone number
+                    address: websiteAnalysis.address, // Include if detected
+                    hours: websiteAnalysis.openingHours, // Include if detected
+                    phone: websiteAnalysis.phone, // Include if detected
                     email: websiteAnalysis.email, // Keep email if available
                     ctaText: 'View Portfolio', // Personal CTA
                     qrCodeUrl: websiteAnalysis.sourceUrl, // Main portfolio URL, not reservation
