@@ -1,7 +1,14 @@
 FROM node:20
 
-# Install FFmpeg and basic tools
-RUN apt-get update && apt-get install -y ffmpeg && rm -rf /var/lib/apt/lists/*
+# Install FFmpeg, Python3, pip, and basic tools
+RUN apt-get update && apt-get install -y \
+    ffmpeg \
+    python3 \
+    python3-pip \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies for WebOrganizer (SOTA classifier)
+RUN pip3 install --no-cache-dir transformers torch --break-system-packages
 
 WORKDIR /app
 

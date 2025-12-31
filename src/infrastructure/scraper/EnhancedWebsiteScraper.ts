@@ -98,10 +98,12 @@ export class EnhancedWebsiteScraper implements IWebsiteScraperClient {
             page = await context.newPage();
 
             // Set timeout
-            page.setDefaultTimeout(15000);
+            page.setDefaultTimeout(30000);
 
             console.log(`[Playwright] Navigating to ${url}...`);
-            await page.goto(url, { waitUntil: 'networkidle', timeout: 30000 });
+            // Use 'domcontentloaded' instead of 'networkidle' - faster and more reliable
+            // 'networkidle' can hang indefinitely on sites with websockets/analytics
+            await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
 
             // Dismiss cookie consent if present
             await this.dismissCookieConsent(page);
