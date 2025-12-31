@@ -32,6 +32,7 @@ import {
 import { GptService } from './GptService';
 import { ParableGenerator } from './ParableGenerator';
 import { StandardReelGenerator } from './StandardReelGenerator';
+import { buildPersonalPromoPrompt, parsePersonalPromoResponse } from './PersonalPromoPrompt';
 
 // ============================================
 // MAIN CLIENT CLASS
@@ -460,8 +461,6 @@ Return JSON:
         personalName: string,
         language: string
     ): Promise<PromoScriptPlan> {
-        const { buildPersonalPromoPrompt, parsePersonalPromoResponse } = await import('./PersonalPromoPrompt');
-
         const prompt = buildPersonalPromoPrompt(analysis, personalName, language);
         const systemPrompt = 'You are an expert personal brand strategist creating authentic, no-BS promo videos for professionals.';
 
