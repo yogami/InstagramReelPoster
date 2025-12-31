@@ -294,7 +294,9 @@ export class PromoAssetService {
                     await this.updateJobStatus(jobId, 'generating_images', `Creating visual ${i + 1} of ${segments.length} (AI)...`);
                     if (this.deps.primaryImageClient) {
                         try {
-                            const { imageUrl } = await this.deps.primaryImageClient.generateImage(segment.imagePrompt);
+                            // Strict text prevention by appending negative prompt instruction
+                            const strictPrompt = segment.imagePrompt + " --no text, letters, watermark, signature";
+                            const { imageUrl } = await this.deps.primaryImageClient.generateImage(strictPrompt);
                             finalImageUrl = imageUrl;
                         } catch (primaryError) {
                             console.warn(`Primary image client failed for segment ${i}, falling back:`, primaryError);

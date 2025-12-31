@@ -41,7 +41,7 @@ describe('BerlinAILabs Promo Integration', () => {
 
         // Mock LLM for promo plan
         nock('https://api.openai.com')
-            .post('/v1/chat/completions')
+            .post('/chat/completions')
             .reply(200, {
                 choices: [{
                     message: {
@@ -53,9 +53,9 @@ describe('BerlinAILabs Promo Integration', () => {
                                 { narration: "Contact us today.", imagePrompt: "modern office", duration: 5, role: "cta" }
                             ],
                             caption: "AI Engineering experts.",
-                            category: "service",
+                            category: "tech",
                             businessName: "Berlin AI Labs",
-                            musicStyle: "tech",
+                            musicStyle: "futuristic-cyberpunk-driving",
                             language: "en",
                             compliance: {
                                 source: "public-website",

@@ -39,7 +39,6 @@ export class FluxImageClient implements IImageClient {
             .replace(/--q\s+\d+/gi, '')
             .replace(/--style\s+\w+/gi, '')
             .replace(/--chaos\s+\d+/gi, '')
-            .replace(/--no\s+[\w,\s]+/gi, '')
             .trim();
 
         // Add FLUX-native quality boosters

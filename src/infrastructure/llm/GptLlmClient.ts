@@ -48,7 +48,7 @@ export class GptLlmClient implements ILlmClient {
     constructor(
         apiKey: string,
         model: string = 'gpt-4.1',
-        baseUrl: string = 'https://api.openai.com'
+        baseUrl: string = 'https://api.openai.com/v1'
     ) {
         this.llmService = new GptService(apiKey, model, baseUrl);
         this.parableGenerator = new ParableGenerator(this.llmService);
@@ -256,8 +256,10 @@ Categories to choose from:
 - service: Professional services (plumbers, consultants, therapists)
 - restaurant: Restaurants, bistros, bars, dining establishments  
 - studio: Creative studios (photography, art, music, tattoo, dance)
+- tech: Software, AI, SaaS, digital platforms, IT services
+- agency: Marketing, design, consulting, strategy agencies
 
-Return JSON with format: { "category": "cafe|gym|shop|service|restaurant|studio", "confidence": 0.0-1.0, "reason": "brief explanation" }`;
+Return JSON with format: { "category": "cafe|gym|shop|service|restaurant|studio|spiritual|tech|agency", "confidence": 0.0-1.0, "reason": "brief explanation" }`;
 
         try {
             const systemPrompt = 'You are a business analyst expert at categorizing local businesses.';
@@ -414,7 +416,7 @@ Return JSON:
         const normalizedKeywords = keywords.map(kw => kw.toLowerCase());
 
         const categoryScores: Record<BusinessCategory, number> = {
-            cafe: 0, gym: 0, shop: 0, service: 0, restaurant: 0, studio: 0, spiritual: 0,
+            cafe: 0, gym: 0, shop: 0, service: 0, restaurant: 0, studio: 0, spiritual: 0, tech: 0, agency: 0,
         };
 
         const categoryKeywords: Record<BusinessCategory, string[]> = {
@@ -425,6 +427,8 @@ Return JSON:
             studio: ['studio', 'creative', 'photography', 'art', 'design'],
             service: ['service', 'professional', 'expert', 'booking'],
             spiritual: ['meditation', 'spirituality', 'insight', 'healing'],
+            tech: ['software', 'app', 'ai', 'data', 'cloud', 'tech'],
+            agency: ['agency', 'marketing', 'strategy', 'branding'],
         };
 
         for (const [cat, catKeywords] of Object.entries(categoryKeywords)) {

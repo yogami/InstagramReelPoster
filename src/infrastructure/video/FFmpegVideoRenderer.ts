@@ -57,12 +57,12 @@ export class FFmpegVideoRenderer implements IVideoRenderer {
             console.error(`[FFmpeg] Render failed: ${error.message || 'Unknown error'}`);
             throw error;
         } finally {
-            // 4. Cleanup
-            try {
-                fs.rmSync(jobDir, { recursive: true, force: true });
-            } catch (e) {
-                console.warn(`[FFmpeg] Failed to cleanup temp dir ${jobDir}`, e);
-            }
+            // 4. Cleanup (DISABLED FOR DEBUGGING)
+            // try {
+            //    fs.rmSync(jobDir, { recursive: true, force: true });
+            // } catch (e) {
+            //    console.warn(`[FFmpeg] Failed to cleanup temp dir ${jobDir}`, e);
+            // }
         }
     }
 
@@ -97,10 +97,31 @@ export class FFmpegVideoRenderer implements IVideoRenderer {
             downloads.push(this.downloadFile(manifest.animatedVideoUrl, vidPath));
         } else if (manifest.segments) {
             for (let i = 0; i < manifest.segments.length; i++) {
+                // Ensure imageUrl exists
+                if (!manifest.segments[i].imageUrl) continue;
+
                 const imgPath = path.join(jobDir, `image_${i}.png`);
                 imagePaths.push(imgPath);
                 downloads.push(this.downloadFile(manifest.segments[i].imageUrl, imgPath));
             }
+        }
+
+        // Branding Assets
+        const logoUrl = manifest.branding?.logoUrl || manifest.logoUrl;
+        let finalLogoPath: string | null = null;
+        if (logoUrl) {
+            // FFmpeg build often lacks SVG support. Skip if SVG to prevent crash.
+            if (logoUrl.toLowerCase().endsWith('.svg')) {
+                console.warn(`[FFmpeg] Skipping SVG logo to prevent renderer crash: ${logoUrl}`);
+            } else {
+                downloads.push(this.downloadFile(logoUrl, path.join(jobDir, 'logo.png')));
+                finalLogoPath = path.join(jobDir, 'logo.png');
+            }
+        }
+
+        const qrUrl = manifest.branding?.qrCodeUrl;
+        if (qrUrl) {
+            downloads.push(this.downloadFile(qrUrl, path.join(jobDir, 'qrcode.png')));
         }
 
         await Promise.all(downloads);
@@ -111,6 +132,8 @@ export class FFmpegVideoRenderer implements IVideoRenderer {
             subtitlesPath,
             imagePaths,
             videoPaths,
+            logoPath: finalLogoPath,
+            qrCodePath: manifest.branding?.qrCodeUrl ? path.join(jobDir, 'qrcode.png') : null
         };
     }
 
@@ -165,6 +188,8 @@ export class FFmpegVideoRenderer implements IVideoRenderer {
             subtitlesPath: string;
             imagePaths: string[];
             videoPaths: string[];
+            logoPath: string | null;
+            qrCodePath: string | null;
         },
         jobDir: string
     ): Promise<void> {
@@ -205,19 +230,17 @@ export class FFmpegVideoRenderer implements IVideoRenderer {
                 }
             } else if (manifest.segments) {
                 // Multi-Image Source
-                assets.imagePaths.forEach((imgPath) => {
-                    cmd.input(imgPath);
-                });
-
                 const imageInputs: string[] = [];
-                assets.imagePaths.forEach((_, i) => {
+                assets.imagePaths.forEach((imgPath, i) => {
+                    // Add input and its options TOGETHER
                     const segment = manifest.segments![i];
                     const duration = segment.end - segment.start;
+
+                    cmd.input(imgPath);
+                    cmd.inputOptions([`-loop 1`, `-t ${duration}`]);
+
                     const inputTag = `[${i + visualInputOffset}:v]`;
                     const outputTag = `[v${i}]`;
-
-                    // We use -loop 1 input option for images, then trim in filter
-                    cmd.inputOptions([`-loop 1`, `-t ${duration}`]);
 
                     complexFilter.push(
                         `${inputTag}scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1,format=yuv420p${outputTag}`
@@ -232,11 +255,60 @@ export class FFmpegVideoRenderer implements IVideoRenderer {
                 return reject(new Error('Manifest has neither segments nor animatedVideoUrl'));
             }
 
+            // --- BRANDING OVERLAYS ---
+            let lastVideoStream = 'vbase';
+            let nextInputIdx = visualInputOffset + (manifest.segments ? manifest.segments.length : assets.videoPaths.length);
+
+            // 1. Logo Overlay (Top Right)
+            if (assets.logoPath && fs.existsSync(assets.logoPath)) {
+                cmd.input(assets.logoPath);
+                const logoInput = `[${nextInputIdx}:v]`;
+                nextInputIdx++;
+
+                // Scale logo to 150px width
+                complexFilter.push(`${logoInput}scale=150:-1[logo]`);
+                complexFilter.push(`[${lastVideoStream}][logo]overlay=main_w-overlay_w-20:20[vlogo]`);
+                lastVideoStream = 'vlogo';
+            }
+
+            // 2. QR Code Overlay (Bottom Right)
+            if (assets.qrCodePath && fs.existsSync(assets.qrCodePath)) {
+                cmd.input(assets.qrCodePath);
+                const qrInput = `[${nextInputIdx}:v]`;
+                nextInputIdx++;
+
+                // Scale QR to 200px width
+                complexFilter.push(`${qrInput}scale=200:-1[qr]`);
+                complexFilter.push(`[${lastVideoStream}][qr]overlay=main_w-overlay_w-20:main_h-overlay_h-20[vqr]`);
+                lastVideoStream = 'vqr';
+            }
+
+            // 3. Text Overlay (Business Name / Phone) - Bottom Center
+            if (manifest.branding) {
+                const parts = [];
+                if (manifest.branding.businessName) parts.push(manifest.branding.businessName);
+                if (manifest.branding.phone) parts.push(manifest.branding.phone);
+
+                if (parts.length > 0) {
+                    const text = parts.join(' | ');
+                    // Simple sanitization for drawtext - remove special chars that break ffmpeg filters
+                    const safeText = text.replace(/:/g, '\\:').replace(/'/g, '').replace(/\|/g, ' - ');
+
+                    // Note: This relies on fontconfig or default fonts. 
+                    // To make it robust, we use a generic font or fallback.
+                    const drawTextFilter = `drawtext=text='${safeText}':fontcolor=white:fontsize=24:box=1:boxcolor=black@0.6:boxborderw=10:x=(w-text_w)/2:y=h-text_h-40`;
+
+                    complexFilter.push(`[${lastVideoStream}]${drawTextFilter}[vbranded]`);
+                    lastVideoStream = 'vbranded';
+                }
+            }
+
             // Burn subtitles into video
-            let videoOutputTag = 'vbase';
+            let videoOutputTag = lastVideoStream;
             if (assets.subtitlesPath && fs.existsSync(assets.subtitlesPath)) {
-                const subsFilter = `subtitles=${assets.subtitlesPath}:force_style='Fontname=Roboto,FontSize=24,PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,BorderStyle=1,Outline=1,Shadow=0,MarginV=60'`;
-                complexFilter.push(`[vbase]${subsFilter}[vburned]`);
+                // Quote path to handle spaces or special characters safely
+                const subsFilter = `subtitles='${assets.subtitlesPath}':force_style='Fontname=Roboto,FontSize=24,PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,BorderStyle=1,Outline=1,Shadow=0,MarginV=60'`;
+                complexFilter.push(`[${lastVideoStream}]${subsFilter}[vburned]`);
                 videoOutputTag = 'vburned';
             }
 
@@ -269,7 +341,11 @@ export class FFmpegVideoRenderer implements IVideoRenderer {
 
             cmd.outputOptions(['-y']); // Force overwrite
 
-            cmd.save(outputPath)
+            cmd
+                .on('start', (commandLine) => {
+                    console.log('Spawning Ffmpeg with command: ' + commandLine);
+                })
+                .save(outputPath)
                 .on('end', () => resolve())
                 .on('error', (err) => reject(new Error(`FFmpeg error: ${err.message}`)));
         });
