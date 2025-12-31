@@ -239,10 +239,10 @@ export class TimelineVideoRenderer implements IVideoRenderer {
                     },
                     start: segment.start,
                     length: segment.end - segment.start,
-                    fit: 'contain' as const,
+                    fit: 'cover' as const, // Switched to cover for more cinematic feel
                     transition: {
                         in: index === 0 ? 'fade' as const : undefined,
-                        out: 'fade' as const,
+                        // REMOVED out: fade to prevent "black gap" where text overlays persist
                     },
                     effect: zoomEffect,
                 };
@@ -602,23 +602,21 @@ export class TimelineVideoRenderer implements IVideoRenderer {
         const branding = manifest.branding;
         if (!branding) return null;
 
-        // Build contact details for bottom-left
-        const contactParts: string[] = [];
+        // Build contact details for bottom-left with labels
+        const contactParts: { icon: string; text: string; label: string }[] = [];
         if (branding.address) {
-            // Shorten address to first part
             const shortAddr = branding.address.split(',')[0].trim();
-            contactParts.push(`📍 ${shortAddr}`);
+            contactParts.push({ icon: '📍', text: shortAddr, label: 'LOC' });
         }
         if (branding.hours) {
-            // Extract just the first line of hours
             const shortHours = branding.hours.split('\n')[0].substring(0, 30);
-            contactParts.push(`🕒 ${shortHours}`);
+            contactParts.push({ icon: '🕒', text: shortHours, label: 'HRS' });
         }
         if (branding.phone) {
-            contactParts.push(`📞 ${branding.phone}`);
+            contactParts.push({ icon: '📞', text: branding.phone, label: 'TEL' });
         }
         if (branding.email) {
-            contactParts.push(`✉️ ${branding.email}`);
+            contactParts.push({ icon: '✉️', text: branding.email, label: 'EMAIL' });
         }
 
         // Determine CTA text - Use manifest CTA or fallback
@@ -654,7 +652,15 @@ export class TimelineVideoRenderer implements IVideoRenderer {
                 <!-- BOTTOM: Contact Left + Logo Right -->
                 <div class="bottom-section">
                     <div class="contact-info">
-                        ${contactParts.map(c => `<span class="contact-line">${c}</span>`).join('')}
+                        ${contactParts.map(c => `
+                            <div class="contact-item">
+                                <span class="contact-icon">${c.icon}</span>
+                                <div class="contact-text-box">
+                                    <span class="contact-label">${c.label}</span>
+                                    <span class="contact-value">${c.text}</span>
+                                </div>
+                            </div>
+                        `).join('')}
                     </div>
                     <div class="logo-corner">
                         ${logoSection}
@@ -754,49 +760,84 @@ export class TimelineVideoRenderer implements IVideoRenderer {
             .contact-info {
                 display: flex;
                 flex-direction: column;
-                gap: 12px;
+                gap: 15px;
                 flex: 1;
+                max-width: 65%;
             }
 
-            .contact-line {
+            .contact-item {
+                display: flex;
+                align-items: center;
+                gap: 15px;
+                background: rgba(255,255,255,0.08);
+                border-left: 5px solid #FACC15;
+                padding: 10px 20px;
+                border-radius: 4px 15px 15px 4px;
+                width: fit-content;
+                min-width: 350px;
+            }
+
+            .contact-icon {
+                font-size: 32px;
+                flex-shrink: 0;
+            }
+
+            .contact-text-box {
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+            }
+
+            .contact-label {
                 font-family: 'Montserrat', sans-serif;
-                font-size: 24px;
+                font-size: 14px;
+                font-weight: 900;
+                color: #FACC15;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+                opacity: 0.8;
+                margin-bottom: -2px;
+            }
+
+            .contact-value {
+                font-family: 'Montserrat', sans-serif;
+                font-size: 22px;
                 font-weight: 700;
                 color: #FFFFFF;
-                background: rgba(255,255,255,0.1);
-                padding: 12px 20px;
-                border-radius: 12px;
-                word-wrap: break-word;
-                overflow-wrap: break-word;
-                line-height: 1.3;
+                line-height: 1.2;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                max-width: 400px;
             }
 
             .logo-corner {
-                flex: 0 0 auto;
+                flex: 0 0 200px;
                 display: flex;
                 align-items: flex-end;
                 justify-content: flex-end;
             }
 
             .small-logo {
-                max-width: 150px;
-                max-height: 150px;
+                max-width: 180px;
+                max-height: 180px;
                 object-fit: contain;
-                border-radius: 12px;
-                background: rgba(255,255,255,0.1);
-                padding: 10px;
+                border-radius: 15px;
+                background: rgba(255,255,255,0.05);
+                padding: 15px;
+                border: 1px solid rgba(255,255,255,0.1);
             }
 
             .brand-text {
                 font-family: 'Montserrat', sans-serif;
-                font-size: 20px;
+                font-size: 24px;
                 font-weight: 900;
                 color: #FACC15;
                 text-transform: uppercase;
-                max-width: 200px;
+                max-width: 250px;
                 word-wrap: break-word;
                 text-align: right;
-                line-height: 1.2;
+                line-height: 1.1;
             }
         `;
 
