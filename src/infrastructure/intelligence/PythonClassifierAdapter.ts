@@ -10,17 +10,32 @@ export interface WebOrganizerResult {
 
 export class PythonClassifierAdapter {
     private scriptPath: string;
+    private timeoutMs: number;
 
-    constructor() {
+    constructor(timeoutMs: number = 30000) { // 30 second timeout for CPU inference
         this.scriptPath = path.join(process.cwd(), 'src/infrastructure/intelligence/web_organizer.py');
+        this.timeoutMs = timeoutMs;
     }
 
     async classify(mainText: string, metadata: any = {}): Promise<WebOrganizerResult> {
         return new Promise((resolve, reject) => {
             const pythonProcess = spawn('python3', [this.scriptPath]);
-
             let output = '';
             let errorOutput = '';
+            let timedOut = false;
+
+            // Timeout protection - CPU inference can take forever
+            const timeoutId = setTimeout(() => {
+                timedOut = true;
+                pythonProcess.kill('SIGTERM');
+                console.warn(`[WebOrganizer] Timeout after ${this.timeoutMs / 1000}s - falling back to heuristics`);
+                resolve({
+                    topic: 'Unknown',
+                    format: 'Unknown',
+                    confidence: 0,
+                    error: `Timeout after ${this.timeoutMs / 1000}s (CPU inference too slow)`
+                });
+            }, this.timeoutMs);
 
             // Send input data
             const inputData = JSON.stringify({
@@ -41,6 +56,9 @@ export class PythonClassifierAdapter {
             });
 
             pythonProcess.on('close', (code) => {
+                clearTimeout(timeoutId);
+                if (timedOut) return; // Already resolved
+
                 if (code !== 0) {
                     console.error(`[WebOrganizer] Process exited with code ${code}`);
                     // Fallback or reject? Let's resolve with error to handle gracefully
@@ -67,6 +85,9 @@ export class PythonClassifierAdapter {
             });
 
             pythonProcess.on('error', (err) => {
+                clearTimeout(timeoutId);
+                if (timedOut) return; // Already resolved
+
                 resolve({
                     topic: 'Unknown',
                     format: 'Unknown',
