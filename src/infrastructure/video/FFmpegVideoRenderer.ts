@@ -111,8 +111,10 @@ export class FFmpegVideoRenderer implements IVideoRenderer {
         let finalLogoPath: string | null = null;
         if (logoUrl) {
             // FFmpeg build often lacks SVG support. Skip if SVG to prevent crash.
-            if (logoUrl.toLowerCase().endsWith('.svg')) {
-                console.warn(`[FFmpeg] Skipping SVG logo to prevent renderer crash: ${logoUrl}`);
+            const isSvg = logoUrl.toLowerCase().endsWith('.svg') || logoUrl.startsWith('data:image/svg+xml');
+
+            if (isSvg) {
+                console.warn(`[FFmpeg] Skipping SVG logo to prevent renderer crash: ${logoUrl.substring(0, 50)}...`);
             } else {
                 downloads.push(this.downloadFile(logoUrl, path.join(jobDir, 'logo.png')));
                 finalLogoPath = path.join(jobDir, 'logo.png');
@@ -144,13 +146,27 @@ export class FFmpegVideoRenderer implements IVideoRenderer {
 
         // Handle data URLs (base64) specifically for subtitles
         if (finalUrl.startsWith('data:')) {
-            const matches = finalUrl.match(new RegExp('^data:([A-Za-z0-9\\-+/]+);base64,(.+)$'));
-            if (matches && matches.length === 3) {
-                const buffer = Buffer.from(matches[2], 'base64');
+            const base64Match = finalUrl.match(/^data:([A-Za-z0-9\-+/]+);base64,(.+)$/);
+            if (base64Match && base64Match.length === 3) {
+                const buffer = Buffer.from(base64Match[2], 'base64');
                 fs.writeFileSync(dest, buffer);
                 return;
             }
-            throw new Error('Invalid data URL');
+
+            // Handle non-base64 data URLs (e.g. SVG)
+            const textMatch = finalUrl.match(/^data:([A-Za-z0-9\-+/]+),(.+)$/);
+            if (textMatch && textMatch.length === 3) {
+                try {
+                    const content = decodeURIComponent(textMatch[2]);
+                    fs.writeFileSync(dest, content);
+                    return;
+                } catch (e) {
+                    // Fallback to raw writing if decode fails
+                    fs.writeFileSync(dest, textMatch[2]);
+                    return;
+                }
+            }
+            throw new Error('Invalid data URL format. Expected data:[mime];base64,[data] or data:[mime],[data]');
         }
 
         const writer = fs.createWriteStream(dest);

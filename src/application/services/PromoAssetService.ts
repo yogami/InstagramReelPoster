@@ -324,8 +324,31 @@ export class PromoAssetService {
                                 websiteAnalysis: { ...websiteAnalysis, logoUrl: finalImageUrl }
                             });
                         }
-                    } catch (uploadError) {
+                    } catch (uploadError: any) {
                         console.warn('Failed to upload image to Cloudinary, using original URL:', uploadError);
+
+                        // If it's a 404 error and it was a pre-resolved URL, fallback to AI generation
+                        const is404 = uploadError.message?.includes('404') || uploadError.http_code === 404;
+                        if (is404 && preResolvedUrl) {
+                            console.warn(`[${jobId}] Pre-resolved image ${i + 1} is 404, falling back to AI generation...`);
+                            await this.updateJobStatus(jobId, 'generating_images', `Fixing broken visual ${i + 1} with AI...`);
+
+                            try {
+                                const { imageUrl } = await this.deps.fallbackImageClient.generateImage(segment.imagePrompt);
+                                finalImageUrl = imageUrl;
+
+                                // Attempt to upload the new AI image
+                                if (this.deps.storageClient) {
+                                    const retryUpload = await this.deps.storageClient.uploadImage(finalImageUrl, {
+                                        folder: `instagram-reels/images/${jobId}`,
+                                        publicId: `seg_${i}_retry_${Date.now()}`
+                                    });
+                                    finalImageUrl = retryUpload.url;
+                                }
+                            } catch (retryError) {
+                                console.error(`[${jobId}] AI fallback generation failed:`, retryError);
+                            }
+                        }
                     }
                 }
 
