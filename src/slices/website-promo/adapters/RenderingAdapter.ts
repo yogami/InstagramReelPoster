@@ -6,14 +6,10 @@
 
 import { IRenderingPort, RenderingAssets, RenderingResult } from '../ports/IRenderingPort';
 import { PromoScriptPlan } from '../domain/entities/WebsitePromo';
-
-// Type for existing renderer
-interface LegacyVideoRenderer {
-    render(manifest: any): Promise<{ videoUrl: string; renderId: string }>;
-}
+import { IVideoRenderer } from '../../../domain/ports/IVideoRenderer';
 
 export class RenderingAdapter implements IRenderingPort {
-    constructor(private readonly videoRenderer: LegacyVideoRenderer) { }
+    constructor(private readonly videoRenderer: IVideoRenderer) { }
 
     async render(
         script: PromoScriptPlan,
@@ -41,11 +37,11 @@ export class RenderingAdapter implements IRenderingPort {
             } : undefined
         };
 
-        const result = await this.videoRenderer.render(manifest);
+        const result = await this.videoRenderer.render(manifest as any);
 
         return {
             videoUrl: result.videoUrl,
-            renderId: result.renderId,
+            renderId: result.renderId || 'legacy-render',
             durationSeconds: totalDuration
         };
     }

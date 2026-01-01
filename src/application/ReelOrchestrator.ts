@@ -398,6 +398,9 @@ export class ReelOrchestrator {
         if (this.deps.websitePromoSlice) {
             console.log(`[${jobId}] Delegating to independent WebsitePromoSlice...`);
             try {
+                const config = getConfig();
+                const promoVoiceId = websiteInput.voiceId || config.ttsCloningPromoVoiceId || config.ttsCloningVoiceId;
+
                 const sliceResult = await this.deps.websitePromoSlice.orchestrator.processJob(jobId, {
                     websiteUrl: websiteInput.websiteUrl,
                     businessName: websiteInput.businessName,
@@ -406,7 +409,8 @@ export class ReelOrchestrator {
                     language: websiteInput.language,
                     providedMedia: websiteInput.providedMedia,
                     logoUrl: websiteInput.logoUrl,
-                    logoPosition: websiteInput.logoPosition
+                    logoPosition: websiteInput.logoPosition,
+                    voiceId: promoVoiceId
                 });
 
                 if (sliceResult.status === 'completed' && sliceResult.result) {

@@ -30,6 +30,11 @@ import { FallbackVideoRenderer } from '../infrastructure/video/FallbackVideoRend
 import { MediaStorageClient } from '../infrastructure/storage/MediaStorageClient';
 import { WebsiteScraperClient } from '../infrastructure/scraper/WebsiteScraperClient';
 import { EnhancedWebsiteScraper } from '../infrastructure/scraper/EnhancedWebsiteScraper';
+import { createWebsitePromoSlice } from '../slices/website-promo';
+import { WebsiteScraperAdapter } from '../slices/website-promo/adapters/WebsiteScraperAdapter';
+import { ScriptGenerationAdapter } from '../slices/website-promo/adapters/ScriptGenerationAdapter';
+import { AssetGenerationAdapter } from '../slices/website-promo/adapters/AssetGenerationAdapter';
+import { RenderingAdapter } from '../slices/website-promo/adapters/RenderingAdapter';
 // ... existing imports ...
 
 
@@ -135,6 +140,23 @@ export function createDependencies(config: Config): {
     const captionService = new CaptionService(llmClient);
     const growthInsightsService = new GrowthInsightsService();
 
+    // 4. Setup Website Promo Slice (Phase 3 Decoupling)
+    let websitePromoSlice = undefined;
+    if (config.featureFlags.enableWebsitePromoSlice) {
+        console.log('🚀 Initializing independent WebsitePromoSlice...');
+        websitePromoSlice = createWebsitePromoSlice({
+            scrapingPort: new WebsiteScraperAdapter(websiteScraperClient),
+            scriptPort: new ScriptGenerationAdapter(llmClient),
+            assetPort: new AssetGenerationAdapter(
+                ttsClient,
+                primaryImageClient,
+                musicSelector,
+                subtitlesClient
+            ),
+            renderingPort: new RenderingAdapter(videoRenderer)
+        });
+    }
+
     const deps: OrchestratorDependencies = {
         transcriptionClient,
         llmClient,
@@ -155,6 +177,7 @@ export function createDependencies(config: Config): {
         callbackToken: config.callbackToken,
         callbackHeader: config.callbackHeader,
         websiteScraperClient,
+        websitePromoSlice,
     };
 
     console.log(`📡 Callback configured: Header = ${deps.callbackHeader}, Token = ${deps.callbackToken ? (deps.callbackToken.substring(0, 5) + '...') : 'None'} `);

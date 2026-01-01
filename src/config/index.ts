@@ -99,6 +99,7 @@ export interface Config {
         personalCloneTrainingMode: boolean; // Collect data for training
         enableUserApproval: boolean;  // Human-in-the-loop approval checkpoints
         usePlaywrightScraper: boolean; // Toggle for enhanced scraper
+        enableWebsitePromoSlice: boolean; // Independent Website Promo slice
     };
 
     // Guardian API (ConvoGuard compliance service)
@@ -251,6 +252,7 @@ export function loadConfig(): Config {
             personalCloneTrainingMode: getEnvVarBoolean('PERSONAL_CLONE_TRAINING_MODE', false),
             enableUserApproval: getEnvVarBoolean('ENABLE_USER_APPROVAL', false), // Human-in-the-loop approval checkpoints
             usePlaywrightScraper: getEnvVarBoolean('USE_PLAYWRIGHT_SCRAPER', false), // Toggle for enhanced scraper
+            enableWebsitePromoSlice: getEnvVarBoolean('ENABLE_WEBSITE_PROMO_SLICE', false), // Independent slice
         },
 
         // Guardian API (ConvoGuard compliance service)

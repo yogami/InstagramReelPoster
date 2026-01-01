@@ -6,14 +6,10 @@
 
 import { IScrapingPort, ScrapingOptions } from '../ports/IScrapingPort';
 import { WebsiteAnalysis } from '../domain/entities/WebsitePromo';
-
-// Type for the existing scraper client
-interface LegacyScraperClient {
-    scrapeWebsite(url: string): Promise<any>;
-}
+import { IWebsiteScraperClient } from '../../../domain/ports/IWebsiteScraperClient';
 
 export class WebsiteScraperAdapter implements IScrapingPort {
-    constructor(private readonly scraperClient: LegacyScraperClient) { }
+    constructor(private readonly scraperClient: IWebsiteScraperClient) { }
 
     async scrape(options: ScrapingOptions): Promise<WebsiteAnalysis> {
         const result = await this.scraperClient.scrapeWebsite(options.url);

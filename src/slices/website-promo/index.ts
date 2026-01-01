@@ -21,9 +21,12 @@ export * from './ports/IScrapingPort';
 export * from './ports/IScriptGenerationPort';
 export * from './ports/IRenderingPort';
 
-// Application
-export { WebsitePromoOrchestrator } from './application/WebsitePromoOrchestrator';
+// Application Layer
+export { WebsitePromoOrchestrator, PromoJob } from './application/WebsitePromoOrchestrator';
 export { WebsitePromoUseCase } from './application/WebsitePromoUseCase';
+
+// Domain Services
+export { ContentDNAAnalyzer, SiteDNA } from './domain/services/ContentDNAAnalyzer';
 
 // Factory for easy instantiation
 export { createWebsitePromoSlice, WebsitePromoSlice, WebsitePromoSliceConfig } from './WebsitePromoFactory';

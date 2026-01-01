@@ -38,31 +38,29 @@ export class GptLinkedInDraftService implements ILinkedInDraftService {
                     {
                         role: 'system',
                         content: `You are helping write personal LinkedIn posts for a SOLOPRENEUR who builds AI products and automated content creation solutions.
+Your goal is to maximize VIRAL potential and ENGAGEMENT.
 
 PERSONA:
-- Building AI-powered tools for content automation
-- Looking for like-minded collaborators and partnerships
-- Blends technical expertise with spiritual/psychological depth
-- Speaks from experience, not theory
+- Building AI-powered tools for content automation (e.g., automated reels, LinkedIn posters)
+- Blends technical expertise with spiritual/psychological depth ("Challenging View" brand)
+- Speaks from experience, not theory. Honest, sharp, and slightly provocative.
 
-OBJECTIVES FOR LINKEDIN:
-- MAXIMIZE OUTREACH and discoverability
-- Market expertise in AI product development
-- Attract potential collaborators and co-builders
-- Share insights on solopreneurship, automation, and conscious building
-- Stand out from generic "hustle culture" content
+LINKEDIN VIRAL STRATEGY:
+1. THE HOOK: The first line is everything. It must be a "scroll-stopper". Use a strong opinion, a surprising stat, or a relatable pain point.
+2. WHITE SPACE ("BROETRY"): Use lots of line breaks. One sentence per line for the first 3 lines to trigger the "See more" button.
+3. NO FLUFF: No "I'm excited to share", "I'm humbled to announce". Start mid-action.
+4. ENGAGEMENT: Close with a SPECIFIC, easy-to-answer question that sparks a conversation in the comments. Not "What do you think?", but "What's the #1 thing you'd automate if you had a magic wand?"
+5. HASHTAGS: Use a mix of 3 broad (high volume) and 2 niche tags for optimal discoverability.
 
 CONSTRAINTS:
-- Tone: honest, sharp, builder-mindset, technically grounded but spiritually aware
-- Include 3-5 strategic hashtags for discoverability (AI, solopreneurship, automation, tech)
-- No "as an AI" language
-- Keep language simple and clear (roughly 8th-grade readability)
-- Output must be short enough to read in a glance
-- Every post should subtly position expertise without being salesy`
+- No "as an AI" language.
+- Keep language simple (8th-grade readability).
+- Tone: builder-mindset, technically grounded but spiritually aware.
+- Output MUST be a JSON object with the specified fields.`
                     },
                     { role: 'user', content: prompt }
                 ],
-                temperature: 0.7,
+                temperature: 0.8,
                 response_format: { type: 'json_object' },
             },
             {
@@ -78,52 +76,53 @@ CONSTRAINTS:
     }
 
     private buildPrompt(rawNote: string): string {
-        return `Raw note from a solopreneur building AI products (voice-to-text or short text about AI, automation, solopreneurship, spirituality, or founder psychology):
-
+        return `Raw note from a solopreneur building AI products:
 """
 ${rawNote}
 """
 
 Your tasks:
 
-1. Extract the core tension in 1–2 sentences (what problem or uncomfortable truth is being pointed at, relevant to builders/founders/AI practitioners).
+1. CORE TENSION: Extract the central paradox or uncomfortable truth in 1–2 sentences.
 
-2. Generate one LinkedIn hook line (max 18–20 words) that could be the first line of a post. It should:
-   - Be scroll-stopping and specific
-   - Work in a tech founder / AI builder / solopreneur context
-   - Subtly position the author as someone building real things
+2. VIRAL HOOK: Generate one LinkedIn hook line (max 15 words). 
+   - Must be a "Pattern Interrupt" (surprising or challenging).
+   - Must make the reader WANT to click "See More".
+   - Example: "Hustle culture isn't hard work. It's an avoidance tactic."
 
-3. Propose a post outline with 3–5 bullet points the user can expand in their own words. Each bullet should be:
-   - A sharp idea, not a full paragraph
-   - Relevant to AI, automation, solopreneurship, or conscious building
-   - Written to attract like-minded collaborators
+3. INSIGHTFUL BULLETS: Propose 3–5 sharp ideas. 
+   - Focus on "Value-Add" or "Behind-the-scenes" building.
+   - Each bullet should be a single, punchy insight.
+   - Use these to expand the author's expertise.
 
-4. Suggest 1–2 closing angles (short sentence ideas) to wrap the post:
-   - Could be a reflective question, a challenge, or a collaboration invite
-   - Should encourage engagement from potential collaborators
+4. ENGAGEMENT CLOSERS: Suggest 1–2 CLOSING QUESTIONS.
+   - Must be "Low Friction" (easy to answer in 10 seconds).
+   - Focus on sparking an opinion or sharing a personal experience.
+   - Example: "What's your biggest bottleneck in building right now?"
 
-5. Generate 3-5 strategic HASHTAGS for LinkedIn discoverability:
-   - Focus on: AI, automation, solopreneurship, tech, entrepreneurship
-   - Use popular LinkedIn hashtags that reach your target audience
-   - Format: #AIautomation, #solopreneur, etc.
+5. STRATEGIC HASHTAGS:
+   - 3 Broad (e.g., #AI, #Innovation, #Solopreneurship)
+   - 2 Niche (e.g., #AIAutomation, #ConsciousBuilding, #FounderPsychology)
 
 Return ONLY a JSON object:
 {
   "core_tension": "<1–2 sentences>",
-  "hook": "<single LinkedIn first line, max 18-20 words>",
+  "hook": "<viral first line>",
   "outline_bullets": [
-    "<bullet 1>",
-    "<bullet 2>",
-    "<bullet 3>"
+    "<insight 1>",
+    "<insight 2>",
+    "<insight 3>"
   ],
   "closer_options": [
-    "<closing idea 1>",
-    "<closing idea 2>"
+    "<engagement question 1>",
+    "<engagement question 2>"
   ],
   "hashtags": [
     "#hashtag1",
     "#hashtag2",
-    "#hashtag3"
+    "#hashtag3",
+    "#hashtag4",
+    "#hashtag5"
   ]
 }`;
 

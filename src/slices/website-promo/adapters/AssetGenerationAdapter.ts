@@ -6,30 +6,17 @@
 
 import { IAssetGenerationPort, VoiceoverResult } from '../ports/IAssetGenerationPort';
 import { PromoSceneContent } from '../domain/entities/WebsitePromo';
-
-// Types for existing clients
-interface LegacyTtsClient {
-    synthesize(text: string, options?: any): Promise<{ url: string; durationSeconds: number }>;
-}
-
-interface LegacyImageClient {
-    generateImage(prompt: string, options?: any): Promise<string>;
-}
-
-interface LegacyMusicSelector {
-    selectMusic(category: string, targetDuration: number): Promise<{ url: string; durationSeconds: number }>;
-}
-
-interface LegacySubtitlesClient {
-    generateSubtitles(audioUrl: string): Promise<{ subtitlesUrl: string }>;
-}
+import { ITtsClient } from '../../../domain/ports/ITtsClient';
+import { IImageClient } from '../../../domain/ports/IImageClient';
+import { MusicSelector } from '../../../application/MusicSelector';
+import { ISubtitlesClient } from '../../../domain/ports/ISubtitlesClient';
 
 export class AssetGenerationAdapter implements IAssetGenerationPort {
     constructor(
-        private readonly ttsClient: LegacyTtsClient,
-        private readonly imageClient: LegacyImageClient,
-        private readonly musicSelector: LegacyMusicSelector,
-        private readonly subtitlesClient: LegacySubtitlesClient
+        private readonly ttsClient: ITtsClient,
+        private readonly imageClient: IImageClient,
+        private readonly musicSelector: MusicSelector,
+        private readonly subtitlesClient: ISubtitlesClient
     ) { }
 
     async generateVoiceover(
@@ -38,7 +25,7 @@ export class AssetGenerationAdapter implements IAssetGenerationPort {
     ): Promise<VoiceoverResult> {
         const result = await this.ttsClient.synthesize(text, options);
         return {
-            url: result.url,
+            url: result.audioUrl,
             durationSeconds: result.durationSeconds
         };
     }
@@ -54,8 +41,8 @@ export class AssetGenerationAdapter implements IAssetGenerationPort {
                 ? `${scene.imagePrompt}. Style: ${options.style}`
                 : scene.imagePrompt;
 
-            const url = await this.imageClient.generateImage(prompt);
-            imageUrls.push(url);
+            const result = await this.imageClient.generateImage(prompt);
+            imageUrls.push(result.imageUrl);
         }
 
         return imageUrls;
@@ -65,7 +52,11 @@ export class AssetGenerationAdapter implements IAssetGenerationPort {
         category: string,
         duration: number
     ): Promise<{ url: string; durationSeconds: number }> {
-        return this.musicSelector.selectMusic(category, duration);
+        const result = await this.musicSelector.selectMusic([category], duration, 'Website Promo');
+        return {
+            url: result?.track?.audioUrl || '',
+            durationSeconds: result?.track?.durationSeconds || 0
+        };
     }
 
     async generateSubtitles(audioUrl: string): Promise<string> {

@@ -125,6 +125,8 @@ export interface WebsitePromoInput {
     logoUrl?: string;
     /** Where to place the logo (beginning, end, or overlay) */
     logoPosition?: 'beginning' | 'end' | 'overlay';
+    /** Optional voice ID for TTS synthesis */
+    voiceId?: string;
 }
 
 /**

@@ -8,6 +8,7 @@
 import { WebsitePromoInput, WebsiteAnalysis, PromoScriptPlan, BusinessCategory } from '../domain/entities/WebsitePromo';
 import { PromoBlueprint } from '../domain/entities/PromoBlueprint';
 import { BlueprintFactory } from '../domain/services/BlueprintFactory';
+import { ContentDNAAnalyzer, SiteDNA } from '../domain/services/ContentDNAAnalyzer';
 import { IScrapingPort } from '../ports/IScrapingPort';
 import { IScriptGenerationPort } from '../ports/IScriptGenerationPort';
 import { IAssetGenerationPort } from '../ports/IAssetGenerationPort';
@@ -19,6 +20,8 @@ export interface WebsitePromoResult {
     businessName: string;
     category: BusinessCategory;
     durationSeconds: number;
+    /** Extracted Content DNA (pain points, trust signals, urgency) */
+    siteDNA: SiteDNA;
 }
 
 export interface WebsitePromoUseCaseDeps {
@@ -30,6 +33,7 @@ export interface WebsitePromoUseCaseDeps {
 
 export class WebsitePromoUseCase {
     private readonly blueprintFactory = new BlueprintFactory();
+    private readonly dnaAnalyzer = new ContentDNAAnalyzer();
 
     constructor(private readonly deps: WebsitePromoUseCaseDeps) { }
 
@@ -42,6 +46,10 @@ export class WebsitePromoUseCase {
             url: input.websiteUrl,
             deepScrape: true
         });
+
+        // 1b. Analyze Content DNA (Phase 1 enhancement)
+        const siteDNA = this.dnaAnalyzer.analyzeDNA(analysis);
+        console.log(`[PromoSlice] Content DNA: pain=${siteDNA.painScore}, trust=${siteDNA.trustSignals.length}, urgency=${siteDNA.urgency ? 'yes' : 'no'}`);
 
         // 2. Detect category
         const category = input.category || await this.deps.scriptPort.detectCategory(analysis);
@@ -60,7 +68,8 @@ export class WebsitePromoUseCase {
         // 5. Generate assets
         const narration = script.scenes.map(s => s.narration).join(' ');
         const voiceover = await this.deps.assetPort.generateVoiceover(narration, {
-            language: input.language
+            language: input.language,
+            voiceId: input.voiceId
         });
 
         const images = await this.deps.assetPort.generateImages(script.scenes);
@@ -81,7 +90,8 @@ export class WebsitePromoUseCase {
             caption: script.caption,
             businessName: script.businessName,
             category: script.category,
-            durationSeconds: renderResult.durationSeconds
+            durationSeconds: renderResult.durationSeconds,
+            siteDNA
         };
     }
 }

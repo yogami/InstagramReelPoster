@@ -89,6 +89,7 @@ export interface WebsitePromoInput {
     providedMedia?: string[];
     logoUrl?: string;
     logoPosition?: 'beginning' | 'end' | 'overlay';
+    voiceId?: string;
 }
 
 /**

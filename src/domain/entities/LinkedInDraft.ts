@@ -97,30 +97,30 @@ export function extractRawNote(text: string): string {
     return text.replace(/\blinkedin\b/i, '').trim();
 }
 
-/**
- * Assembles a full LinkedIn post from draft components.
- * Format: Hook + bulletpoints + first closer + hashtags
- */
 export function assemblePostContent(draft: LinkedInDraft): string {
     const parts: string[] = [];
 
-    // Hook (first line)
+    // Hook (first line) - isolated for maximum impact
     parts.push(draft.hook);
-    parts.push(''); // Empty line after hook
+    parts.push('');
+    parts.push(''); // Double space after hook to trigger curiosity
 
-    // Core tension
+    // Core tension - the setup
     parts.push(draft.coreTension);
     parts.push('');
+    parts.push('');
 
-    // Outline bullets as numbered list
-    draft.outlineBullets.forEach((bullet, index) => {
-        parts.push(`${index + 1}. ${bullet}`);
+    // Outline bullets - using bullets instead of numbers for cleaner look
+    draft.outlineBullets.forEach((bullet) => {
+        parts.push(`• ${bullet}`);
+        parts.push(''); // Line break between bullets for readability
     });
     parts.push('');
 
     // First closer option as the call-to-action
     if (draft.closerOptions.length > 0) {
         parts.push(draft.closerOptions[0]);
+        parts.push('');
         parts.push('');
     }
 
