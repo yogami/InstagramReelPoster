@@ -9,6 +9,7 @@ import { WebsitePromoInput, WebsiteAnalysis, PromoScriptPlan, BusinessCategory }
 import { PromoBlueprint } from '../domain/entities/PromoBlueprint';
 import { BlueprintFactory } from '../domain/services/BlueprintFactory';
 import { ContentDNAAnalyzer, SiteDNA } from '../domain/services/ContentDNAAnalyzer';
+import { resolveVoiceId, VoiceStyle } from '../domain/services/VoiceStyles';
 import { IScrapingPort } from '../ports/IScrapingPort';
 import { IScriptGenerationPort } from '../ports/IScriptGenerationPort';
 import { IAssetGenerationPort } from '../ports/IAssetGenerationPort';
@@ -65,25 +66,33 @@ export class WebsitePromoUseCase {
         // 4. Create blueprint (pure domain logic)
         const blueprint = this.blueprintFactory.create(analysis, category);
 
-        // 5. Generate assets
+        // 5. Generate assets with voice style resolution
         const narration = script.scenes.map(s => s.narration).join(' ');
+        const finalVoiceId = resolveVoiceId(input.voiceStyle as VoiceStyle, input.voiceId);
         const voiceover = await this.deps.assetPort.generateVoiceover(narration, {
             language: input.language,
-            voiceId: input.voiceId
+            voiceId: finalVoiceId
         });
 
         const images = await this.deps.assetPort.generateImages(script.scenes);
         const music = await this.deps.assetPort.selectMusic(category, voiceover.durationSeconds);
         const subtitles = await this.deps.assetPort.generateSubtitles(voiceover.url);
 
-        // 6. Render video
-        const renderResult = await this.deps.renderingPort.render(script, {
-            voiceoverUrl: voiceover.url,
-            musicUrl: music.url,
-            subtitlesUrl: subtitles,
-            imageUrls: images,
-            logoUrl: input.logoUrl
-        });
+        // 6. Render video with motion and subtitle styles
+        const renderResult = await this.deps.renderingPort.render(
+            {
+                ...script,
+                motionStyle: input.motionStyle || 'ken_burns',
+                subtitleStyle: input.subtitleStyle || 'bold'
+            },
+            {
+                voiceoverUrl: voiceover.url,
+                musicUrl: music.url,
+                subtitlesUrl: subtitles,
+                imageUrls: images,
+                logoUrl: input.logoUrl
+            }
+        );
 
         return {
             videoUrl: renderResult.videoUrl,

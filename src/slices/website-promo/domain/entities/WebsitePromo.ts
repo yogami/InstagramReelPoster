@@ -90,7 +90,13 @@ export interface WebsitePromoInput {
     logoUrl?: string;
     logoPosition?: 'beginning' | 'end' | 'overlay';
     voiceId?: string;
+
+    // Phase 2: Quality Boosts
+    voiceStyle?: 'professional' | 'friendly' | 'energetic' | 'calm';
+    motionStyle?: 'ken_burns' | 'zoom_in' | 'zoom_out' | 'static';
+    subtitleStyle?: 'minimal' | 'bold' | 'karaoke';
 }
+
 
 /**
  * Promo scene content.
@@ -123,7 +129,12 @@ export interface PromoScriptPlan {
     language: string;
     logoUrl?: string;
     logoPosition?: 'beginning' | 'end' | 'overlay';
+
+    // Phase 2: Quality Boosts
+    motionStyle?: 'ken_burns' | 'zoom_in' | 'zoom_out' | 'static';
+    subtitleStyle?: 'minimal' | 'bold' | 'karaoke';
 }
+
 
 export function isBusinessCategory(value: unknown): value is BusinessCategory {
     return (

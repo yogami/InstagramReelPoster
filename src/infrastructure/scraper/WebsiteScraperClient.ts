@@ -300,8 +300,10 @@ export class WebsiteScraperClient implements IWebsiteScraperClient {
     private parseHtml(html: string, sourceUrl: string): WebsiteAnalysis {
         const $ = cheerio.load(html);
 
-        // EXTRACTION: Perform contact info extraction BEFORE removing elements
-        // This ensures footer and nav data is preserved for address/phone/email
+        // CLEANING: Remove junk/interstitial/popup elements FIRST
+        $('script, style, noscript, iframe, nav, footer, aside, button, input, textarea, select').remove();
+        $('[class*="modal"], [id*="modal"], [class*="popup"], [id*="popup"], [class*="cookie"], [id*="cookie"], [class*="consent"], [id*="consent"], [class*="overlay"], [id*="overlay"], [class*="banner"], [id*="banner"], .privacy-policy, .terms-service').remove();
+
         const bodyTextRaw = this.cleanText($('body').text());
         const bodyTextLower = bodyTextRaw.toLowerCase();
 
@@ -309,10 +311,6 @@ export class WebsiteScraperClient implements IWebsiteScraperClient {
         const openingHours = this.detectOpeningHours(bodyTextRaw);
         const phone = this.detectPhone(bodyTextRaw);
         const email = this.detectEmail(bodyTextRaw, html);
-
-        // CLEANING: Now remove junk/interstitial/popup elements for theme/keyword extraction
-        $('script, style, noscript, iframe, nav, footer, aside, button, input, textarea, select').remove();
-        $('[class*="modal"], [id*="modal"], [class*="popup"], [id*="popup"], [class*="cookie"], [id*="cookie"], [class*="consent"], [id*="consent"], [class*="overlay"], [id*="overlay"], [class*="banner"], [id*="banner"], .privacy-policy, .terms-service').remove();
 
         const title = this.cleanText($('title').text() || '');
         const h1Text = this.cleanText($('h1').first().text() || '');
@@ -353,6 +351,7 @@ export class WebsiteScraperClient implements IWebsiteScraperClient {
             email,
             logoUrl,
             sourceUrl,
+            rawText: bodyTextRaw,
         };
     }
 

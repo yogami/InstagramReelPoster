@@ -38,32 +38,44 @@ const PAIN_KEYWORDS = [
     { word: 'difficult', weight: 1 },
     { word: 'waiting', weight: 1 },
     { word: 'stop', weight: 0.5 },
-    { word: 'solve', weight: 0.5 }
+    { word: 'solve', weight: 0.5 },
+    // German keywords
+    { word: 'schmerzen', weight: 1.5 },
+    { word: 'problem', weight: 1.5 },
+    { word: 'frustriert', weight: 2 },
+    { word: 'müde', weight: 2 },
+    { word: 'teuer', weight: 1 },
+    { word: 'schwierig', weight: 1 },
+    { word: 'verpassen', weight: 1 },
+    { word: 'hilfe', weight: 0.5 }
 ];
 
 // Trust signal patterns
 const TRUST_PATTERNS = [
-    /(\d+)\+?\s*(clients?|customers?|businesses?|users?)/i,
-    /(\d+\.?\d*)\s*★|★\s*(\d+\.?\d*)/i,
-    /(4|5)\.(\d)\s*(stars?|rating)/i,
-    /trusted by/i,
-    /featured in/i,
-    /as seen on/i,
-    /certified|certification|ISO \d+/i,
-    /award[- ]?winning/i,
-    /forbes|techcrunch|wired|bloomberg/i
+    /([\d.,]+)\+?\s*(clients?|customers?|businesses?|users?|kunden|kund[*_:]innen|nutzer|unternehmen)/i,
+    /([\d.,]+)\s*★|★\s*([\d.,]+)/i,
+    /(4|5)\.(\d)\s*(stars?|rating|sterne|bewertung)/i,
+    /trusted by|vertraut von/i,
+    /featured in|bekannt aus/i,
+    /as seen on|bekannt von/i,
+    /certified|certification|ISO \d+|zertifiziert/i,
+    /award[- ]?winning|preisgekrönt/i,
+    /forbes|techcrunch|wired|bloomberg|handelsblatt|faz|welt|bild/i,
+    /über (\d+(\.\d+)?)\s*kunden/i,
+    /erfahrungen|vorher-nachher/i
 ];
 
 // Urgency patterns
 const URGENCY_PATTERNS = [
     /limited (spots?|time|offer|availability)/i,
+    /nur noch \d+ (plätze|frei|verfügbar)/i,
     /only \d+ (left|remaining|spots?|slots?)/i,
-    /act now/i,
-    /book (now|today)/i,
-    /ends? (today|tomorrow|friday|soon)/i,
-    /hurry/i,
-    /don'?t miss/i,
-    /exclusive offer/i
+    /act now|jetzt handeln/i,
+    /book (now|today)|jetzt buchen|termin buchen/i,
+    /ends? (today|tomorrow|friday|soon)|endet bald/i,
+    /hurry|beeilen/i,
+    /don'?t miss|nicht verpassen/i,
+    /exclusive offer|exklusives angebot/i
 ];
 
 export class ContentDNAAnalyzer {
@@ -90,6 +102,7 @@ export class ContentDNAAnalyzer {
             analysis.heroText || '',
             analysis.metaDescription || '',
             analysis.aboutContent || '',
+            analysis.rawText || '',
             (analysis.keywords || []).join(' ')
         ].join(' ').toLowerCase();
     }

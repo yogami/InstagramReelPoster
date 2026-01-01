@@ -27,6 +27,7 @@ export { WebsitePromoUseCase } from './application/WebsitePromoUseCase';
 
 // Domain Services
 export { ContentDNAAnalyzer, SiteDNA } from './domain/services/ContentDNAAnalyzer';
+export { VoiceStyle, VOICE_STYLE_MAP, resolveVoiceId } from './domain/services/VoiceStyles';
 
 // Factory for easy instantiation
 export { createWebsitePromoSlice, WebsitePromoSlice, WebsitePromoSliceConfig } from './WebsitePromoFactory';

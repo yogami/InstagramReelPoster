@@ -15,7 +15,14 @@ export class RenderingAdapter implements IRenderingPort {
         script: PromoScriptPlan,
         assets: RenderingAssets
     ): Promise<RenderingResult> {
-        // Build manifest compatible with existing renderer
+        // Map motionStyle to zoomType for the legacy renderer
+        const zoomTypeMap: Record<string, string> = {
+            'ken_burns': 'ken_burns',
+            'zoom_in': 'slow_zoom_in',
+            'zoom_out': 'slow_zoom_out',
+            'static': 'static'
+        };
+
         const totalDuration = script.scenes.reduce((sum, s) => sum + s.duration, 0);
 
         const manifest = {
@@ -23,6 +30,7 @@ export class RenderingAdapter implements IRenderingPort {
             voiceoverUrl: assets.voiceoverUrl,
             musicUrl: assets.musicUrl,
             subtitlesUrl: assets.subtitlesUrl,
+            zoomType: zoomTypeMap[script.motionStyle || 'ken_burns'] || 'ken_burns',
             segments: script.scenes.map((scene, i) => ({
                 index: i,
                 startSeconds: script.scenes.slice(0, i).reduce((sum, s) => sum + s.duration, 0),
