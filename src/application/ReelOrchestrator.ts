@@ -69,6 +69,7 @@ import { VoiceoverService } from './services/VoiceoverService';
 import { ImageGenerationService } from './services/ImageGenerationService';
 import { PromoAssetService } from './services/PromoAssetService';
 import { OrchestratorErrorService } from './services/OrchestratorErrorService';
+import { IComplianceClient } from '../infrastructure/compliance/GuardianClient';
 
 export interface OrchestratorDependencies {
     transcriptionClient: ITranscriptionClient;
@@ -90,6 +91,7 @@ export interface OrchestratorDependencies {
     callbackToken?: string;
     callbackHeader?: string;
     notificationClient?: INotificationClient;
+    complianceClient?: IComplianceClient;
 }
 
 /** Options for preparePromoAssets method. */
@@ -561,6 +563,34 @@ export class ReelOrchestrator {
 
         await this.deps.jobManager.updateJob(jobId, { promoScriptPlan: promoScript });
         console.log(`[${jobId}] Script generated: "${promoScript.coreMessage}" via Blueprint`);
+
+        // Compliance Check: Scan script for brand safety, formality, and transparency
+        if (this.deps.complianceClient) {
+            console.log(`[${jobId}] 🛡️ Running Guardian compliance scan...`);
+            const fullScript = promoScript.scenes.map((s: { narration: string }) => s.narration).join(' ');
+            const language = websiteInput.language || 'de';
+
+            const complianceResult = await this.deps.complianceClient.scanScript(fullScript, language);
+
+            if (!complianceResult.approved) {
+                console.warn(`[${jobId}] ⚠️ Compliance issues detected (score: ${complianceResult.score}):`, complianceResult.violations);
+                console.log(`[${jobId}] 💡 Correction hints:`, complianceResult.correctionHints);
+                // Log but don't block - violations stored for audit trail
+            } else {
+                console.log(`[${jobId}] ✅ Compliance check passed (score: ${complianceResult.score}, auditId: ${complianceResult.auditId})`);
+            }
+
+            // Store compliance result in job for audit trail
+            await this.deps.jobManager.updateJob(jobId, {
+                complianceResult: {
+                    approved: complianceResult.approved,
+                    score: complianceResult.score,
+                    auditId: complianceResult.auditId,
+                    violations: complianceResult.violations,
+                    scannedAt: new Date().toISOString()
+                }
+            });
+        }
 
         return {
             promoScript,

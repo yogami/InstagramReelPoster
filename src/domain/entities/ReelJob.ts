@@ -195,6 +195,15 @@ export interface ReelJob {
     updatedAt: Date;
     /** Optional meta-instructions or user description of the reel */
     description?: string;
+
+    /** Compliance scan result from Guardian API */
+    complianceResult?: {
+        approved: boolean;
+        score: number;
+        auditId: string;
+        violations: string[];
+        scannedAt: string;
+    };
 }
 
 /**
