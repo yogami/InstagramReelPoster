@@ -91,6 +91,8 @@ export function createJobContext(jobId: string, job: ReelJob): JobContext {
         forceMode: job.forceMode,
         isAnimatedMode: job.isAnimatedVideoMode,
         finalVideoUrl: job.finalVideoUrl,
+        subtitlesUrl: job.subtitlesUrl,
+        manifestGenerated: !!job.manifest,
     };
 }
 
