@@ -323,7 +323,7 @@ export class FFmpegVideoRenderer implements IVideoRenderer {
             let videoOutputTag = lastVideoStream;
             if (assets.subtitlesPath && fs.existsSync(assets.subtitlesPath)) {
                 // Quote path to handle spaces or special characters safely
-                const subsFilter = `subtitles='${assets.subtitlesPath}':force_style='Fontname=Roboto,FontSize=24,PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,BorderStyle=1,Outline=1,Shadow=0,MarginV=60'`;
+                const subsFilter = `subtitles='${assets.subtitlesPath}':force_style='Fontname=Roboto,FontSize=20,PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,BorderStyle=1,Outline=1,Shadow=0,MarginV=420,Alignment=2'`;
                 complexFilter.push(`[${lastVideoStream}]${subsFilter}[vburned]`);
                 videoOutputTag = 'vburned';
             }
