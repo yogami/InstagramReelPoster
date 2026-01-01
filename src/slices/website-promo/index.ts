@@ -26,4 +26,4 @@ export { WebsitePromoOrchestrator } from './application/WebsitePromoOrchestrator
 export { WebsitePromoUseCase } from './application/WebsitePromoUseCase';
 
 // Factory for easy instantiation
-export { createWebsitePromoSlice } from './WebsitePromoFactory';
+export { createWebsitePromoSlice, WebsitePromoSlice, WebsitePromoSliceConfig } from './WebsitePromoFactory';

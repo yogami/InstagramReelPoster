@@ -70,6 +70,7 @@ import { ImageGenerationService } from './services/ImageGenerationService';
 import { PromoAssetService } from './services/PromoAssetService';
 import { OrchestratorErrorService } from './services/OrchestratorErrorService';
 import { IComplianceClient } from '../infrastructure/compliance/GuardianClient';
+import { WebsitePromoSlice } from '../slices/website-promo';
 
 export interface OrchestratorDependencies {
     transcriptionClient: ITranscriptionClient;
@@ -92,6 +93,8 @@ export interface OrchestratorDependencies {
     callbackHeader?: string;
     notificationClient?: INotificationClient;
     complianceClient?: IComplianceClient;
+    /** Optional: Independent Website Promo slice for decoupled processing */
+    websitePromoSlice?: WebsitePromoSlice;
 }
 
 /** Options for preparePromoAssets method. */
@@ -390,6 +393,39 @@ export class ReelOrchestrator {
     public async processWebsitePromoJob(jobId: string, job: ReelJob): Promise<ReelJob> {
         const websiteInput = job.websitePromoInput!;
         console.log(`[${jobId}] Website Promo: Scraping ${websiteInput.websiteUrl}`);
+
+        // DELEGATION: If independent slice is configured, delegate to it
+        if (this.deps.websitePromoSlice) {
+            console.log(`[${jobId}] Delegating to independent WebsitePromoSlice...`);
+            try {
+                const sliceResult = await this.deps.websitePromoSlice.orchestrator.processJob(jobId, {
+                    websiteUrl: websiteInput.websiteUrl,
+                    businessName: websiteInput.businessName,
+                    category: websiteInput.category,
+                    consent: websiteInput.consent,
+                    language: websiteInput.language,
+                    providedMedia: websiteInput.providedMedia,
+                    logoUrl: websiteInput.logoUrl,
+                    logoPosition: websiteInput.logoPosition
+                });
+
+                if (sliceResult.status === 'completed' && sliceResult.result) {
+                    // Create minimal manifest for slice result
+                    const sliceManifest: ReelManifest = {
+                        voiceoverUrl: '',
+                        subtitlesUrl: '',
+                        durationSeconds: sliceResult.result.durationSeconds,
+                        segments: []
+                    };
+                    return completeJob(job, sliceResult.result.videoUrl, sliceManifest);
+                } else if (sliceResult.status === 'failed') {
+                    return failJob(job, sliceResult.error || 'Slice processing failed');
+                }
+            } catch (sliceError) {
+                console.error(`[${jobId}] Slice delegation failed, falling back to legacy:`, sliceError);
+                // Fall through to legacy implementation
+            }
+        }
 
         try {
             // Step 1: Scrape and analyze website

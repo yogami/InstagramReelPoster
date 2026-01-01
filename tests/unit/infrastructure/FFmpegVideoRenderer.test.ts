@@ -30,7 +30,8 @@ describe('FFmpegVideoRenderer', () => {
         jest.clearAllMocks();
 
         mockCloudinaryClient = {
-            uploadFromUrl: jest.fn().mockResolvedValue({ url: 'http://cloud.com/video.mp4' })
+            uploadFromUrl: jest.fn().mockResolvedValue({ url: 'http://cloud.com/video.mp4' }),
+            uploadVideo: jest.fn().mockResolvedValue({ url: 'http://cloud.com/video.mp4' })
         } as any;
 
         // Mock FFmpeg builder pattern
@@ -161,5 +162,19 @@ describe('FFmpegVideoRenderer', () => {
 
         const calls = (axios as unknown as jest.Mock).mock.calls;
         expect(calls.length).toBe(4);
+    });
+
+    test('should apply correct subtitle styling', async () => {
+        (fs.existsSync as jest.Mock).mockReturnValue(true);
+        await renderer.render(manifest);
+        // Verify complexFilter arguments
+        expect(mockFfmpegCommand.complexFilter).toHaveBeenCalledWith(
+            expect.arrayContaining([
+                expect.stringContaining('MarginV=420'),
+                expect.stringContaining('Alignment=2'),
+                expect.stringContaining('FontSize=20')
+            ]),
+            expect.anything()
+        );
     });
 });
