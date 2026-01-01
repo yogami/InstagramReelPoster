@@ -8,7 +8,7 @@ describe('GptLlmClient.generatePromoScript', () => {
     const apiKey = 'test-api-key';
 
     beforeEach(() => {
-        client = new GptLlmClient(apiKey, 'gpt-4', 'https://api.openai.com');
+        client = new GptLlmClient(apiKey, 'gpt-4', 'https://api.openai.com/v1');
         nock.cleanAll();
     });
 

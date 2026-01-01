@@ -44,7 +44,7 @@ import { buildBlueprintPrompt, parseBlueprintResponse } from './BlueprintPrompt'
  * GPT-based LLM client for reel planning and content generation.
  */
 export class GptLlmClient implements ILlmClient {
-    private readonly llmService: GptService;
+    public readonly llmService: GptService;
     private readonly parableGenerator: ParableGenerator;
     private readonly standardReelGenerator: StandardReelGenerator;
 

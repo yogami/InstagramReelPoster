@@ -70,28 +70,40 @@ describe('ReelOrchestrator E2E', () => {
         // Mock Gpt LLM Visuals request (1 call)
         nock('https://api.openai.com')
             .post('/v1/chat/completions', body => /visual prompts for an Instagram Reel/i.test(body.messages[1].content))
-            .reply(200, {
-                choices: [{
-                    message: {
-                        content: JSON.stringify(segmentsFixture.map((s: any) => ({
-                            imagePrompt: s.imagePrompt,
-                            caption: s.caption,
-                            continuityTags: s.continuityTags
-                        })))
-                    }
-                }]
+            .reply(200, (uri, requestBody: any) => {
+                const prompt = requestBody.messages[1].content;
+                const match = prompt.match(/Segment (\d+):/g);
+                const count = match ? match.length : segmentsFixture.length;
+
+                return {
+                    choices: [{
+                        message: {
+                            content: JSON.stringify(segmentsFixture.slice(0, count).map((s: any) => ({
+                                imagePrompt: s.imagePrompt,
+                                caption: s.caption,
+                                continuityTags: s.continuityTags
+                            })))
+                        }
+                    }]
+                };
             })
             .persist();
 
         // Mock Gpt LLM Adjust Commentary request
         nock('https://api.openai.com')
             .post('/v1/chat/completions', body => /adjust.*commentaries/i.test(body.messages[1].content))
-            .reply(200, {
-                choices: [{
-                    message: {
-                        content: JSON.stringify({ segments: segmentsFixture })
-                    }
-                }]
+            .reply(200, (uri, requestBody: any) => {
+                const prompt = requestBody.messages[1].content;
+                const match = prompt.match(/Count: (\d+)/);
+                const count = match ? parseInt(match[1], 10) : segmentsFixture.length;
+
+                return {
+                    choices: [{
+                        message: {
+                            content: JSON.stringify({ segments: segmentsFixture.slice(0, count) })
+                        }
+                    }]
+                };
             })
             .persist();
 
@@ -105,7 +117,7 @@ describe('ReelOrchestrator E2E', () => {
         // 2. Setup Deps
         jobManager = new JobManager(10, 90);
         const transcriptionClient = new WhisperTranscriptionClient('test-key', 'https://api.openai.com');
-        const llmClient = new GptLlmClient('test-key', 'gpt-4o', 'https://api.openai.com');
+        const llmClient = new GptLlmClient('test-key', 'gpt-4o', 'https://api.openai.com/v1');
         const ttsClient = new CloningTtsClient('test-key', 'test-voice-id', 'https://api.fish.audio');
         const fallbackImageClient = new DalleImageClient('test-key', 'https://api.openai.com');
 

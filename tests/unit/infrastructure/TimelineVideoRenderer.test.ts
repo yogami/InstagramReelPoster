@@ -136,6 +136,19 @@ describe('TimelineVideoRenderer', () => {
 
             await expect(renderer.render(manifest)).rejects.toThrow('No video URL in completed response');
         });
+
+        it('should throw validation error when no visual clips are generated', async () => {
+            const renderer = new TimelineVideoRenderer(apiKey, baseUrl, 100, 5);
+            // Manifest with no segments and no video URL
+            const manifest: ReelManifest = {
+                ...createTestManifest(),
+                animatedVideoUrls: [],
+                animatedVideoUrl: undefined,
+                segments: []
+            };
+
+            await expect(renderer.render(manifest)).rejects.toThrow('Timeline payload validation failed: No visual clips generated');
+        });
     });
 
     describe('Timeline construction', () => {

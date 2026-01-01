@@ -41,7 +41,7 @@ describe('BerlinAILabs Promo Integration', () => {
 
         // Mock LLM for promo plan
         nock('https://api.openai.com')
-            .post('/chat/completions')
+            .post('/v1/chat/completions')
             .reply(200, {
                 choices: [{
                     message: {

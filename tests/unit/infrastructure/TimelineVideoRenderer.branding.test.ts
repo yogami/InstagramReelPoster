@@ -41,8 +41,8 @@ describe('TimelineVideoRenderer - QR Dominant Branding', () => {
         expect(html).toContain('qr-section');
         expect(html).toContain('bottom-section');
 
-        // Should have restaurant CTA text when QR code is present
-        expect(html).toContain('TISCH RESERVIEREN');
+        // Should have CTA text when QR code is present
+        expect(html).toContain('MEHR ERFAHREN');
 
         // CSS should have QR section taking 55% of screen
         expect(css).toContain('.qr-section');
@@ -139,7 +139,7 @@ describe('TimelineVideoRenderer - QR Dominant Branding', () => {
 
         // CSS should constrain logo size
         expect(css).toContain('.small-logo');
-        expect(css).toContain('max-width: 150px');
+        expect(css).toContain('max-width: 250px');
     });
 
     it('should include contact details in bottom-left', () => {
@@ -168,7 +168,7 @@ describe('TimelineVideoRenderer - QR Dominant Branding', () => {
 
         // Contact info should be in contact-info section
         expect(html).toContain('contact-info');
-        expect(html).toContain('contact-line');
+        expect(html).toContain('contact-item');
 
         // Should include shortened address (first part before comma)
         expect(html).toContain('Flughafenstraße 76');

@@ -52,7 +52,7 @@ describe('Restaurant Reel Manifest Verification', () => {
         const renderer = new TimelineVideoRenderer({} as any, {} as any); // Mocks
 
         // Access private method
-        const timelineEdit = await (renderer as any).mapManifestToTimelineEdit(manifest);
+        const timelineEdit = await (renderer as any).createTimelinePayload(manifest);
 
         console.log('✅ Timeline Edit Generated');
 

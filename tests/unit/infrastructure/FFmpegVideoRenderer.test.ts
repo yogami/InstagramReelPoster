@@ -60,6 +60,8 @@ describe('FFmpegVideoRenderer', () => {
         // Mock Write Stream
         const mockStream = new EventEmitter();
         (mockStream as any).pipe = jest.fn();
+        (mockStream as any).close = jest.fn();
+        (mockStream as any).end = jest.fn();
         (fs.createWriteStream as jest.Mock).mockReturnValue(mockStream);
 
         // Mock Axios (Download)

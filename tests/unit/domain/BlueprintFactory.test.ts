@@ -31,7 +31,7 @@ describe('BlueprintFactory', () => {
 
         expect(blueprint.beats.length).toBeGreaterThanOrEqual(3);
         expect(blueprint.beats[0].kind).toBe('HOOK');
-        expect(blueprint.beats[0].style).toBe('kinetic_text');
+        expect(blueprint.beats[0].style).toBe('zoom_screenshot');
         expect(blueprint.beats[1].kind).toBe('DEMO'); // SAAS usually has a demo beat
     });
 

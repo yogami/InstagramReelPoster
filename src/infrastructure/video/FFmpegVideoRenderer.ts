@@ -57,12 +57,12 @@ export class FFmpegVideoRenderer implements IVideoRenderer {
             console.error(`[FFmpeg] Render failed: ${error.message || 'Unknown error'}`);
             throw error;
         } finally {
-            // 4. Cleanup (DISABLED FOR DEBUGGING)
-            // try {
-            //    fs.rmSync(jobDir, { recursive: true, force: true });
-            // } catch (e) {
-            //    console.warn(`[FFmpeg] Failed to cleanup temp dir ${jobDir}`, e);
-            // }
+            // 4. Cleanup
+            try {
+                fs.rmSync(jobDir, { recursive: true, force: true });
+            } catch (e) {
+                console.warn(`[FFmpeg] Failed to cleanup temp dir ${jobDir}`, e);
+            }
         }
     }
 

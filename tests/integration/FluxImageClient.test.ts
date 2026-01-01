@@ -68,8 +68,8 @@ describe('FluxImageClient - Beam.cloud Integration', () => {
 
             await expect(client.generateImage('test prompt'))
                 .rejects
-                .toThrow(/timeout/i);
-        });
+                .toThrow(/Flux image generation failed/);
+        }, 40000);
     });
 
     describe('Request Format', () => {

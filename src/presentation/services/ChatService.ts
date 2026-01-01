@@ -49,14 +49,33 @@ export class ChatService {
         }
 
         try {
+            // Ensure text is within limits
+            const content = text.length > 4000 ? text.substring(0, 4000) + '... (truncated)' : text;
+
             await axios.post(`${this.baseUrl}/sendMessage`, {
                 chat_id: chatId,
-                text,
+                text: content,
                 parse_mode: 'Markdown'
             });
-        } catch (error) {
+        } catch (error: any) {
+            // Retry without Markdown if it fails (often due to unescaped characters in JSON)
+            if (error.response?.status === 400) {
+                try {
+                    console.warn(`[ChatService] Markdown send failed, retrying as plain text...`);
+                    const cleanText = text.replace(/[{}"\\]/g, ''); // Basic strip for safety
+                    const safeContent = cleanText.length > 4000 ? cleanText.substring(0, 4000) + '...' : cleanText;
+
+                    await axios.post(`${this.baseUrl}/sendMessage`, {
+                        chat_id: chatId,
+                        text: safeContent
+                        // No parse_mode = Plain Text
+                    });
+                    return;
+                } catch (retryError) {
+                    console.error(`[ChatService] Retry failed:`, retryError);
+                }
+            }
             console.error(`Failed to send Telegram message to chat ${chatId}:`, error);
-            // Don't throw - we don't want to fail the job just because notification failed
         }
     }
 }

@@ -21,7 +21,7 @@ describe('Chaos Tests - API Failure Scenarios', () => {
     describe('API Timeout Handling', () => {
         it('should timeout gracefully when Gpt takes too long', async () => {
             const { GptLlmClient } = require('../../src/infrastructure/llm/GptLlmClient');
-            const client = new GptLlmClient('test-key', 'gpt-4o', 'https://api.openai.com');
+            const client = new GptLlmClient('test-key', 'gpt-4o', 'https://api.openai.com/v1');
 
             // Use fake timers to control the timeout
             jest.useFakeTimers();
@@ -55,7 +55,7 @@ describe('Chaos Tests - API Failure Scenarios', () => {
     describe('Malformed Response Handling', () => {
         it('should handle LLM returning HTML instead of JSON', async () => {
             const { GptLlmClient } = require('../../src/infrastructure/llm/GptLlmClient');
-            const client = new GptLlmClient('test-key', 'gpt-4o', 'https://api.openai.com');
+            const client = new GptLlmClient('test-key', 'gpt-4o', 'https://api.openai.com/v1');
 
             nock('https://api.openai.com')
                 .post('/v1/chat/completions')
@@ -73,7 +73,7 @@ describe('Chaos Tests - API Failure Scenarios', () => {
 
         it('should handle LLM returning empty response', async () => {
             const { GptLlmClient } = require('../../src/infrastructure/llm/GptLlmClient');
-            const client = new GptLlmClient('test-key', 'gpt-4o', 'https://api.openai.com');
+            const client = new GptLlmClient('test-key', 'gpt-4o', 'https://api.openai.com/v1');
 
             nock('https://api.openai.com')
                 .post('/v1/chat/completions')
@@ -89,7 +89,7 @@ describe('Chaos Tests - API Failure Scenarios', () => {
 
         it('should handle LLM returning truncated JSON', async () => {
             const { GptLlmClient } = require('../../src/infrastructure/llm/GptLlmClient');
-            const client = new GptLlmClient('test-key', 'gpt-4o', 'https://api.openai.com');
+            const client = new GptLlmClient('test-key', 'gpt-4o', 'https://api.openai.com/v1');
 
             nock('https://api.openai.com')
                 .post('/v1/chat/completions')
@@ -107,7 +107,7 @@ describe('Chaos Tests - API Failure Scenarios', () => {
     describe('Rate Limit Handling', () => {
         it('should throw on 429 from Gpt', async () => {
             const { GptLlmClient } = require('../../src/infrastructure/llm/GptLlmClient');
-            const client = new GptLlmClient('test-key', 'gpt-4o', 'https://api.openai.com');
+            const client = new GptLlmClient('test-key', 'gpt-4o', 'https://api.openai.com/v1');
 
             nock('https://api.openai.com')
                 .post('/v1/chat/completions')
@@ -128,7 +128,7 @@ describe('Chaos Tests - API Failure Scenarios', () => {
     describe('Invalid Credentials', () => {
         it('should throw clear error on 401 Unauthorized', async () => {
             const { GptLlmClient } = require('../../src/infrastructure/llm/GptLlmClient');
-            const client = new GptLlmClient('invalid-key', 'gpt-4o', 'https://api.openai.com');
+            const client = new GptLlmClient('invalid-key', 'gpt-4o', 'https://api.openai.com/v1');
 
             nock('https://api.openai.com')
                 .post('/v1/chat/completions')

@@ -136,7 +136,12 @@ describe('MultiModelImageClient', () => {
                 'https://openrouter.ai/api/v1/chat/completions',
                 expect.objectContaining({
                     model: 'black-forest-labs/flux-1-schnell',
-                    modalities: ['image']
+                    messages: expect.arrayContaining([
+                        expect.objectContaining({
+                            role: 'user',
+                            content: expect.stringContaining('Test prompt')
+                        })
+                    ])
                 }),
                 expect.objectContaining({
                     headers: expect.objectContaining({

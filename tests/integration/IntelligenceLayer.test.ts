@@ -8,14 +8,14 @@ describe('Intelligence Layer Pipeline', () => {
     const classifier = new SmartSiteClassifier();
     const blueprintFactory = new BlueprintFactory();
 
-    const runPipeline = (analysis: WebsiteAnalysis) => {
+    const runPipeline = async (analysis: WebsiteAnalysis) => {
         const normalized = normalizer.normalize(analysis);
-        const classification = classifier.classify(normalized);
+        const classification = await classifier.classify(normalized);
         const blueprint = blueprintFactory.create(normalized, classification);
         return { normalized, classification, blueprint };
     };
 
-    it('Scenario 1: SaaS Landing Page', () => {
+    it('Scenario 1: SaaS Landing Page', async () => {
         const mockSaas: WebsiteAnalysis = {
             sourceUrl: 'https://saas-example.com',
             heroText: 'The ultimate API for developers',
@@ -25,16 +25,16 @@ describe('Intelligence Layer Pipeline', () => {
             scrapedMedia: [],
         } as any;
 
-        const { classification, blueprint } = runPipeline(mockSaas);
+        const { classification, blueprint } = await runPipeline(mockSaas);
 
         expect(classification.type).toBe('SAAS_LANDING');
         expect(blueprint.beats[0].kind).toBe('HOOK');
-        expect(blueprint.beats[1].kind).toBe('PROBLEM');
-        expect(blueprint.beats[2].kind).toBe('DEMO'); // SaaS specific beat
-        expect(blueprint.beats[2].style).toBe('zoom_screenshot');
+        expect(blueprint.beats[1].kind).toBe('DEMO');
+        expect(blueprint.beats[2].kind).toBe('SOLUTION');
+        expect(blueprint.beats[1].style).toBe('split_ui');
     });
 
-    it('Scenario 2: Personal Portfolio', () => {
+    it('Scenario 2: Personal Portfolio', async () => {
         const mockPortfolio: WebsiteAnalysis = {
             sourceUrl: 'https://jane.design',
             heroText: 'Designing digital experiences',
@@ -45,13 +45,13 @@ describe('Intelligence Layer Pipeline', () => {
             siteType: 'personal' // Mocking scraper detection
         } as any;
 
-        const { classification, blueprint } = runPipeline(mockPortfolio);
+        const { classification, blueprint } = await runPipeline(mockPortfolio);
 
         expect(classification.type).toBe('PORTFOLIO');
         expect(blueprint.beats[0].style).toBe('talking_head'); // Portfolio specific style
     });
 
-    it('Scenario 3: Local Restaurant', () => {
+    it('Scenario 3: Local Restaurant', async () => {
         const mockLocal: WebsiteAnalysis = {
             sourceUrl: 'https://pizzaplace.com',
             heroText: 'Authentic Italian in NYC',
@@ -62,7 +62,7 @@ describe('Intelligence Layer Pipeline', () => {
             scrapedMedia: [],
         } as any;
 
-        const { classification, blueprint } = runPipeline(mockLocal);
+        const { classification, blueprint } = await runPipeline(mockLocal);
 
         expect(classification.type).toBe('LOCAL_SERVICE'); // Restaurant -> LOCAL_SERVICE
         expect(blueprint.beats.length).toBe(3);

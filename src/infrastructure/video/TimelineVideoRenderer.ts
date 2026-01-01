@@ -348,6 +348,9 @@ export class TimelineVideoRenderer implements IVideoRenderer {
         const tracks: { clips: TimelineClip[] }[] = [];
 
         // Track 1: Visuals (Bottom Layer)
+        if (!visualClips || visualClips.length === 0) {
+            throw new Error('Timeline payload validation failed: No visual clips generated. Manifest is missing segments or video URLs.');
+        }
         tracks.push({ clips: visualClips });
 
         // Track 2: Background Music (if available)
