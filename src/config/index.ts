@@ -101,6 +101,9 @@ export interface Config {
         usePlaywrightScraper: boolean; // Toggle for enhanced scraper
     };
 
+    // Guardian API (ConvoGuard compliance service)
+    guardianApiUrl: string;
+
     // Personal Clone Configuration (only used when feature flags are enabled)
     personalClone: {
         xttsServerUrl: string;  // Local XTTS inference server URL
@@ -249,6 +252,9 @@ export function loadConfig(): Config {
             enableUserApproval: getEnvVarBoolean('ENABLE_USER_APPROVAL', false), // Human-in-the-loop approval checkpoints
             usePlaywrightScraper: getEnvVarBoolean('USE_PLAYWRIGHT_SCRAPER', false), // Toggle for enhanced scraper
         },
+
+        // Guardian API (ConvoGuard compliance service)
+        guardianApiUrl: getEnvVar('GUARDIAN_API_URL', 'http://localhost:3001'),
 
         // Personal Clone Configuration
         personalClone: {
