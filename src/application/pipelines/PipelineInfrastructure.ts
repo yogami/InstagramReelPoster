@@ -90,6 +90,7 @@ export function createJobContext(jobId: string, job: ReelJob): JobContext {
         hookPlan: job.hookPlan,
         forceMode: job.forceMode,
         isAnimatedMode: job.isAnimatedVideoMode,
+        finalVideoUrl: job.finalVideoUrl,
     };
 }
 
