@@ -1,5 +1,6 @@
 
 import { PipelineStep, JobContext } from '../PipelineInfrastructure';
+import { Segment } from '../../../domain/entities/Segment';
 import { IAnimatedVideoClient } from '../../../domain/ports/IAnimatedVideoClient';
 import { MediaStorageClient } from '../../../infrastructure/storage/MediaStorageClient';
 import { JobManager } from '../../JobManager';
@@ -83,28 +84,56 @@ export class AnimatedVideoStep implements PipelineStep {
 
             console.log(`[${jobId}] Direct-Message mode: Using "Turbo Video" for sub-30s generation (Sequential)...`);
 
-            const segments = context.segments || [];
+            const originalSegments = context.segments || [];
+            const newSegments: Segment[] = [];
 
             for (let i = 0; i < clipsNeeded; i++) {
                 const startTime = i * clipDuration;
-                const relevantSegment = segments.find(s => (s.startSeconds <= startTime && s.endSeconds > startTime))
-                    || segments[Math.min(i, segments.length - 1)];
+                const endTime = (i + 1) * clipDuration;
 
-                const prompt = relevantSegment ? relevantSegment.imagePrompt : job.transcript?.substring(0, 200);
+                // Find relevant segment for prompt/metadata inheritance
+                const relevantSegment = originalSegments.find(s => (s.startSeconds <= startTime && s.endSeconds > startTime))
+                    || originalSegments[Math.min(i, originalSegments.length - 1)];
+
+                const prompt = relevantSegment ? relevantSegment.imagePrompt : job.transcript?.substring(0, 200) || 'Abstract scene';
+                const commentary = relevantSegment ? relevantSegment.commentary : '...';
 
                 // Use generateTurboClip which creates a high-quality Image with metadata for the renderer to apply motion
-                const url = await this.generateTurboClip({
+                const turboUrl = await this.generateTurboClip({
                     durationSeconds: clipDuration,
-                    theme: prompt || 'Abstract interpretation',
+                    theme: prompt,
                     mood: job.moodOverrides?.[0] || 'cinematic'
                 }, `turbo_${jobId}_clip${i + 1}`);
-                videoUrls.push(url);
+
+                // Strip "turbo:" prefix to get actual Image URL
+                const imageUrl = turboUrl.replace('turbo:', '');
+
+                newSegments.push({
+                    index: i,
+                    startSeconds: startTime,
+                    endSeconds: endTime,
+                    commentary: commentary,
+                    imagePrompt: prompt,
+                    imageUrl: imageUrl,
+                    zoomEffect: i % 2 === 0 ? 'slow_zoom_in' : 'slow_zoom_out' // Simple alternating zoom
+                });
+
+                videoUrls.push(imageUrl); // Keep for logging/reference if needed, but main output is segments
 
                 // Small delay to prevent rate limits/concurrency issues
                 if (i < clipsNeeded - 1) {
                     await new Promise(resolve => setTimeout(resolve, 500));
                 }
             }
+
+            // For Turbo Mode (Images), we update SEGMENTS, not animatedVideoUrls
+            // This ensures Renderers treat them as images (applying loop/zoom) instead of failing to play single-frame "videos"
+            await this.jobManager.updateJob(jobId, {
+                segments: newSegments,
+                animatedVideoUrls: [] // Clear this so we don't confuse renderer
+            });
+
+            return { ...context, segments: newSegments, animatedVideoUrls: undefined };
         }
 
         await this.jobManager.updateJob(jobId, {
