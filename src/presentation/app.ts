@@ -35,7 +35,19 @@ import { WebsiteScraperAdapter } from '../slices/website-promo/adapters/WebsiteS
 import { ScriptGenerationAdapter } from '../slices/website-promo/adapters/ScriptGenerationAdapter';
 import { AssetGenerationAdapter } from '../slices/website-promo/adapters/AssetGenerationAdapter';
 import { RenderingAdapter } from '../slices/website-promo/adapters/RenderingAdapter';
-// ... existing imports ...
+import { DeepLTranslationAdapter } from '../slices/website-promo/adapters/DeepLTranslationAdapter';
+import { FallbackTranslationAdapter, NoOpTranslationAdapter } from '../slices/website-promo/adapters/FallbackTranslationAdapter';
+import { InMemoryTemplateRepository } from '../slices/website-promo/adapters/InMemoryTemplateRepository';
+import { InMemoryCacheAdapter } from '../slices/website-promo/adapters/InMemoryCacheAdapter';
+import { RedisCacheAdapter } from '../slices/website-promo/adapters/RedisCacheAdapter';
+import { ConsoleMetricsAdapter } from '../slices/website-promo/adapters/ConsoleMetricsAdapter';
+import { HeyGenAvatarAdapter } from '../slices/website-promo/adapters/HeyGenAvatarAdapter';
+import { SadTalkerAvatarAdapter } from '../slices/website-promo/adapters/SadTalkerAvatarAdapter';
+import { MockAvatarAdapter } from '../slices/website-promo/adapters/MockAvatarAdapter';
+import { BullMqJobQueueAdapter } from '../slices/website-promo/adapters/BullMqJobQueueAdapter';
+import { WebsitePromoWorker } from '../slices/website-promo/application/WebsitePromoWorker';
+import { PrometheusMetricsAdapter } from '../slices/website-promo/adapters/PrometheusMetricsAdapter';
+import { IMetricsPort } from '../slices/website-promo/ports/IMetricsPort';
 
 
 import { ChatService } from './services/ChatService';
@@ -87,7 +99,17 @@ export function createApp(config: Config): Application {
     });
 
     // Create dependencies
-    const { jobManager, orchestrator, growthInsightsService } = createDependencies(config);
+    const { jobManager, orchestrator, growthInsightsService, metricsPort } = createDependencies(config);
+
+    // Metrics endpoint
+    app.get('/metrics', async (req: Request, res: Response) => {
+        if (metricsPort instanceof PrometheusMetricsAdapter) {
+            res.set('Content-Type', 'text/plain');
+            res.send(await metricsPort.getMetrics());
+        } else {
+            res.status(404).send('Metrics not available');
+        }
+    });
 
     // Auto-resume interrupted jobs
     import('../application/ResumeService').then(({ ResumeService }) => {
@@ -114,6 +136,7 @@ export function createDependencies(config: Config): {
     orchestrator: ReelOrchestrator;
     growthInsightsService: GrowthInsightsService;
     cloudinaryClient: MediaStorageClient | null;
+    metricsPort: IMetricsPort;
 } {
     console.log('🏗️  Creating dependency graph...');
     const cloudinaryClient = createCloudinaryClient(config);
@@ -143,7 +166,44 @@ export function createDependencies(config: Config): {
     // 4. Setup Website Promo Slice (Phase 3 Decoupling)
     let websitePromoSlice = undefined;
     if (config.featureFlags.enableWebsitePromoSlice) {
-        console.log('🚀 Initializing independent WebsitePromoSlice...');
+        console.log('🚀 Initializing independent WebsitePromoSlice with Enterprise Hardening...');
+
+        // Resilience: Primary DeepL -> Secondary NoOp (Pipeline remains stable if DeepL throttles)
+        const primaryTranslation = new DeepLTranslationAdapter(config.deeplApiKey);
+        const secondaryTranslation = new NoOpTranslationAdapter();
+        const translationPort = new FallbackTranslationAdapter(
+            primaryTranslation,
+            secondaryTranslation,
+            'DeepL',
+            'English-Fallback'
+        );
+
+        const templateRepository = new InMemoryTemplateRepository();
+
+        // Scalability: Use Redis for high-concurrency caching if available
+        const cachePort = config.redisUrl
+            ? new RedisCacheAdapter(config.redisUrl)
+            : new InMemoryCacheAdapter();
+
+        const metricsPort = new PrometheusMetricsAdapter();
+
+        // 🚀 SCALABILITY: Background Job Queue (BullMQ)
+        const jobQueuePort = config.redisUrl
+            ? new BullMqJobQueueAdapter(config.redisUrl)
+            : undefined;
+
+        let avatarPort: any;
+        if (config.sadTalkerEndpointUrl && config.fluxApiKey) {
+            console.log('🤖 Avatar Strategy: GPU Offloading (SadTalker on Beam.cloud)');
+            avatarPort = new SadTalkerAvatarAdapter(config.fluxApiKey, config.sadTalkerEndpointUrl);
+        } else if (config.heygenApiKey) {
+            console.log('🤖 Avatar Strategy: Managed Service (HeyGen V2)');
+            avatarPort = new HeyGenAvatarAdapter(config.heygenApiKey);
+        } else {
+            console.log('🤖 Avatar Strategy: Mock (Development Mode)');
+            avatarPort = new MockAvatarAdapter();
+        }
+
         websitePromoSlice = createWebsitePromoSlice({
             scrapingPort: new WebsiteScraperAdapter(websiteScraperClient),
             scriptPort: new ScriptGenerationAdapter(llmClient),
@@ -151,10 +211,23 @@ export function createDependencies(config: Config): {
                 ttsClient,
                 primaryImageClient,
                 musicSelector,
-                subtitlesClient
+                subtitlesClient,
+                cloudinaryClient!
             ),
-            renderingPort: new RenderingAdapter(videoRenderer)
+            renderingPort: new RenderingAdapter(videoRenderer),
+            translationPort,
+            templateRepository,
+            cachePort,
+            metricsPort,
+            avatarPort,
+            jobQueuePort
         });
+
+        // ⚙️ WORKER: Initialize background worker to process the queue
+        if (config.redisUrl) {
+            console.log('👷 Initializing WebsitePromoWorker (Concurrency: 2)...');
+            new WebsitePromoWorker(websitePromoSlice.orchestrator, config.redisUrl);
+        }
     }
 
     const deps: OrchestratorDependencies = {
@@ -185,7 +258,13 @@ export function createDependencies(config: Config): {
     console.log('⚙️  Wiring up ReelOrchestrator...');
     const orchestrator = new ReelOrchestrator(deps);
     console.log('✅ Dependency graph complete');
-    return { jobManager, orchestrator, growthInsightsService, cloudinaryClient };
+    return {
+        jobManager,
+        orchestrator,
+        growthInsightsService,
+        cloudinaryClient,
+        metricsPort: (websitePromoSlice as any)?.orchestrator?.deps?.metricsPort || new ConsoleMetricsAdapter()
+    };
 }
 
 // --- Helper Functions ---

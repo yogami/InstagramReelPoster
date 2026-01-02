@@ -7,6 +7,7 @@
 
 import { WebsitePromoInput, isWebsitePromoInput } from '../domain/entities/WebsitePromo';
 import { WebsitePromoUseCase, WebsitePromoResult, WebsitePromoUseCaseDeps } from './WebsitePromoUseCase';
+import { IJobQueuePort } from '../ports/IJobQueuePort';
 
 export interface PromoJob {
     id: string;
@@ -19,6 +20,7 @@ export interface PromoJob {
 }
 
 export interface WebsitePromoOrchestratorDeps extends WebsitePromoUseCaseDeps {
+    jobQueuePort?: IJobQueuePort;
     onStatusChange?: (job: PromoJob) => Promise<void>;
     onComplete?: (job: PromoJob) => Promise<void>;
     onError?: (job: PromoJob, error: Error) => Promise<void>;
@@ -64,8 +66,28 @@ export class WebsitePromoOrchestrator {
             job.updatedAt = new Date();
             await this.deps.onStatusChange?.(job);
 
+            // Async/Background Check: If queue is present, hand off and return
+            if (this.deps.jobQueuePort) {
+                console.log(`[Orchestrator] Enqueuing job ${jobId} for background processing`);
+                await this.deps.jobQueuePort.enqueue(jobId, input);
+                return job;
+            }
+
+            // Fallback: Synchronous execution if no queue is configured
+            return await this.executeQueuedJob(job);
+        } catch (error) {
+            return await this.handleError(job, error);
+        }
+    }
+
+    /**
+     * Internal actual execution logic. 
+     * Called by either processJob (sync) or WebsitePromoWorker (async).
+     */
+    async executeQueuedJob(job: PromoJob): Promise<PromoJob> {
+        try {
             // Execute use case
-            const result = await this.useCase.execute(input);
+            const result = await this.useCase.execute(job.input);
 
             // Complete
             job.status = 'completed';
@@ -75,12 +97,16 @@ export class WebsitePromoOrchestrator {
 
             return job;
         } catch (error) {
-            job.status = 'failed';
-            job.error = error instanceof Error ? error.message : 'Unknown error';
-            job.updatedAt = new Date();
-            await this.deps.onError?.(job, error instanceof Error ? error : new Error(String(error)));
-            return job;
+            return await this.handleError(job, error);
         }
+    }
+
+    private async handleError(job: PromoJob, error: unknown): Promise<PromoJob> {
+        job.status = 'failed';
+        job.error = error instanceof Error ? error.message : 'Unknown error';
+        job.updatedAt = new Date();
+        await this.deps.onError?.(job, error instanceof Error ? error : new Error(String(error)));
+        return job;
     }
 
     /**

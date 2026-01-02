@@ -57,7 +57,10 @@ export interface ReelManifest {
     /** FLUX optimization: default zoom type for all segments */
     zoomType?: 'slow_zoom_in' | 'slow_zoom_out' | 'ken_burns' | 'alternating' | 'static';
     /** FLUX optimization: zoom sequence for finer control */
+    /** FLUX optimization: zoom sequence for finer control */
     zoomSequence?: ('slow_zoom_in' | 'slow_zoom_out' | 'ken_burns_left' | 'ken_burns_right' | 'static')[];
+    /** Talking head avatar video URL (e.g. from HeyGen) */
+    avatarVideoUrl?: string;
 }
 
 export interface ManifestOverlay {
@@ -84,6 +87,7 @@ export function createReelManifest(params: {
     logoPosition?: 'beginning' | 'end' | 'overlay';
     zoomType?: 'slow_zoom_in' | 'slow_zoom_out' | 'ken_burns' | 'alternating' | 'static';
     zoomSequence?: ('slow_zoom_in' | 'slow_zoom_out' | 'ken_burns_left' | 'ken_burns_right' | 'static')[];
+    avatarVideoUrl?: string;
 }): ReelManifest {
     if (params.durationSeconds <= 0) {
         throw new Error('Manifest durationSeconds must be positive');
@@ -138,5 +142,6 @@ export function createReelManifest(params: {
         logoPosition: params.logoPosition,
         zoomType: params.zoomType,
         zoomSequence: params.zoomSequence,
+        avatarVideoUrl: params.avatarVideoUrl,
     };
 }

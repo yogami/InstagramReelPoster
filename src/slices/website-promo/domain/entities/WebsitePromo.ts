@@ -92,11 +92,14 @@ export interface WebsitePromoInput {
     voiceId?: string;
 
     // Phase 2: Quality Boosts
-    voiceStyle?: 'professional' | 'friendly' | 'energetic' | 'calm';
+    voiceStyle?:
+    | 'professional' | 'friendly' | 'energetic' | 'calm'
+    | 'german' | 'french' | 'spanish' | 'japanese' | 'sophisticated';
     motionStyle?: 'ken_burns' | 'zoom_in' | 'zoom_out' | 'static';
     subtitleStyle?: 'minimal' | 'bold' | 'karaoke';
+    templateId?: string;
+    avatarId?: string;
 }
-
 
 /**
  * Promo scene content.
@@ -133,6 +136,8 @@ export interface PromoScriptPlan {
     // Phase 2: Quality Boosts
     motionStyle?: 'ken_burns' | 'zoom_in' | 'zoom_out' | 'static';
     subtitleStyle?: 'minimal' | 'bold' | 'karaoke';
+    templateId?: string;
+    avatarId?: string;
 }
 
 

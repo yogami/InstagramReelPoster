@@ -31,7 +31,8 @@ export class CloningTtsClient implements ITtsClient {
         }
 
         try {
-            console.log(`[Voice Cloning] Synthesizing with voice ID: ${this.voiceId}`);
+            const resolvedVoiceId = options?.voiceId || this.voiceId;
+            console.log(`[Voice Cloning] Synthesizing with voice ID: ${resolvedVoiceId}`);
             const response = await axios.post(
                 `${this.baseUrl}/v1/tts`,
                 {

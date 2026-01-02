@@ -127,6 +127,16 @@ export interface WebsitePromoInput {
     logoPosition?: 'beginning' | 'end' | 'overlay';
     /** Optional voice ID for TTS synthesis */
     voiceId?: string;
+
+    // Phase 2: Quality Boosts
+    /** High-level voice style (maps to ID if voiceId not provided) */
+    voiceStyle?:
+    | 'professional' | 'friendly' | 'energetic' | 'calm'
+    | 'german' | 'french' | 'spanish' | 'japanese' | 'sophisticated';
+    /** Pan/zoom motion style */
+    motionStyle?: 'ken_burns' | 'zoom_in' | 'zoom_out' | 'static';
+    /** Burned-in subtitle style */
+    subtitleStyle?: 'minimal' | 'bold' | 'karaoke';
 }
 
 /**
@@ -270,6 +280,12 @@ export interface PromoScriptPlan {
     logoUrl?: string;
     /** Company logo position */
     logoPosition?: 'beginning' | 'end' | 'overlay';
+
+    // Phase 2: Quality Boosts
+    /** Pan/zoom motion style */
+    motionStyle?: 'ken_burns' | 'zoom_in' | 'zoom_out' | 'static';
+    /** Burned-in subtitle style */
+    subtitleStyle?: 'minimal' | 'bold' | 'karaoke';
 }
 
 export function isBusinessCategory(value: unknown): value is BusinessCategory {

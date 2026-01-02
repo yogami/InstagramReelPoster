@@ -399,7 +399,7 @@ export class ReelOrchestrator {
             console.log(`[${jobId}] Delegating to independent WebsitePromoSlice...`);
             try {
                 const config = getConfig();
-                const promoVoiceId = websiteInput.voiceId || config.ttsCloningPromoVoiceId || config.ttsCloningVoiceId;
+                const promoVoiceId = websiteInput.voiceId; // Let slice resolve if user didn't provide one
 
                 const sliceResult = await this.deps.websitePromoSlice.orchestrator.processJob(jobId, {
                     websiteUrl: websiteInput.websiteUrl,
@@ -410,7 +410,10 @@ export class ReelOrchestrator {
                     providedMedia: websiteInput.providedMedia,
                     logoUrl: websiteInput.logoUrl,
                     logoPosition: websiteInput.logoPosition,
-                    voiceId: promoVoiceId
+                    voiceId: promoVoiceId,
+                    voiceStyle: websiteInput.voiceStyle,
+                    motionStyle: websiteInput.motionStyle,
+                    subtitleStyle: websiteInput.subtitleStyle
                 });
 
                 if (sliceResult.status === 'completed' && sliceResult.result) {

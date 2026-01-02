@@ -10,13 +10,15 @@ import { ITtsClient } from '../../../domain/ports/ITtsClient';
 import { IImageClient } from '../../../domain/ports/IImageClient';
 import { MusicSelector } from '../../../application/MusicSelector';
 import { ISubtitlesClient } from '../../../domain/ports/ISubtitlesClient';
+import { MediaStorageClient } from '../../../infrastructure/storage/MediaStorageClient';
 
 export class AssetGenerationAdapter implements IAssetGenerationPort {
     constructor(
         private readonly ttsClient: ITtsClient,
         private readonly imageClient: IImageClient,
         private readonly musicSelector: MusicSelector,
-        private readonly subtitlesClient: ISubtitlesClient
+        private readonly subtitlesClient: ISubtitlesClient,
+        private readonly storageClient: MediaStorageClient
     ) { }
 
     async generateVoiceover(
@@ -35,14 +37,21 @@ export class AssetGenerationAdapter implements IAssetGenerationPort {
         options?: { style?: string }
     ): Promise<string[]> {
         const imageUrls: string[] = [];
-
-        for (const scene of scenes) {
+        for (let i = 0; i < scenes.length; i++) {
+            const scene = scenes[i];
             const prompt = options?.style
                 ? `${scene.imagePrompt}. Style: ${options.style}`
                 : scene.imagePrompt;
 
             const result = await this.imageClient.generateImage(prompt);
-            imageUrls.push(result.imageUrl);
+
+            // Upload to Cloudinary to provide a clean URL for the renderer (avoids 'Payload Too Large' errors in Shotstack)
+            const uploadResult = await this.storageClient.uploadFromUrl(result.imageUrl, {
+                folder: 'website-promo/images',
+                publicId: `scene_${Date.now()}_${i}`
+            });
+
+            imageUrls.push(uploadResult.url);
         }
 
         return imageUrls;

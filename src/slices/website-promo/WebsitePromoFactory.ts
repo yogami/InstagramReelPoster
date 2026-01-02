@@ -11,12 +11,24 @@ import { IScrapingPort } from './ports/IScrapingPort';
 import { IScriptGenerationPort } from './ports/IScriptGenerationPort';
 import { IAssetGenerationPort } from './ports/IAssetGenerationPort';
 import { IRenderingPort } from './ports/IRenderingPort';
+import { ITranslationPort } from './ports/ITranslationPort';
+import { ITemplateRepository } from './ports/ITemplateRepository';
+import { ICachePort } from './ports/ICachePort';
+import { IMetricsPort } from './ports/IMetricsPort';
+import { IAvatarGenerationPort } from './ports/IAvatarGenerationPort';
+import { IJobQueuePort } from './ports/IJobQueuePort';
 
 export interface WebsitePromoSliceConfig {
     scrapingPort: IScrapingPort;
     scriptPort: IScriptGenerationPort;
     assetPort: IAssetGenerationPort;
     renderingPort: IRenderingPort;
+    translationPort: ITranslationPort;
+    templateRepository: ITemplateRepository;
+    cachePort: ICachePort;
+    metricsPort: IMetricsPort;
+    avatarPort?: IAvatarGenerationPort;
+    jobQueuePort?: IJobQueuePort;
     onStatusChange?: WebsitePromoOrchestratorDeps['onStatusChange'];
     onComplete?: WebsitePromoOrchestratorDeps['onComplete'];
     onError?: WebsitePromoOrchestratorDeps['onError'];
@@ -50,6 +62,12 @@ export function createWebsitePromoSlice(config: WebsitePromoSliceConfig): Websit
         scriptPort: config.scriptPort,
         assetPort: config.assetPort,
         renderingPort: config.renderingPort,
+        translationPort: config.translationPort,
+        templateRepository: config.templateRepository,
+        cachePort: config.cachePort,
+        metricsPort: config.metricsPort,
+        avatarPort: config.avatarPort,
+        jobQueuePort: config.jobQueuePort,
         onStatusChange: config.onStatusChange,
         onComplete: config.onComplete,
         onError: config.onError

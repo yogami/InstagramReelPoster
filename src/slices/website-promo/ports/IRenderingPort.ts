@@ -18,6 +18,8 @@ export interface RenderingAssets {
     imageUrls: string[];
     /** Logo URL for branding */
     logoUrl?: string;
+    /** Optional avatar video overlay URL */
+    avatarVideoUrl?: string;
 }
 
 export interface RenderingResult {

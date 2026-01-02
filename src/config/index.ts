@@ -92,6 +92,9 @@ export interface Config {
     remoteRenderEndpointUrl: string;
     remoteRenderEnabled: boolean;
 
+    // Remote Avatar (SadTalker on Beam.cloud)
+    sadTalkerEndpointUrl: string;
+
     // Personal Clone Feature Flags
     featureFlags: {
         usePersonalCloneTTS: boolean;  // Use local XTTS v2 instead of Fish Audio
@@ -104,6 +107,26 @@ export interface Config {
 
     // Guardian API (ConvoGuard compliance service)
     guardianApiUrl: string;
+
+    // DeepL API
+    deeplApiKey: string;
+
+    // HeyGen API
+    heygenApiKey: string;
+    heygenVoiceId: string;
+    avatarImeldaCasual: string;
+    avatarImeldaSuit: string;
+
+    // Localized Voice IDs (Fish Audio overrides)
+    voiceFriendlyId?: string;
+    voiceEnergeticId?: string;
+    voiceAuthoritativeId?: string;
+    voiceExpressiveId?: string;
+    voiceSophisticatedId?: string;
+    voiceGermanId?: string;
+    voiceFrenchId?: string;
+    voiceSpanishId?: string;
+    voiceJapaneseId?: string;
 
     // Personal Clone Configuration (only used when feature flags are enabled)
     personalClone: {
@@ -245,6 +268,9 @@ export function loadConfig(): Config {
         remoteRenderEndpointUrl: getEnvVar('BEAMCLOUD_RENDER_ENDPOINT_URL', ''),
         remoteRenderEnabled: getEnvVarBoolean('BEAMCLOUD_RENDER_ENABLED', false),
 
+        // Remote Avatar (SadTalker)
+        sadTalkerEndpointUrl: getEnvVar('BEAMCLOUD_SADTALKER_ENDPOINT_URL', ''),
+
         // Personal Clone Feature Flags (all default to false - non-breaking)
         featureFlags: {
             usePersonalCloneTTS: getEnvVarBoolean('USE_PERSONAL_CLONE_TTS', false),
@@ -257,6 +283,26 @@ export function loadConfig(): Config {
 
         // Guardian API (ConvoGuard compliance service)
         guardianApiUrl: getEnvVar('GUARDIAN_API_URL', 'http://localhost:3001'),
+
+        // DeepL API
+        deeplApiKey: getEnvVar('DEEPL_API_KEY', ''),
+
+        // HeyGen API
+        heygenApiKey: getEnvVar('HEYGEN_API_KEY', ''),
+        heygenVoiceId: getEnvVar('HEYGEN_VOICE_ID', '88f5e1546a4245cca66c332671eb6d78'),
+        avatarImeldaCasual: getEnvVar('AVATAR_IMELDA_CASUAL', 'Imelda_Casual_Front_public'),
+        avatarImeldaSuit: getEnvVar('AVATAR_IMELDA_SUIT', 'Imelda_Suit_Front_public'),
+
+        // Localized Voice IDs
+        voiceFriendlyId: process.env.VOICE_FRIENDLY_ID,
+        voiceEnergeticId: process.env.VOICE_ENERGETIC_ID,
+        voiceAuthoritativeId: process.env.VOICE_AUTHORITATIVE_ID,
+        voiceExpressiveId: process.env.VOICE_EXPRESSIVE_ID,
+        voiceSophisticatedId: process.env.VOICE_SOPHISTICATED_ID,
+        voiceGermanId: process.env.VOICE_GERMAN_ID,
+        voiceFrenchId: process.env.VOICE_FRENCH_ID,
+        voiceSpanishId: process.env.VOICE_SPANISH_ID,
+        voiceJapaneseId: process.env.VOICE_JAPANESE_ID,
 
         // Personal Clone Configuration
         personalClone: {

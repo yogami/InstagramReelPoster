@@ -33,8 +33,8 @@ export class RenderingAdapter implements IRenderingPort {
             zoomType: zoomTypeMap[script.motionStyle || 'ken_burns'] || 'ken_burns',
             segments: script.scenes.map((scene, i) => ({
                 index: i,
-                startSeconds: script.scenes.slice(0, i).reduce((sum, s) => sum + s.duration, 0),
-                endSeconds: script.scenes.slice(0, i + 1).reduce((sum, s) => sum + s.duration, 0),
+                start: script.scenes.slice(0, i).reduce((sum, s) => sum + s.duration, 0),
+                end: script.scenes.slice(0, i + 1).reduce((sum, s) => sum + s.duration, 0),
                 imageUrl: assets.imageUrls[i],
                 commentary: scene.narration,
                 imagePrompt: scene.imagePrompt
@@ -42,7 +42,8 @@ export class RenderingAdapter implements IRenderingPort {
             branding: assets.logoUrl ? {
                 logoUrl: assets.logoUrl,
                 businessName: script.businessName
-            } : undefined
+            } : undefined,
+            avatarVideoUrl: assets.avatarVideoUrl
         };
 
         const result = await this.videoRenderer.render(manifest as any);

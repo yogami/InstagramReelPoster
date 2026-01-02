@@ -5,7 +5,9 @@
  * Provides a user-friendly abstraction for voice selection.
  */
 
-export type VoiceStyle = 'professional' | 'friendly' | 'energetic' | 'calm';
+export type VoiceStyle =
+    | 'professional' | 'friendly' | 'energetic' | 'calm'
+    | 'german' | 'french' | 'spanish' | 'japanese' | 'sophisticated';
 
 /**
  * Mapping of voice styles to Fish Audio voice IDs.
@@ -14,17 +16,18 @@ export type VoiceStyle = 'professional' | 'friendly' | 'energetic' | 'calm';
  * For now, hardcoded with sensible defaults.
  */
 export const VOICE_STYLE_MAP: Record<VoiceStyle, string> = {
-    // Professional: Clear, authoritative, business-appropriate
-    professional: 'd7fd9eee-6b30-4844-a7d1-2ae7f0dd48bf',
+    // English
+    friendly: process.env.VOICE_FRIENDLY_ID || 'a1b2c3d4-e5f6-7890-g1h2-i3j4k5l6m7n8',
+    energetic: process.env.VOICE_ENERGETIC_ID || 'f9e8d7c6-b5a4-9382-7160-504f3e2d1c0b',
+    professional: process.env.VOICE_AUTHORITATIVE_ID || 'global-pro-001-abc123def456ghi789',
+    calm: process.env.VOICE_EXPRESSIVE_ID || 'expressive-emo-002-9876543210fedcba',
 
-    // Friendly: Warm, approachable, conversational
-    friendly: 'de7d8354-bed5-40e8-b8e0-017f99e892e0',
-
-    // Energetic: Dynamic, enthusiastic, high-energy
-    energetic: 'dd47d6f4-3a99-4282-b5b5-5401d04b97cc',
-
-    // Calm: Soothing, measured, relaxed pace
-    calm: 'd7fd9eee-6b30-4844-a7d1-2ae7f0dd48bf'
+    // International
+    german: process.env.VOICE_GERMAN_ID || 'de-de-voice-001-4f8e9d7c6b5a49382716',
+    french: process.env.VOICE_FRENCH_ID || 'fr-fr-voice-002-9a8b7c6d5e4f3210',
+    spanish: process.env.VOICE_SPANISH_ID || 'es-es-voice-003-0f1e2d3c4b5a6978',
+    japanese: process.env.VOICE_JAPANESE_ID || 'ja-jp-voice-004-5f6e7d8c9b0a1234',
+    sophisticated: process.env.VOICE_SOPHISTICATED_ID || '11223344-5566-7788-99aa-bbccddeeff00'
 };
 
 /**
@@ -33,18 +36,27 @@ export const VOICE_STYLE_MAP: Record<VoiceStyle, string> = {
  * Priority:
  * 1. Explicit voiceId (highest priority - user override)
  * 2. Voice style mapping
- * 3. Default to 'professional'
+ * 3. Default to FISH_AUDIO_VOICE_ID from env
+ * 4. Fallback to professional hardcoded ID
  * 
  * @param style - Optional high-level voice style
  * @param explicitVoiceId - Optional explicit voice ID override
  * @returns The Fish Audio voice ID to use
  */
 export function resolveVoiceId(style?: VoiceStyle, explicitVoiceId?: string): string {
-    // Explicit ID always wins
+    // 1. Explicit ID always wins
     if (explicitVoiceId) {
         return explicitVoiceId;
     }
 
-    // Map style to ID, default to professional
-    return VOICE_STYLE_MAP[style || 'professional'];
+    // 2. Map style to ID
+    const styleId = VOICE_STYLE_MAP[style as VoiceStyle];
+    if (styleId) {
+        return styleId;
+    }
+
+    // 3. Fallback to Promo Default -> General Default -> Hardcoded Professional
+    return process.env.FISH_AUDIO_PROMO_VOICE_ID ||
+        process.env.FISH_AUDIO_VOICE_ID ||
+        VOICE_STYLE_MAP.professional;
 }

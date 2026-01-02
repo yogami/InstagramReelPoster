@@ -404,9 +404,32 @@ export class TimelineVideoRenderer implements IVideoRenderer {
             }
         }
 
-        // Track 7: Global Subtitles (Lower priority, smaller text)
+        // Track 7: Avatar Video Overlay (Talking Head)
+        const avatarClips: TimelineClip[] = [];
+        if (manifest.avatarVideoUrl) {
+            avatarClips.push({
+                asset: {
+                    type: 'video',
+                    src: manifest.avatarVideoUrl,
+                    volume: 0 // Audio is already in the voiceover track
+                },
+                start: 0,
+                length: manifest.durationSeconds,
+                fit: 'contain',
+                position: 'bottomRight',
+                scale: 0.3, // 30% of screen height/width
+                offset: { x: -0.05, y: -0.05 },
+                transition: { in: 'fade', out: 'fade' }
+            });
+        }
+
+        // Track 8: Global Subtitles (Lower priority, smaller text)
         if (manifest.subtitlesUrl) {
             tracks.push({ clips: [captionClip] });
+        }
+
+        if (avatarClips.length > 0) {
+            tracks.push({ clips: avatarClips });
         }
 
         return {
