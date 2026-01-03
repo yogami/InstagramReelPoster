@@ -146,243 +146,263 @@ async function processUpdate(
             if (text === '/start' || text === '/help') {
                 await telegramService.sendMessage(chatId,
                     `🎙️ *VoiceGen Bot*\n\n` +
-                    `Send me:\n` +
-                    `• 🎤 *Voice note* - I'll transcribe and create a reel\n` +
-                    `• 📝 *Text prompt* - Describe your reel idea\n\n` +
-                    `*During approval:*\n` +
-                    `• *approve* - Continue processing\n` +
-                    `• *reject [feedback]* - Regenerate with your feedback\n\n` +
-                    `Example text prompts:\n` +
-                    `_"Create a motivational reel about discipline"_\n` +
-                    `_"Tell the story of Ekalavya from Mahabharata"_`
+                    `*Commands:*\n` +
+                    `• /reel <prompt> - Create a new Instagram Reel\n` +
+                    `• /agent <task> - Trigger a local agent task\n` +
+                    `• /linkedin <note> - Draft a LinkedIn post\n\n` +
+                    `*Other:* \n` +
+                    `• Send a **Voice Note** to auto-create a reel\n` +
+                    `• Reply *approve/reject* for pending reviews`
                 );
             }
-
-            // AGENT COMMAND - Remote Director
-            if (text.startsWith('/agent')) {
-                const prompt = text.replace('/agent', '').trim();
-
-                if (!prompt) {
-                    await telegramService.sendMessage(chatId, '🤖 *Agent Director*\n\nUsage: `/agent <task description>`\n\nExample: `/agent Fix the bug in ReelPoster`');
-                    return;
-                }
-
-                try {
-                    const config = getConfig();
-                    if (!config.cloudHubUrl) {
-                        await telegramService.sendMessage(chatId, '❌ Agent Cloud Hub not configured.');
-                        return;
-                    }
-
-                    console.log(`[Telegram] Forwarding agent task from ${chatId}: ${prompt}`);
-                    await telegramService.sendMessage(chatId, '🤖 *Task Received!*\n\nQueuing for local agent...');
-
-                    await axios.post(`${config.cloudHubUrl}/api/tasks`, {
-                        task: prompt,
-                        requester: `Telegram User ${chatId}`
-                    });
-
-                    await telegramService.sendMessage(chatId, '✅ *Task Queued!* The local agent will pick this up shortly.');
-
-                } catch (error: any) {
-                    console.error('[Telegram] Failed to queue agent task:', error);
-                    await telegramService.sendMessage(chatId, `❌ Failed to queue task: ${error.message}`);
-                }
-                return;
-            }
-
-            return;
         }
 
-        // Check for approval responses (handled by ApprovalService via orchestrator)
-        if (lowerText === 'approve' || lowerText === 'yes' || lowerText === 'ok') {
-            // Get latest job for this chat and approve it
-            const lastJob = await jobManager.getLastJobForUser(chatId);
-            if (lastJob && orchestrator.approvalService) {
-                await orchestrator.approvalService.handleCallback(lastJob.id, 'script', true);
-                await orchestrator.approvalService.handleCallback(lastJob.id, 'visuals', true);
-            } else {
-                await telegramService.sendMessage(chatId, '⚠️ No pending approval found.');
-            }
-            return;
-        }
+        // AGENT COMMAND - Remote Director
+        if (text.startsWith('/agent')) {
+            const prompt = text.replace('/agent', '').trim();
 
-        // Check for rejection responses
-        if (lowerText.startsWith('reject') || lowerText.startsWith('no') || lowerText.startsWith('change')) {
-            const feedback = text.replace(/^(reject|no|change)/i, '').trim() || 'Please make it better';
-            const lastJob = await jobManager.getLastJobForUser(chatId);
-            if (lastJob && orchestrator.approvalService) {
-                await orchestrator.approvalService.handleCallback(lastJob.id, 'script', false, feedback);
-                await orchestrator.approvalService.handleCallback(lastJob.id, 'visuals', false, feedback);
-            } else {
-                await telegramService.sendMessage(chatId, '⚠️ No pending approval found.');
-            }
-            return;
-        }
-
-        // LINKEDIN POST COMMAND - Publish pending draft to LinkedIn
-        if (lowerText === 'post' || lowerText === 'publish') {
-            const pendingDraft = pendingLinkedInDrafts.get(chatId);
-            if (!pendingDraft) {
-                await telegramService.sendMessage(chatId, '⚠️ No pending LinkedIn draft found. Generate one first with: _linkedin [your raw thoughts]_');
+            if (!prompt) {
+                await telegramService.sendMessage(chatId, '🤖 *Agent Director*\n\nUsage: `/agent <task description>`\n\nExample: `/agent Fix the bug in ReelPoster`');
                 return;
             }
 
             try {
                 const config = getConfig();
-                if (!config.linkedinWebhookUrl || !config.linkedinWebhookApiKey) {
-                    await telegramService.sendMessage(chatId, '❌ LinkedIn posting not configured. Missing webhook URL or API key.');
+                if (!config.cloudHubUrl) {
+                    await telegramService.sendMessage(chatId, '❌ Agent Cloud Hub not configured.');
                     return;
                 }
 
-                await telegramService.sendMessage(chatId, '📤 *Publishing to LinkedIn...*');
+                console.log(`[Telegram] Forwarding agent task from ${chatId}: ${prompt}`);
+                await telegramService.sendMessage(chatId, '🤖 *Task Received!*\n\nQueuing for local agent...');
 
-                const posterService = new WebhookLinkedInPosterService(config.linkedinWebhookUrl, config.linkedinWebhookApiKey);
-                const content = assemblePostContent(pendingDraft);
-
-                const result = await posterService.postToLinkedIn({
-                    type: 'ARTICLE',
-                    content,
-                    visibility: 'PUBLIC',
-                    media: {
-                        originalUrl: 'https://www.linkedin.com/in/yamigopal/',
-                        title: pendingDraft.hook,
-                        description: pendingDraft.coreTension,
-                        thumbnail: {
-                            fileName: '',
-                            data: null
-                        }
-                    }
+                await axios.post(`${config.cloudHubUrl}/api/tasks`, {
+                    task: prompt,
+                    requester: `Telegram User ${chatId}`
                 });
 
-                if (result.success) {
-                    pendingLinkedInDrafts.delete(chatId);
-                    await telegramService.sendMessage(chatId, `✅ *Posted to LinkedIn!*\n\n${result.postId ? `Post ID: \`${result.postId}\`` : 'Check your LinkedIn profile.'}`); console.log(`[Telegram] LinkedIn post published for chat ${chatId}`);
-                } else {
-                    await telegramService.sendMessage(chatId, `❌ Failed to post: ${result.error}`);
-                }
-            } catch (error) {
-                console.error('[Telegram] LinkedIn posting failed:', error);
-                await telegramService.sendMessage(chatId, `❌ Failed to post: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                await telegramService.sendMessage(chatId, '✅ *Task Queued!* The local agent will pick this up shortly.');
+
+            } catch (error: any) {
+                console.error('[Telegram] Failed to queue agent task:', error);
+                await telegramService.sendMessage(chatId, `❌ Failed to queue task: ${error.message}`);
             }
             return;
         }
 
-        // YOUTUBE SHORT PATH - Check if this is a YouTube Short script
-        if (YouTubeScriptParser.isYouTubeRequest(text)) {
-            console.log(`[Telegram] YouTube Short script request from chat ${chatId}`);
+        return;
+    }
 
-            try {
-                const youtubeInput = YouTubeScriptParser.parse(text);
-                const youtubeScriptPlan = YouTubeScriptParser.toScriptPlan(youtubeInput);
+    // Ensure text is defined before processing further text-based commands
+    if (!text || text.trim().length === 0) {
+        return;
+    }
 
-                await telegramService.sendMessage(chatId,
-                    `🎬 *YouTube Short Script Received!*\n\n` +
-                    `Title: _${youtubeInput.title}_\n` +
-                    `Duration: ${youtubeInput.totalDurationSeconds}s\n` +
-                    `Scenes: ${youtubeInput.scenes.length}\n\n` +
-                    `Processing video...`
-                );
+    const lowerText = text.toLowerCase().trim();
 
-                // Create job with YouTube Short input
-                const job = await jobManager.createJob({
-                    transcript: youtubeInput.scenes.map(s => s.narration).join(' '),
-                    youtubeShortInput: youtubeInput,
-                    forceMode: 'youtube-short',
-                    targetDurationRange: { min: 15, max: youtubeInput.totalDurationSeconds + 10 },
-                    callbackUrl: makeWebhookUrl,
-                    telegramChatId: chatId,
-                });
-
-                console.log(`[Telegram] Started YouTube Short job ${job.id}`);
-
-                // Process job (fire and forget)
-                orchestrator.processJob(job.id).catch((err) => {
-                    console.error(`YouTube Short job ${job.id} failed:`, err);
-                    telegramService.sendMessage(chatId, `❌ YouTube Short failed: ${err.message || 'Unknown error'}`);
-                });
-
-            } catch (error) {
-                console.error('[Telegram] YouTube Short parsing failed:', error);
-                await telegramService.sendMessage(chatId,
-                    `❌ Failed to parse YouTube script: ${error instanceof Error ? error.message : 'Unknown error'}`
-                );
-            }
-            return;
-        }
-
-        // LINKEDIN PATH - Check if this is a LinkedIn draft request
-        if (isLinkedInRequest(text)) {
-            console.log(`[Telegram] LinkedIn draft request from chat ${chatId}`);
-
-            try {
-                const rawNote = extractRawNote(text);
-                if (!rawNote.trim()) {
-                    await telegramService.sendMessage(chatId,
-                        '📝 *LinkedIn Draft*\n\nPlease include your raw thoughts after "linkedin".\n\nExample: _linkedin Most founders confuse hustle with actual progress_'
-                    );
-                    return;
-                }
-
-                await telegramService.sendMessage(chatId, '📝 *Generating LinkedIn draft...*\n\nAnalyzing your thoughts...');
-
-                const config = getConfig();
-                const linkedInService = new GptLinkedInDraftService(config.llmApiKey, config.llmModel);
-                const draftContent = await linkedInService.generateDraftContent(rawNote);
-
-                // Create full draft entity
-                const draft = createLinkedInDraft(uuidv4(), { chatId, rawNote }, draftContent);
-
-                // Store draft for "post" command
-                pendingLinkedInDrafts.set(chatId, draft);
-
-                // Format response for user
-                const response = formatLinkedInDraft(draft);
-                await telegramService.sendMessage(chatId, response);
-
-                console.log(`[Telegram] LinkedIn draft ${draft.id} stored and sent to chat ${chatId}`);
-
-            } catch (error) {
-                console.error('[Telegram] LinkedIn draft generation failed:', error);
-                await telegramService.sendMessage(chatId,
-                    `❌ Failed to generate LinkedIn draft: ${error instanceof Error ? error.message : 'Unknown error'}`
-                );
-            }
-            return;
-        }
-
-        console.log(`[Telegram] Text message from chat ${chatId}: "${text.substring(0, 50)}..."`);
-
-        try {
-            // Create job with text as the transcript (bypasses transcription step)
-            const job = await jobManager.createJob({
-                transcript: text.trim(),
-                targetDurationRange: { min: 10, max: 90 },
-                callbackUrl: makeWebhookUrl,
-                telegramChatId: chatId,
-            });
-
-            console.log(`[Telegram] Started job ${job.id} for text prompt`);
-
-            // Acknowledge to user
-            await telegramService.sendMessage(chatId, `🎬 *Text received!* Processing reel...\n\nPrompt: _"${text.substring(0, 100)}${text.length > 100 ? '...' : ''}"_\n\nJob ID: \`${job.id}\``);
-
-            // Start processing (fire and forget)
-            orchestrator.processJob(job.id).catch((err) => {
-                console.error(`Job ${job.id} failed:`, err);
-                telegramService.sendMessage(chatId, `❌ Job failed: ${err.message || 'Unknown error'}`);
-            });
-
-        } catch (error) {
-            console.error('[Telegram] Failed to process text message:', error);
-            await telegramService.sendMessage(chatId, `❌ Failed to process text: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    // Check for approval responses (handled by ApprovalService via orchestrator)
+    if (lowerText === 'approve' || lowerText === 'yes' || lowerText === 'ok') {
+        // Get latest job for this chat and approve it
+        const lastJob = await jobManager.getLastJobForUser(chatId);
+        if (lastJob && orchestrator.approvalService) {
+            await orchestrator.approvalService.handleCallback(lastJob.id, 'script', true);
+            await orchestrator.approvalService.handleCallback(lastJob.id, 'visuals', true);
+        } else {
+            await telegramService.sendMessage(chatId, '⚠️ No pending approval found.');
         }
         return;
     }
 
-    // Unsupported message type
-    console.log(`[Telegram] Ignoring unsupported message type from chat ${chatId}`);
+    // Check for rejection responses
+    if (lowerText.startsWith('reject') || lowerText.startsWith('no') || lowerText.startsWith('change')) {
+        const feedback = text.replace(/^(reject|no|change)/i, '').trim() || 'Please make it better';
+        const lastJob = await jobManager.getLastJobForUser(chatId);
+        if (lastJob && orchestrator.approvalService) {
+            await orchestrator.approvalService.handleCallback(lastJob.id, 'script', false, feedback);
+            await orchestrator.approvalService.handleCallback(lastJob.id, 'visuals', false, feedback);
+        } else {
+            await telegramService.sendMessage(chatId, '⚠️ No pending approval found.');
+        }
+        return;
+    }
+
+    // LINKEDIN POST COMMAND - Publish pending draft to LinkedIn
+    if (lowerText === 'post' || lowerText === 'publish') {
+        const pendingDraft = pendingLinkedInDrafts.get(chatId);
+        if (!pendingDraft) {
+            await telegramService.sendMessage(chatId, '⚠️ No pending LinkedIn draft found. Generate one first with: _linkedin [your raw thoughts]_');
+            return;
+        }
+
+        try {
+            const config = getConfig();
+            if (!config.linkedinWebhookUrl || !config.linkedinWebhookApiKey) {
+                await telegramService.sendMessage(chatId, '❌ LinkedIn posting not configured. Missing webhook URL or API key.');
+                return;
+            }
+
+            await telegramService.sendMessage(chatId, '📤 *Publishing to LinkedIn...*');
+
+            const posterService = new WebhookLinkedInPosterService(config.linkedinWebhookUrl, config.linkedinWebhookApiKey);
+            const content = assemblePostContent(pendingDraft);
+
+            const result = await posterService.postToLinkedIn({
+                type: 'ARTICLE',
+                content,
+                visibility: 'PUBLIC',
+                media: {
+                    originalUrl: 'https://www.linkedin.com/in/yamigopal/',
+                    title: pendingDraft.hook,
+                    description: pendingDraft.coreTension,
+                    thumbnail: {
+                        fileName: '',
+                        data: null
+                    }
+                }
+            });
+
+            if (result.success) {
+                pendingLinkedInDrafts.delete(chatId);
+                await telegramService.sendMessage(chatId, `✅ *Posted to LinkedIn!*\n\n${result.postId ? `Post ID: \`${result.postId}\`` : 'Check your LinkedIn profile.'}`); console.log(`[Telegram] LinkedIn post published for chat ${chatId}`);
+            } else {
+                await telegramService.sendMessage(chatId, `❌ Failed to post: ${result.error}`);
+            }
+        } catch (error) {
+            console.error('[Telegram] LinkedIn posting failed:', error);
+            await telegramService.sendMessage(chatId, `❌ Failed to post: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+        return;
+    }
+
+    // YOUTUBE SHORT PATH - Check if this is a YouTube Short script
+    if (YouTubeScriptParser.isYouTubeRequest(text)) {
+        console.log(`[Telegram] YouTube Short script request from chat ${chatId}`);
+
+        try {
+            const youtubeInput = YouTubeScriptParser.parse(text);
+            const youtubeScriptPlan = YouTubeScriptParser.toScriptPlan(youtubeInput);
+
+            await telegramService.sendMessage(chatId,
+                `🎬 *YouTube Short Script Received!*\n\n` +
+                `Title: _${youtubeInput.title}_\n` +
+                `Duration: ${youtubeInput.totalDurationSeconds}s\n` +
+                `Scenes: ${youtubeInput.scenes.length}\n\n` +
+                `Processing video...`
+            );
+
+            // Create job with YouTube Short input
+            const job = await jobManager.createJob({
+                transcript: youtubeInput.scenes.map(s => s.narration).join(' '),
+                youtubeShortInput: youtubeInput,
+                forceMode: 'youtube-short',
+                targetDurationRange: { min: 15, max: youtubeInput.totalDurationSeconds + 10 },
+                callbackUrl: makeWebhookUrl,
+                telegramChatId: chatId,
+            });
+
+            console.log(`[Telegram] Started YouTube Short job ${job.id}`);
+
+            // Process job (fire and forget)
+            orchestrator.processJob(job.id).catch((err) => {
+                console.error(`YouTube Short job ${job.id} failed:`, err);
+                telegramService.sendMessage(chatId, `❌ YouTube Short failed: ${err.message || 'Unknown error'}`);
+            });
+
+        } catch (error) {
+            console.error('[Telegram] YouTube Short parsing failed:', error);
+            await telegramService.sendMessage(chatId,
+                `❌ Failed to parse YouTube script: ${error instanceof Error ? error.message : 'Unknown error'}`
+            );
+        }
+        return;
+    }
+
+    // LINKEDIN PATH - Check if this is a LinkedIn draft request
+    if (isLinkedInRequest(text)) {
+        console.log(`[Telegram] LinkedIn draft request from chat ${chatId}`);
+
+        try {
+            const rawNote = extractRawNote(text);
+            if (!rawNote.trim()) {
+                await telegramService.sendMessage(chatId,
+                    '📝 *LinkedIn Draft*\n\nPlease include your raw thoughts after "linkedin".\n\nExample: _linkedin Most founders confuse hustle with actual progress_'
+                );
+                return;
+            }
+
+            await telegramService.sendMessage(chatId, '📝 *Generating LinkedIn draft...*\n\nAnalyzing your thoughts...');
+
+            const config = getConfig();
+            const linkedInService = new GptLinkedInDraftService(config.llmApiKey, config.llmModel);
+            const draftContent = await linkedInService.generateDraftContent(rawNote);
+
+            // Create full draft entity
+            const draft = createLinkedInDraft(uuidv4(), { chatId, rawNote }, draftContent);
+
+            // Store draft for "post" command
+            pendingLinkedInDrafts.set(chatId, draft);
+
+            // Format response for user
+            const response = formatLinkedInDraft(draft);
+            await telegramService.sendMessage(chatId, response);
+
+            console.log(`[Telegram] LinkedIn draft ${draft.id} stored and sent to chat ${chatId}`);
+
+        } catch (error) {
+            console.error('[Telegram] LinkedIn draft generation failed:', error);
+            await telegramService.sendMessage(chatId,
+                `❌ Failed to generate LinkedIn draft: ${error instanceof Error ? error.message : 'Unknown error'}`
+            );
+        }
+        return;
+    }
+
+    // REEL COMMAND (Explicit)
+    if (text.startsWith('/reel')) {
+        const prompt = text.replace('/reel', '').trim();
+        if (!prompt) {
+            await telegramService.sendMessage(chatId, 'Usage: `/reel <description of video>`');
+            return;
+        }
+
+        try {
+            const job = await jobManager.createJob({
+                transcript: prompt,
+                targetDurationRange: { min: 10, max: 90 },
+                callbackUrl: makeWebhookUrl,
+                telegramChatId: chatId,
+            });
+            console.log(`[Telegram] Started job ${job.id} via /reel command`);
+            await telegramService.sendMessage(chatId, `🎬 *Starting Reel...*\n\nPrompt: _"${prompt.substring(0, 50)}..."_\nJob ID: \`${job.id}\``);
+
+            orchestrator.processJob(job.id).catch((err) => {
+                console.error(`Job ${job.id} failed:`, err);
+                telegramService.sendMessage(chatId, `❌ Job failed: ${err.message}`);
+            });
+
+        } catch (error) {
+            console.error('[Telegram] Failed to process /reel:', error);
+            await telegramService.sendMessage(chatId, `❌ Error: ${error instanceof Error ? error.message : 'Unknown'}`);
+        }
+        return;
+    }
+
+    // FALLBACK / GUIDANCE
+    // If we reached here, the text didn't match any specific intent.
+    // Previously we assumed it was a prompt. Now we guide the user to avoid accidents.
+
+    console.log(`[Telegram] Unhandled text from ${chatId}: "${text.substring(0, 20)}..."`);
+
+    await telegramService.sendMessage(chatId,
+        `🤔 I didn't catch that intent.\n\n` +
+        `To create a **Reel**, use:\n` +
+        `\`/reel ${text.substring(0, 50)}...\`\n\n` +
+        `To trigger an **Agent**, use:\n` +
+        `\`/agent ${text.substring(0, 50)}...\``
+    );
+    return;
 }
+
 
 
 /**
