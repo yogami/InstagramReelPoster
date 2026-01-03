@@ -5,8 +5,8 @@
  * Part of Phase 1: Scraping Intelligence enhancements.
  */
 
-import { ContentDNAAnalyzer, SiteDNA } from '../../../src/slices/website-promo/domain/services/ContentDNAAnalyzer';
-import { WebsiteAnalysis } from '../../../src/slices/website-promo/domain/entities/WebsitePromo';
+import { ContentDNAAnalyzer, SiteDNA } from '../../../src/lib/website-promo/domain/services/ContentDNAAnalyzer';
+import { WebsiteAnalysis } from '../../../src/lib/website-promo/domain/entities/WebsitePromo';
 
 describe('ContentDNAAnalyzer', () => {
     let analyzer: ContentDNAAnalyzer;

@@ -2,7 +2,7 @@
  * Unit Tests for RetryUtils
  */
 
-import { withRetry, isRetryableHttpError, makeRetryable } from '../../../src/slices/website-promo/infrastructure/RetryUtils';
+import { withRetry, isRetryableHttpError, makeRetryable } from '../../../src/lib/website-promo/infrastructure/RetryUtils';
 
 describe('RetryUtils', () => {
     describe('withRetry', () => {

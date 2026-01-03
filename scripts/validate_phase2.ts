@@ -3,8 +3,8 @@
  * Verifies that quality boosts (motion, voice) are correctly propagated through the slice.
  */
 
-import { WebsitePromoUseCase } from '../src/slices/website-promo/application/WebsitePromoUseCase';
-import { WebsitePromoInput } from '../src/slices/website-promo/domain/entities/WebsitePromo';
+import { WebsitePromoUseCase } from '../src/lib/website-promo/application/WebsitePromoUseCase';
+import { WebsitePromoInput } from '../src/lib/website-promo/domain/entities/WebsitePromo';
 
 async function validatePhase2() {
     console.log('🧪 Validating Phase 2: Quality Boosts Propagation...');

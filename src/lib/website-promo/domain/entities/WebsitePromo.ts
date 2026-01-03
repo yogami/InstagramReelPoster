@@ -22,7 +22,10 @@ export type BusinessCategory =
     | 'studio'
     | 'spiritual'
     | 'tech'
-    | 'agency';
+    | 'agency'
+    | 'healthcare'
+    | 'pharma'
+    | 'realestate';
 
 /**
  * Personal information for portfolio sites.
@@ -99,6 +102,11 @@ export interface WebsitePromoInput {
     subtitleStyle?: 'minimal' | 'bold' | 'karaoke';
     templateId?: string;
     avatarId?: string;
+
+    // Berlin Specialist Strategy (DACH Market)
+    formality?: 'formal' | 'informal'; // Sie (formal) vs Du (informal)
+    tone?: 'professional' | 'energetic' | 'creative' | 'eco-focused' | 'minimalist';
+    market?: 'berlin' | 'dach' | 'global';
 }
 
 /**
@@ -111,6 +119,7 @@ export interface PromoSceneContent {
     subtitle: string;
     role: 'hook' | 'showcase' | 'cta';
     visualStyle?: string;
+    mediaIntent?: string;
 }
 
 /**
@@ -128,6 +137,8 @@ export interface PromoScriptPlan {
         source: 'public-website';
         consent: boolean;
         scrapedAt: Date;
+        guardianAuditId?: string;
+        provenanceId?: string;
     };
     language: string;
     logoUrl?: string;
@@ -138,22 +149,29 @@ export interface PromoScriptPlan {
     subtitleStyle?: 'minimal' | 'bold' | 'karaoke';
     templateId?: string;
     avatarId?: string;
+
+    // Berlin Specialist
+    market?: 'berlin' | 'dach' | 'global';
+    formality?: 'formal' | 'informal';
 }
 
 
 export function isBusinessCategory(value: unknown): value is BusinessCategory {
     return (
         typeof value === 'string' &&
-        ['cafe', 'gym', 'shop', 'service', 'restaurant', 'studio', 'spiritual', 'tech', 'agency'].includes(value)
+        ['cafe', 'gym', 'shop', 'service', 'restaurant', 'studio', 'spiritual', 'tech', 'agency', 'healthcare', 'pharma', 'realestate'].includes(value)
     );
 }
 
-export function isWebsitePromoInput(obj: unknown): obj is WebsitePromoInput {
-    if (!obj || typeof obj !== 'object') return false;
-    const input = obj as Record<string, unknown>;
+/**
+ * Validates the Input for Website Promo
+ */
+export function isWebsitePromoInput(input: any): input is WebsitePromoInput {
     return (
+        typeof input === 'object' &&
+        input !== null &&
         typeof input.websiteUrl === 'string' &&
         input.websiteUrl.length > 0 &&
-        typeof input.consent === 'boolean'
+        input.consent === true
     );
 }

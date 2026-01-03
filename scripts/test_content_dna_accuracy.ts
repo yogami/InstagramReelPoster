@@ -11,8 +11,8 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 import { EnhancedWebsiteScraper } from '../src/infrastructure/scraper/EnhancedWebsiteScraper';
-import { ContentDNAAnalyzer, SiteDNA } from '../src/slices/website-promo/domain/services/ContentDNAAnalyzer';
-import { WebsiteAnalysis } from '../src/slices/website-promo/domain/entities/WebsitePromo';
+import { ContentDNAAnalyzer, SiteDNA } from '../src/lib/website-promo/domain/services/ContentDNAAnalyzer';
+import { WebsiteAnalysis } from '../src/lib/website-promo/domain/entities/WebsitePromo';
 
 interface DNATestCase {
     url: string;

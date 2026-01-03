@@ -4,7 +4,7 @@
  * TDD: Tests written FIRST before implementation
  */
 
-import { resolveVoiceId, VoiceStyle, VOICE_STYLE_MAP } from '../../../src/slices/website-promo/domain/services/VoiceStyles';
+import { resolveVoiceId, VoiceStyle, VOICE_STYLE_MAP } from '../../../src/lib/website-promo/domain/services/VoiceStyles';
 
 describe('VoiceStyles', () => {
     describe('resolveVoiceId', () => {

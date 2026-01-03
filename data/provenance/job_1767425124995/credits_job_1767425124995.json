@@ -1,0 +1,49 @@
+{
+  "version": "1.0.0",
+  "jobId": "job_1767425124995",
+  "generatedAt": "2026-01-03T07:25:24.996Z",
+  "music": {
+    "trackName": "Promo Music",
+    "source": "catalog",
+    "license": "Royalty-Free"
+  },
+  "images": [
+    {
+      "sceneIndex": 0,
+      "source": "flux",
+      "synthetic": true,
+      "license": "AI-Generated"
+    },
+    {
+      "sceneIndex": 1,
+      "source": "flux",
+      "synthetic": true,
+      "license": "AI-Generated"
+    },
+    {
+      "sceneIndex": 2,
+      "source": "flux",
+      "synthetic": true,
+      "license": "AI-Generated"
+    }
+  ],
+  "voice": {
+    "provider": "fish_audio",
+    "voiceId": "3895f5f7c6ac43f092bec1b2c04f431f",
+    "synthetic": true,
+    "language": "en"
+  },
+  "compliance": {
+    "scanned": true,
+    "auditId": "c579ecf2-7c01-4cde-bba2-3ef688848284",
+    "score": 100,
+    "approved": true
+  },
+  "dataRetention": {
+    "purgeDueAt": "2026-01-04T07:25:24.996Z",
+    "retentionHours": 24
+  },
+  "legal": {
+    "generator": "InstagramReelPoster v1.0"
+  }
+}

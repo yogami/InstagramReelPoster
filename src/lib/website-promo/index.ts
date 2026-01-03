@@ -40,6 +40,12 @@ export { MockAvatarAdapter } from './adapters/MockAvatarAdapter';
 export { InMemoryCacheAdapter } from './adapters/InMemoryCacheAdapter';
 export { ConsoleMetricsAdapter, NoOpMetricsAdapter } from './adapters/ConsoleMetricsAdapter';
 
+// Ports - Phase 5 (Enterprise/Berlin Moat)
+export * from './ports/ICompliancePort';
+
+// Adapters - Phase 5
+export { GuardianComplianceAdapter } from './adapters/GuardianComplianceAdapter';
+
 // Application Layer
 export { WebsitePromoOrchestrator, PromoJob } from './application/WebsitePromoOrchestrator';
 export { WebsitePromoUseCase } from './application/WebsitePromoUseCase';

@@ -30,24 +30,24 @@ import { FallbackVideoRenderer } from '../infrastructure/video/FallbackVideoRend
 import { MediaStorageClient } from '../infrastructure/storage/MediaStorageClient';
 import { WebsiteScraperClient } from '../infrastructure/scraper/WebsiteScraperClient';
 import { EnhancedWebsiteScraper } from '../infrastructure/scraper/EnhancedWebsiteScraper';
-import { createWebsitePromoSlice } from '../slices/website-promo';
-import { WebsiteScraperAdapter } from '../slices/website-promo/adapters/WebsiteScraperAdapter';
-import { ScriptGenerationAdapter } from '../slices/website-promo/adapters/ScriptGenerationAdapter';
-import { AssetGenerationAdapter } from '../slices/website-promo/adapters/AssetGenerationAdapter';
-import { RenderingAdapter } from '../slices/website-promo/adapters/RenderingAdapter';
-import { DeepLTranslationAdapter } from '../slices/website-promo/adapters/DeepLTranslationAdapter';
-import { FallbackTranslationAdapter, NoOpTranslationAdapter } from '../slices/website-promo/adapters/FallbackTranslationAdapter';
-import { InMemoryTemplateRepository } from '../slices/website-promo/adapters/InMemoryTemplateRepository';
-import { InMemoryCacheAdapter } from '../slices/website-promo/adapters/InMemoryCacheAdapter';
-import { RedisCacheAdapter } from '../slices/website-promo/adapters/RedisCacheAdapter';
-import { ConsoleMetricsAdapter } from '../slices/website-promo/adapters/ConsoleMetricsAdapter';
-import { HeyGenAvatarAdapter } from '../slices/website-promo/adapters/HeyGenAvatarAdapter';
-import { SadTalkerAvatarAdapter } from '../slices/website-promo/adapters/SadTalkerAvatarAdapter';
-import { MockAvatarAdapter } from '../slices/website-promo/adapters/MockAvatarAdapter';
-import { BullMqJobQueueAdapter } from '../slices/website-promo/adapters/BullMqJobQueueAdapter';
-import { WebsitePromoWorker } from '../slices/website-promo/application/WebsitePromoWorker';
-import { PrometheusMetricsAdapter } from '../slices/website-promo/adapters/PrometheusMetricsAdapter';
-import { IMetricsPort } from '../slices/website-promo/ports/IMetricsPort';
+import { createWebsitePromoSlice } from '../lib/website-promo';
+import { WebsiteScraperAdapter } from '../lib/website-promo/adapters/WebsiteScraperAdapter';
+import { ScriptGenerationAdapter } from '../lib/website-promo/adapters/ScriptGenerationAdapter';
+import { AssetGenerationAdapter } from '../lib/website-promo/adapters/AssetGenerationAdapter';
+import { RenderingAdapter } from '../lib/website-promo/adapters/RenderingAdapter';
+import { DeepLTranslationAdapter } from '../lib/website-promo/adapters/DeepLTranslationAdapter';
+import { FallbackTranslationAdapter, NoOpTranslationAdapter } from '../lib/website-promo/adapters/FallbackTranslationAdapter';
+import { InMemoryTemplateRepository } from '../lib/website-promo/adapters/InMemoryTemplateRepository';
+import { InMemoryCacheAdapter } from '../lib/website-promo/adapters/InMemoryCacheAdapter';
+import { RedisCacheAdapter } from '../lib/website-promo/adapters/RedisCacheAdapter';
+import { ConsoleMetricsAdapter } from '../lib/website-promo/adapters/ConsoleMetricsAdapter';
+import { HeyGenAvatarAdapter } from '../lib/website-promo/adapters/HeyGenAvatarAdapter';
+import { SadTalkerAvatarAdapter } from '../lib/website-promo/adapters/SadTalkerAvatarAdapter';
+import { MockAvatarAdapter } from '../lib/website-promo/adapters/MockAvatarAdapter';
+import { BullMqJobQueueAdapter } from '../lib/website-promo/adapters/BullMqJobQueueAdapter';
+import { WebsitePromoWorker } from '../lib/website-promo/application/WebsitePromoWorker';
+import { PrometheusMetricsAdapter } from '../lib/website-promo/adapters/PrometheusMetricsAdapter';
+import { IMetricsPort } from '../lib/website-promo/ports/IMetricsPort';
 
 
 import { ChatService } from './services/ChatService';
@@ -58,6 +58,9 @@ import { IAnimatedVideoClient } from '../domain/ports/IAnimatedVideoClient';
 
 import { StandardTtsClient } from '../infrastructure/tts/StandardTtsClient';
 import { XttsClient } from '../infrastructure/tts/XttsClient';
+import { GuardianComplianceAdapter } from '../lib/website-promo/adapters/GuardianComplianceAdapter';
+import { GuardianClient } from '../infrastructure/compliance/GuardianClient';
+import { ZeroRetentionService } from '../infrastructure/compliance/ZeroRetentionService';
 import { MockAnimatedVideoClient } from '../infrastructure/video/MockAnimatedVideoClient';
 
 // Growth Layer Imports
@@ -187,6 +190,16 @@ export function createDependencies(config: Config): {
 
         const metricsPort = new PrometheusMetricsAdapter();
 
+        // 🛡️ Compliance Strategy: Berlin Specialist (Guardian AI + Zero Retention)
+        const guardianClient = new GuardianClient({
+            baseUrl: config.guardianApiUrl
+        });
+        const zeroRetentionService = new ZeroRetentionService();
+        const compliancePort = new GuardianComplianceAdapter(
+            guardianClient,
+            zeroRetentionService
+        );
+
         // 🚀 SCALABILITY: Background Job Queue (BullMQ)
         const jobQueuePort = config.redisUrl
             ? new BullMqJobQueueAdapter(config.redisUrl)
@@ -219,6 +232,7 @@ export function createDependencies(config: Config): {
             templateRepository,
             cachePort,
             metricsPort,
+            compliancePort,
             avatarPort,
             jobQueuePort
         });

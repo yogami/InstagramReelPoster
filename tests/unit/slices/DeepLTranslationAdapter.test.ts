@@ -2,7 +2,7 @@
  * Unit Tests for DeepL Translation Adapter
  */
 
-import { MockTranslationAdapter } from '../../../src/slices/website-promo/adapters/DeepLTranslationAdapter';
+import { MockTranslationAdapter } from '../../../src/lib/website-promo/adapters/DeepLTranslationAdapter';
 
 describe('MockTranslationAdapter', () => {
     let adapter: MockTranslationAdapter;

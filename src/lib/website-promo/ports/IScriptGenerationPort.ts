@@ -16,6 +16,10 @@ export interface ScriptGenerationOptions {
     language: string;
     /** Target duration in seconds */
     targetDurationSeconds: number;
+    /** Berlin Specialist: formality select (Sie vs Du) */
+    formality?: 'formal' | 'informal';
+    /** Preferred tone of voice */
+    tone?: 'professional' | 'energetic' | 'creative' | 'eco-focused' | 'minimalist';
 }
 
 export interface IScriptGenerationPort {

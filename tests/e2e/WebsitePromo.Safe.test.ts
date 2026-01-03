@@ -10,8 +10,8 @@
  * COST: $0.00 (Uses StressTest mocks)
  */
 
-import { WebsitePromoOrchestrator } from '../../src/slices/website-promo/application/WebsitePromoOrchestrator';
-import { WebsitePromoUseCase } from '../../src/slices/website-promo/application/WebsitePromoUseCase';
+import { WebsitePromoOrchestrator } from '../../src/lib/website-promo/application/WebsitePromoOrchestrator';
+import { WebsitePromoUseCase } from '../../src/lib/website-promo/application/WebsitePromoUseCase';
 import {
     StressTestScraperMock,
     StressTestScriptMock,
@@ -19,11 +19,11 @@ import {
     StressTestRenderingMock,
     StressTestAvatarMock,
     StressTestTranslationMock
-} from '../../src/slices/website-promo/adapters/StressTestMocks';
-import { InMemoryCacheAdapter } from '../../src/slices/website-promo/adapters/InMemoryCacheAdapter';
-import { NoOpMetricsAdapter } from '../../src/slices/website-promo/adapters/ConsoleMetricsAdapter';
-import { InMemoryTemplateRepository } from '../../src/slices/website-promo/adapters/InMemoryTemplateRepository';
-import { FallbackTranslationAdapter, NoOpTranslationAdapter } from '../../src/slices/website-promo/adapters/FallbackTranslationAdapter';
+} from '../../src/lib/website-promo/adapters/StressTestMocks';
+import { InMemoryCacheAdapter } from '../../src/lib/website-promo/adapters/InMemoryCacheAdapter';
+import { NoOpMetricsAdapter } from '../../src/lib/website-promo/adapters/ConsoleMetricsAdapter';
+import { InMemoryTemplateRepository } from '../../src/lib/website-promo/adapters/InMemoryTemplateRepository';
+import { FallbackTranslationAdapter, NoOpTranslationAdapter } from '../../src/lib/website-promo/adapters/FallbackTranslationAdapter';
 
 describe('Website Promo - Safe Enterprise Validation (0-Cost)', () => {
     let orchestrator: WebsitePromoOrchestrator;

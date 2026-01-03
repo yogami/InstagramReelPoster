@@ -1,5 +1,5 @@
-import { createWebsitePromoSlice } from '../src/slices/website-promo';
-import { WebsitePromoWorker } from '../src/slices/website-promo/application/WebsitePromoWorker';
+import { createWebsitePromoSlice } from '../src/lib/website-promo';
+import { WebsitePromoWorker } from '../src/lib/website-promo/application/WebsitePromoWorker';
 import {
     StressTestScraperMock,
     StressTestScriptMock,
@@ -7,11 +7,11 @@ import {
     StressTestRenderingMock,
     StressTestAvatarMock,
     StressTestTranslationMock
-} from '../src/slices/website-promo/adapters/StressTestMocks';
-import { BullMqJobQueueAdapter } from '../src/slices/website-promo/adapters/BullMqJobQueueAdapter';
-import { InMemoryCacheAdapter } from '../src/slices/website-promo/adapters/InMemoryCacheAdapter';
-import { NoOpMetricsAdapter } from '../src/slices/website-promo/adapters/ConsoleMetricsAdapter';
-import { InMemoryTemplateRepository } from '../src/slices/website-promo/adapters/InMemoryTemplateRepository';
+} from '../src/lib/website-promo/adapters/StressTestMocks';
+import { BullMqJobQueueAdapter } from '../src/lib/website-promo/adapters/BullMqJobQueueAdapter';
+import { InMemoryCacheAdapter } from '../src/lib/website-promo/adapters/InMemoryCacheAdapter';
+import { NoOpMetricsAdapter } from '../src/lib/website-promo/adapters/ConsoleMetricsAdapter';
+import { InMemoryTemplateRepository } from '../src/lib/website-promo/adapters/InMemoryTemplateRepository';
 import Redis from 'ioredis';
 
 /**

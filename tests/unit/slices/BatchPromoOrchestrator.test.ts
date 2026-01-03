@@ -2,8 +2,8 @@
  * Unit Tests for BatchPromoOrchestrator
  */
 
-import { BatchPromoOrchestrator, BatchPromoInput } from '../../../src/slices/website-promo/application/BatchPromoOrchestrator';
-import { WebsitePromoOrchestrator } from '../../../src/slices/website-promo/application/WebsitePromoOrchestrator';
+import { BatchPromoOrchestrator, BatchPromoInput } from '../../../src/lib/website-promo/application/BatchPromoOrchestrator';
+import { WebsitePromoOrchestrator } from '../../../src/lib/website-promo/application/WebsitePromoOrchestrator';
 
 describe('BatchPromoOrchestrator', () => {
     let mockSingleOrchestrator: jest.Mocked<WebsitePromoOrchestrator>;

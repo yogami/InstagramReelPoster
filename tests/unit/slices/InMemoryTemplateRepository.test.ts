@@ -2,7 +2,7 @@
  * Unit Tests for InMemoryTemplateRepository
  */
 
-import { InMemoryTemplateRepository } from '../../../src/slices/website-promo/adapters/InMemoryTemplateRepository';
+import { InMemoryTemplateRepository } from '../../../src/lib/website-promo/adapters/InMemoryTemplateRepository';
 
 describe('InMemoryTemplateRepository', () => {
     let repo: InMemoryTemplateRepository;

@@ -1,4 +1,4 @@
-import { v2 as cloudinary, UploadApiResponse } from 'cloudinary';
+import { v2 as cloudinary } from 'cloudinary';
 import axios from 'axios';
 import fs from 'fs';
 import path from 'path';
@@ -7,6 +7,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 /**
  * Media storage client for uploading files and getting public URLs.
+ * Supports tags and structured metadata (context).
  */
 export class MediaStorageClient {
     constructor(
@@ -26,16 +27,13 @@ export class MediaStorageClient {
         });
     }
 
-    /**
-     * Truncates a string for safe logging.
-     */
     private truncate(str: string, len: number = 100): string {
         if (!str) return '';
         return str.length > len ? `${str.substring(0, len)}... [truncated ${str.length - len} chars]` : str;
     }
 
     /**
-     * Uploads a file from a URL to Media.
+     * Uploads a file from a URL to Cloudinary with tags and metadata.
      */
     async uploadFromUrl(
         url: string,
@@ -43,6 +41,8 @@ export class MediaStorageClient {
             folder?: string;
             publicId?: string;
             resourceType?: 'image' | 'video' | 'raw' | 'auto';
+            tags?: string[];
+            context?: Record<string, string | number | boolean>;
         } = {}
     ): Promise<{ url: string; publicId: string }> {
         const resourceType = options.resourceType || 'auto';
@@ -50,294 +50,160 @@ export class MediaStorageClient {
         const isDataUri = url.startsWith('data:');
         const folder = options.folder || 'instagram-reels';
 
-        try {
-            // Case 1: Data URI
-            if (isDataUri) {
-                console.log(`[MediaStorage] Data URI detected (type: ${url.split(';')[0]}, length: ${url.length})`);
-                const result = await cloudinary.uploader.upload(url, {
-                    folder,
-                    public_id: options.publicId,
-                    resource_type: resourceType,
-                    overwrite: true,
-                });
+        // Map context to Cloudinary format (key=value pipes)
+        const context = options.context
+            ? Object.entries(options.context).map(([k, v]) => `${k}=${v}`).join('|')
+            : undefined;
 
-                return {
-                    url: result.secure_url,
-                    publicId: result.public_id,
-                };
+        const uploadOptions = {
+            folder,
+            public_id: options.publicId,
+            resource_type: resourceType,
+            overwrite: true,
+            tags: options.tags,
+            context,
+        };
+
+        try {
+            if (isDataUri) {
+                console.log(`[MediaStorage] Data URI detected`);
+                const result = await cloudinary.uploader.upload(url, uploadOptions);
+                return { url: result.secure_url, publicId: result.public_id };
             }
 
-            // Case 2: Local file path
             if (!isRemote) {
                 const stats = fs.statSync(url);
-                const fileSizeInBytes = stats.size;
-                const fileSizeInMB = fileSizeInBytes / (1024 * 1024);
+                const fileSizeInMB = stats.size / (1024 * 1024);
 
-                console.log(`[MediaStorage] Local file detected: ${this.truncate(url)} (${fileSizeInMB.toFixed(2)} MB)`);
+                console.log(`[MediaStorage] Local file: ${this.truncate(url)} (${fileSizeInMB.toFixed(2)} MB)`);
 
                 if (fileSizeInMB < 90) {
-                    // Use standard upload for files < 90MB (Cloudinary limit is usually 100MB for direct)
-                    // This returns a proper Promise and avoids race conditions
-                    const result = await cloudinary.uploader.upload(url, {
-                        folder,
-                        public_id: options.publicId,
-                        resource_type: resourceType,
-                        overwrite: true,
-                    });
-
-                    return {
-                        url: result.secure_url,
-                        publicId: result.public_id,
-                    };
+                    const result = await cloudinary.uploader.upload(url, uploadOptions);
+                    return { url: result.secure_url, publicId: result.public_id };
                 } else {
-                    console.log(`[MediaStorage] File > 90MB, using chunked upload_large.`);
-                    // For large files, use upload_large. Note: verify if it returns Promise wrapped or Stream
-                    // In v2, it usually returns a Promise if no callback is passed, but behavior can be tricky.
-                    const result = (await cloudinary.uploader.upload_large(url, {
-                        folder,
-                        public_id: options.publicId,
-                        resource_type: resourceType,
-                        chunk_size: 6000000, // 6MB chunks
-                        overwrite: true,
-                    })) as any;
-
-                    // Fallback check
-                    if (!result.secure_url && result._events) {
-                        throw new Error('Cloudinary upload_large returned a Stream instead of a Result. Please check SDK version compatibility.');
-                    }
-
-                    return {
-                        url: result.secure_url,
-                        publicId: result.public_id,
-                    };
+                    const result = (await cloudinary.uploader.upload_large(url, uploadOptions)) as any;
+                    return { url: result.secure_url, publicId: result.public_id };
                 }
             }
 
-            // Case 2: Remote URL
-            // Try regular upload first (most efficient server-side fetch)
             try {
-                const result = await cloudinary.uploader.upload(url, {
-                    folder,
-                    public_id: options.publicId,
-                    resource_type: resourceType,
-                    overwrite: true,
-                });
-
-                return {
-                    url: result.secure_url,
-                    publicId: result.public_id,
-                };
+                const result = await cloudinary.uploader.upload(url, uploadOptions);
+                return { url: result.secure_url, publicId: result.public_id };
             } catch (error: any) {
-                // If it fails due to size (100MB limit for some tiers) or timeout, download and chunk-upload
                 const isSizeError = error.message?.includes('too large') || error.http_code === 400;
                 if (isSizeError && (resourceType === 'video' || resourceType === 'auto')) {
-                    console.warn(`[MediaStorage] Remote video too large for direct fetch (>${(104857600 / 1024 / 1024).toFixed(0)}MB). Attempting local buffer + chunked upload...`);
                     const safeResourceType = resourceType === 'auto' ? 'video' : resourceType as 'image' | 'video' | 'raw';
-                    return await this.downloadAndUploadLarge(url, folder, options.publicId, safeResourceType);
+                    return await this.downloadAndUploadLarge(url, folder, options.publicId, safeResourceType, options.tags, context);
                 }
                 throw error;
             }
         } catch (error: any) {
-            const truncatedUrl = this.truncate(url);
-            console.error(`[Cloudinary] Upload failed for ${truncatedUrl}:`, error.message || 'Unknown error');
-            const message = error instanceof Error ? error.message : JSON.stringify(error) || 'Unknown error';
-            // Truncate message if it contains the URL
-            const cleanMessage = message.length > 500 ? message.substring(0, 500) + '...' : message;
-            throw new Error(`Media upload failed: ${cleanMessage}`);
+            throw new Error(`Media upload failed: ${error.message || 'Unknown error'}`);
         }
     }
 
-    /**
-     * Downloads a remote file and uploads it in chunks to bypass server-side fetch limits.
-     */
     private async downloadAndUploadLarge(
         url: string,
         folder: string,
-        publicId?: string,
-        resourceType: 'image' | 'video' | 'raw' = 'video'
+        publicId: string | undefined,
+        resourceType: 'image' | 'video' | 'raw',
+        tags?: string[],
+        context?: string
     ): Promise<{ url: string; publicId: string }> {
         const tempPath = path.join(os.tmpdir(), `asset_${uuidv4()}.tmp`);
-        console.log(`[MediaStorage] Buffering large asset to: ${tempPath}`);
-
         try {
-            // 1. Download to local file
-            const response = await axios({
-                url,
-                method: 'GET',
-                responseType: 'stream',
-                timeout: 300000, // 5 minutes (reduced from 10 for better fail-fast)
-            });
-
+            const response = await axios({ url, method: 'GET', responseType: 'stream', timeout: 300000 });
             const writer = fs.createWriteStream(tempPath);
-
             await new Promise<void>((resolve, reject) => {
-                let hasError = false;
-                const handleError = (err: Error) => {
-                    if (hasError) return;
-                    hasError = true;
-                    writer.close();
-                    reject(err);
-                };
-
-                response.data.on('error', (err: Error) => handleError(new Error(`Download stream error: ${err.message}`)));
-                writer.on('error', (err: Error) => handleError(new Error(`Write stream error: ${err.message}`)));
-                writer.on('finish', () => resolve());
-
                 response.data.pipe(writer);
+                writer.on('finish', resolve);
+                writer.on('error', reject);
             });
-
-            // 2. Upload to Cloudinary using chunked upload
-            console.log(`[MediaStorage] Uploading buffered asset to Cloudinary (${resourceType})...`);
 
             const result = await new Promise((resolve, reject) => {
                 cloudinary.uploader.upload_large(tempPath, {
-                    folder,
-                    public_id: publicId,
-                    resource_type: resourceType,
-                    chunk_size: 6000000,
-                    overwrite: true,
+                    folder, public_id: publicId, resource_type: resourceType,
+                    chunk_size: 6000000, overwrite: true, tags, context,
                 }, (error, result) => {
-                    if (error) {
-                        console.error(`[MediaStorage] Cloudinary upload_large error:`, error);
-                        reject(error);
-                    } else {
-                        resolve(result);
-                    }
+                    if (error) reject(error);
+                    else resolve(result);
                 });
             }) as any;
 
-            if (!result || !result.secure_url) {
-                throw new Error('Cloudinary upload_large failed: No secure_url in response');
-            }
-
-            return {
-                url: result.secure_url,
-                publicId: result.public_id,
-            };
-        } catch (error) {
-            console.error(`[MediaStorage] downloadAndUploadLarge failed:`, error instanceof Error ? error.message : error);
-            throw error;
+            return { url: result.secure_url, publicId: result.public_id };
         } finally {
-            // Clean up temp file
-            try {
-                if (fs.existsSync(tempPath)) {
-                    fs.unlinkSync(tempPath);
-                    console.log(`[MediaStorage] Cleaned up temp file: ${tempPath}`);
-                }
-            } catch (err) {
-                console.warn(`[MediaStorage] Failed to cleanup temp file ${tempPath}:`, err);
-            }
+            if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
         }
     }
 
-    /**
-     * Uploads raw content (like SRT subtitles) to Media.
-     */
-    async uploadRawContent(
-        content: string,
-        filename: string,
-        options: {
-            folder?: string;
-            publicId?: string;
-        } = {}
-    ): Promise<{ url: string; publicId: string }> {
-        // Write to temp file
-        const tempDir = os.tmpdir();
-        const tempPath = path.join(tempDir, filename);
+    async uploadVideo(url: string, options: { folder?: string; publicId?: string; tags?: string[]; context?: Record<string, string | number | boolean> } = {}) {
+        return this.uploadFromUrl(url, { ...options, resourceType: 'video' });
+    }
 
+    async uploadImage(url: string, options: { folder?: string; publicId?: string; tags?: string[]; context?: Record<string, string | number | boolean> } = {}) {
+        return this.uploadFromUrl(url, { ...options, resourceType: 'image' });
+    }
+
+    async uploadAudio(url: string, options: { folder?: string; publicId?: string; tags?: string[]; context?: Record<string, string | number | boolean> } = {}) {
+        return this.uploadFromUrl(url, { ...options, resourceType: 'video' });
+    }
+
+    async uploadRawContent(content: string, filename: string, options: { folder?: string; publicId?: string; tags?: string[]; context?: Record<string, string | number | boolean> } = {}) {
+        const tempPath = path.join(os.tmpdir(), filename);
         try {
             fs.writeFileSync(tempPath, content, 'utf-8');
-
-            const result = await cloudinary.uploader.upload(tempPath, {
-                folder: options.folder || 'instagram-reels/subtitles',
-                public_id: options.publicId || path.parse(filename).name,
-                resource_type: 'raw',
-                overwrite: true,
-            });
-
-            return {
-                url: result.secure_url,
-                publicId: result.public_id,
-            };
+            return await this.uploadFromUrl(tempPath, { ...options, resourceType: 'raw' });
         } finally {
-            // Clean up temp file
-            if (fs.existsSync(tempPath)) {
-                fs.unlinkSync(tempPath);
-            }
+            if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
         }
     }
 
-    /**
-     * Uploads audio content to Media.
-     */
-    async uploadAudio(
-        audioUrl: string,
-        options: {
-            folder?: string;
-            publicId?: string;
-        } = {}
-    ): Promise<{ url: string; publicId: string }> {
-        return this.uploadFromUrl(audioUrl, {
-            folder: options.folder || 'instagram-reels/audio',
-            publicId: options.publicId,
-            resourceType: 'video', // Media uses 'video' for audio files
-        });
-    }
-
-    /**
-     * Uploads an image to Media.
-     */
-    async uploadImage(
-        imageUrl: string,
-        options: {
-            folder?: string;
-            publicId?: string;
-        } = {}
-    ): Promise<{ url: string; publicId: string }> {
-        return this.uploadFromUrl(imageUrl, {
-            folder: options.folder || 'instagram-reels/images',
-            publicId: options.publicId,
-            resourceType: 'image',
-        });
-    }
-
-    /**
-     * Uploads a video to Media.
-     */
-    async uploadVideo(
-        videoUrl: string,
-        options: {
-            folder?: string;
-            publicId?: string;
-            resourceType?: 'video';
-        } = {}
-    ): Promise<{ url: string; publicId: string }> {
-        return this.uploadFromUrl(videoUrl, {
-            folder: options.folder || 'instagram-reels/videos',
-            publicId: options.publicId,
-            resourceType: 'video',
-        });
-    }
-
-    /**
-     * Gets a URL for a Media resource.
-     */
-    getUrl(publicId: string, resourceType: 'image' | 'video' | 'raw' = 'image'): string {
-        return cloudinary.url(publicId, {
-            resource_type: resourceType,
-            secure: true,
-        });
-    }
-
-    /**
-     * Deletes a resource from Media.
-     */
-    async delete(
+    async updateMetadata(
         publicId: string,
-        resourceType: 'image' | 'video' | 'raw' = 'image'
+        options: {
+            tags?: string[];
+            context?: Record<string, string | number | boolean>;
+            resourceType?: 'image' | 'video' | 'raw';
+        }
     ): Promise<void> {
-        await cloudinary.uploader.destroy(publicId, {
+        const resourceType = options.resourceType || 'image';
+        const context = options.context
+            ? Object.entries(options.context).map(([k, v]) => `${k}=${v}`).join('|')
+            : undefined;
+
+        await cloudinary.uploader.explicit(publicId, {
+            type: 'upload',
             resource_type: resourceType,
+            tags: options.tags,
+            context: context,
         });
+    }
+
+    async listResourcesInFolder(
+        folder: string,
+        resourceType: 'image' | 'video' | 'raw' = 'video',
+        maxResults: number = 100
+    ): Promise<{ publicId: string; url: string; tags: string[]; context: Record<string, string> }[]> {
+        const result = await cloudinary.search
+            .expression(`folder:${folder} AND resource_type:${resourceType}`)
+            .with_field('context')
+            .with_field('tags')
+            .max_results(maxResults)
+            .execute();
+
+        return result.resources.map((res: any) => ({
+            publicId: res.public_id,
+            url: res.secure_url,
+            tags: res.tags || [],
+            context: res.context || {},
+        }));
+    }
+
+    async delete(publicId: string, resourceType: 'image' | 'video' | 'raw' = 'image'): Promise<void> {
+        await cloudinary.uploader.destroy(publicId, { resource_type: resourceType });
+    }
+
+    getUrl(publicId: string, resourceType: 'image' | 'video' | 'raw' = 'image'): string {
+        return cloudinary.url(publicId, { resource_type: resourceType, secure: true });
     }
 }

@@ -70,7 +70,7 @@ import { ImageGenerationService } from './services/ImageGenerationService';
 import { PromoAssetService } from './services/PromoAssetService';
 import { OrchestratorErrorService } from './services/OrchestratorErrorService';
 import { IComplianceClient } from '../infrastructure/compliance/GuardianClient';
-import { WebsitePromoSlice } from '../slices/website-promo';
+import { WebsitePromoSlice } from '../lib/website-promo';
 
 export interface OrchestratorDependencies {
     transcriptionClient: ITranscriptionClient;
@@ -234,8 +234,7 @@ export class ReelOrchestrator {
                     await this.updateJobStatus(jobId, 'uploading', 'Uploading to permanent storage...');
                     const uploadResult = await this.deps.storageClient.uploadVideo(finalVideoUrl, {
                         folder: 'instagram-reels/final-videos',
-                        publicId: `reel_${jobId}_${Date.now()}`,
-                        resourceType: 'video'
+                        publicId: `reel_${jobId}_${Date.now()}`
                     });
                     finalVideoUrl = uploadResult.url;
                     finalJob = await this.deps.jobManager.updateJob(jobId, { finalVideoUrl, status: 'completed' });
@@ -788,8 +787,7 @@ export class ReelOrchestrator {
                 await this.deps.jobManager.updateStatus(jobId, 'uploading', 'Saving to permanent storage...');
                 const uploadResult = await this.deps.storageClient.uploadVideo(finalVideoUrl, {
                     folder: 'instagram-reels/final-videos',
-                    publicId: `promo_${jobId}_${Date.now()}`,
-                    resourceType: 'video'
+                    publicId: `promo_${jobId}_${Date.now()}`
                 });
                 finalVideoUrl = uploadResult.url;
             } catch (e) {
@@ -1070,7 +1068,6 @@ export class ReelOrchestrator {
                 const uploadResult = await this.deps.storageClient.uploadVideo(finalVideoUrl, {
                     folder: 'youtube-shorts/final-videos',
                     publicId: `youtube_${jobId}_${Date.now()}`,
-                    resourceType: 'video',
                 });
                 finalVideoUrl = uploadResult.url;
             } catch (e) {

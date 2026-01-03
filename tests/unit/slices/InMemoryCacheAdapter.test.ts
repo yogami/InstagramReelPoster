@@ -2,7 +2,7 @@
  * Unit Tests for InMemoryCacheAdapter
  */
 
-import { InMemoryCacheAdapter } from '../../../src/slices/website-promo/adapters/InMemoryCacheAdapter';
+import { InMemoryCacheAdapter } from '../../../src/lib/website-promo/adapters/InMemoryCacheAdapter';
 
 describe('InMemoryCacheAdapter', () => {
     let cache: InMemoryCacheAdapter;

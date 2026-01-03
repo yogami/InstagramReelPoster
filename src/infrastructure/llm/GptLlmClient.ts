@@ -283,21 +283,27 @@ Return JSON with format: { "category": "cafe|gym|shop|service|restaurant|studio|
     async generatePromoScript(
         analysis: WebsiteAnalysis,
         category: BusinessCategory,
-        language: string = 'en'
+        language: string = 'en',
+        options?: { formality?: 'formal' | 'informal'; tone?: string }
     ): Promise<PromoScriptPlan> {
         // Derive omitted arguments
         const template = CATEGORY_PROMPTS[category] || CATEGORY_PROMPTS['service'];
         const businessName = analysis.detectedBusinessName || 'the business';
         const langMap: Record<string, string> = {
             'en': 'English (Expat/International Berlin style)',
-            'de': 'German (Local Berlin/Berliner Schnauze style)'
+            'de': options?.formality === 'formal'
+                ? 'German (Formal "Sie" - Local Berlin/DACH style)'
+                : 'German (Informal "Du" - Local Berlin/Berliner Schnauze style)'
         };
         const targetLanguage = langMap[language] || 'English';
 
         // Cultural Voice Definition
-        const culturalVoice = language === 'de'
+        const baseVoice = language === 'de'
             ? `VOICE: "Berliner Schnauze" - Direct, honest, zero-fluff, slightly dry/witty, and professional but grounded. Avoid "hype" marketing. Be neighborly and straightforward.`
             : `VOICE: "International Berlin" - Sophisticated, creative, edgy, high-standards, sharp but friendly. Avoid "American-style hype" or "fake energy". Focus on the "why" and authentic value.`;
+
+        const toneVoice = options?.tone ? `\nTONE PREFERENCE: ${options.tone}. (Ensure the script primarily uses the ${options.tone} emotional register while staying within the Berlin cultural context.)` : '';
+        const culturalVoice = baseVoice + toneVoice;
 
         // Build Site DNA context for the prompt
         const siteDNA = analysis.siteDNA;
@@ -421,6 +427,7 @@ Return JSON:
 
         const categoryScores: Record<BusinessCategory, number> = {
             cafe: 0, gym: 0, shop: 0, service: 0, restaurant: 0, studio: 0, spiritual: 0, tech: 0, agency: 0,
+            healthcare: 0, pharma: 0, realestate: 0
         };
 
         const categoryKeywords: Record<BusinessCategory, string[]> = {
@@ -433,6 +440,9 @@ Return JSON:
             spiritual: ['meditation', 'spirituality', 'insight', 'healing'],
             tech: ['software', 'app', 'ai', 'data', 'cloud', 'tech'],
             agency: ['agency', 'marketing', 'strategy', 'branding'],
+            healthcare: ['doctor', 'clinic', 'hospital', 'patient', 'health', 'medical', 'dentist'],
+            pharma: ['pharmacy', 'medicine', 'drug', 'clinical', 'laboratory', 'biotech'],
+            realestate: ['real estate', 'property', 'apartment', 'house', 'rent', 'sell', 'broker', 'immobilien'],
         };
 
         for (const [cat, catKeywords] of Object.entries(categoryKeywords)) {

@@ -269,7 +269,8 @@ export interface ILlmClient {
     generatePromoScript?(
         analysis: WebsiteAnalysis,
         category: BusinessCategory,
-        language?: string
+        language?: string,
+        options?: { formality?: 'formal' | 'informal'; tone?: string }
     ): Promise<PromoScriptPlan>;
 
     /**

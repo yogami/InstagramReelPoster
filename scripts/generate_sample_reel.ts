@@ -1,10 +1,10 @@
 
 import { loadConfig } from '../src/config';
-import { createWebsitePromoSlice } from '../src/slices/website-promo';
-import { WebsiteScraperAdapter } from '../src/slices/website-promo/adapters/WebsiteScraperAdapter';
-import { ScriptGenerationAdapter } from '../src/slices/website-promo/adapters/ScriptGenerationAdapter';
-import { AssetGenerationAdapter } from '../src/slices/website-promo/adapters/AssetGenerationAdapter';
-import { RenderingAdapter } from '../src/slices/website-promo/adapters/RenderingAdapter';
+import { createWebsitePromoSlice } from '../src/lib/website-promo';
+import { WebsiteScraperAdapter } from '../src/lib/website-promo/adapters/WebsiteScraperAdapter';
+import { ScriptGenerationAdapter } from '../src/lib/website-promo/adapters/ScriptGenerationAdapter';
+import { AssetGenerationAdapter } from '../src/lib/website-promo/adapters/AssetGenerationAdapter';
+import { RenderingAdapter } from '../src/lib/website-promo/adapters/RenderingAdapter';
 
 // Infrastructure imports
 import { GptLlmClient } from '../src/infrastructure/llm/GptLlmClient';

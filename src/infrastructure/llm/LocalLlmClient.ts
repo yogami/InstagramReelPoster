@@ -176,6 +176,32 @@ Respond ONLY with JSON: { "captionBody": "...", "hashtags": ["#tag1", ...] }`;
         };
     }
 
+    async generatePromoScript(
+        analysis: any,
+        category: any,
+        language?: string,
+        options?: { formality?: 'formal' | 'informal'; tone?: string }
+    ): Promise<any> {
+        const prompt = `Create a promotional reel script for ${analysis.detectedBusinessName || 'this business'}.
+Language: ${language || 'en'}
+Formality: ${options?.formality || 'default'}
+Tone: ${options?.tone || 'professional'}
+Category: ${category}
+
+Respond with JSON:
+{
+  "coreMessage": "...",
+  "scenes": [{ "duration": 6, "imagePrompt": "...", "narration": "...", "subtitle": "...", "role": "hook" }],
+  "musicStyle": "...",
+  "caption": "...",
+  "language": "...",
+  "category": "..."
+}`;
+
+        const response = await this.callOllama(prompt);
+        return this.parseJSON<any>(response);
+    }
+
     private async callOllama(prompt: string): Promise<string> {
         const maxRetries = 3;
         let lastError: any;

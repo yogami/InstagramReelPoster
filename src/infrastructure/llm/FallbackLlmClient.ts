@@ -90,8 +90,8 @@ export class FallbackLlmClient implements ILlmClient {
         return this.tryCall('detectBusinessCategory', (c) => c.detectBusinessCategory!(analysis));
     }
 
-    async generatePromoScript(analysis: WebsiteAnalysis, category: BusinessCategory, language?: string): Promise<PromoScriptPlan> {
-        return this.tryCall('generatePromoScript', (c) => c.generatePromoScript!(analysis, category, language));
+    async generatePromoScript(analysis: WebsiteAnalysis, category: BusinessCategory, language?: string, options?: { formality?: 'formal' | 'informal'; tone?: string }): Promise<PromoScriptPlan> {
+        return this.tryCall('generatePromoScript', (c) => c.generatePromoScript!(analysis, category, language, options));
     }
 
     async generatePersonalPromoScript(analysis: WebsiteAnalysis, language?: string): Promise<PromoScriptPlan> {

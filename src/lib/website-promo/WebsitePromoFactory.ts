@@ -17,6 +17,7 @@ import { ICachePort } from './ports/ICachePort';
 import { IMetricsPort } from './ports/IMetricsPort';
 import { IAvatarGenerationPort } from './ports/IAvatarGenerationPort';
 import { IJobQueuePort } from './ports/IJobQueuePort';
+import { ICompliancePort } from './ports/ICompliancePort';
 
 export interface WebsitePromoSliceConfig {
     scrapingPort: IScrapingPort;
@@ -27,6 +28,7 @@ export interface WebsitePromoSliceConfig {
     templateRepository: ITemplateRepository;
     cachePort: ICachePort;
     metricsPort: IMetricsPort;
+    compliancePort: ICompliancePort;
     avatarPort?: IAvatarGenerationPort;
     jobQueuePort?: IJobQueuePort;
     onStatusChange?: WebsitePromoOrchestratorDeps['onStatusChange'];
@@ -47,12 +49,8 @@ export interface WebsitePromoSlice {
  *     scrapingPort: new WebsiteScraperAdapter(scraperClient),
  *     scriptPort: new GptScriptAdapter(llmClient),
  *     assetPort: new AssetGenerationAdapter(ttsClient, imageClient),
- *     renderingPort: new FFmpegRenderingAdapter(renderer)
- * });
- * 
- * const result = await slice.orchestrator.processJob('job_123', {
- *     websiteUrl: 'https://example.com',
- *     consent: true
+ *     renderingPort: new FFmpegRenderingAdapter(renderer),
+ *     compliancePort: new GuardianComplianceAdapter(guardian, zeroRetention, provenance)
  * });
  * ```
  */
@@ -66,6 +64,7 @@ export function createWebsitePromoSlice(config: WebsitePromoSliceConfig): Websit
         templateRepository: config.templateRepository,
         cachePort: config.cachePort,
         metricsPort: config.metricsPort,
+        compliancePort: config.compliancePort,
         avatarPort: config.avatarPort,
         jobQueuePort: config.jobQueuePort,
         onStatusChange: config.onStatusChange,

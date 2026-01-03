@@ -95,6 +95,9 @@ export interface Config {
     // Remote Avatar (SadTalker on Beam.cloud)
     sadTalkerEndpointUrl: string;
 
+    // Replicate
+    replicateApiToken: string;
+
     // Personal Clone Feature Flags
     featureFlags: {
         usePersonalCloneTTS: boolean;  // Use local XTTS v2 instead of Fish Audio
@@ -107,6 +110,7 @@ export interface Config {
 
     // Guardian API (ConvoGuard compliance service)
     guardianApiUrl: string;
+    guardianApiKey: string;
 
     // DeepL API
     deeplApiKey: string;
@@ -271,6 +275,9 @@ export function loadConfig(): Config {
         // Remote Avatar (SadTalker)
         sadTalkerEndpointUrl: getEnvVar('BEAMCLOUD_SADTALKER_ENDPOINT_URL', ''),
 
+        // Replicate (Promo Engine)
+        replicateApiToken: getEnvVar('REPLICATE_API_TOKEN', ''),
+
         // Personal Clone Feature Flags (all default to false - non-breaking)
         featureFlags: {
             usePersonalCloneTTS: getEnvVarBoolean('USE_PERSONAL_CLONE_TTS', false),
@@ -283,6 +290,7 @@ export function loadConfig(): Config {
 
         // Guardian API (ConvoGuard compliance service)
         guardianApiUrl: getEnvVar('GUARDIAN_API_URL', 'http://localhost:3001'),
+        guardianApiKey: getEnvVar('GUARDIAN_API_KEY', ''),
 
         // DeepL API
         deeplApiKey: getEnvVar('DEEPL_API_KEY', ''),

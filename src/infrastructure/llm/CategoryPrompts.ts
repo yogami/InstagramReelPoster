@@ -59,6 +59,24 @@ export const CATEGORY_PROMPTS: Record<BusinessCategory, CategoryPromptTemplate> 
         cta: "Partner with Berlin's growth engine",
         visuals: "Sun-drenched loft office, creative mood board with sketches, focused strategic planning session, modern designer desks, authentic team collaboration, high-end photography of real work environment",
     },
+    healthcare: {
+        hook: "Does finding a doctor you trust feel impossible?",
+        showcase: "Patient-centered care, state-of-the-art facilities, empathetic experts",
+        cta: "Modern health care for Berlin",
+        visuals: "bright medical office, doctor talking to patient, clean equipment, caring touch, professional medical environment",
+    },
+    pharma: {
+        hook: "Quality medicine you can rely on, every single time.",
+        showcase: "Strict compliance, expert consultations, locally trusted pharmacy",
+        cta: "Your health, our priority",
+        visuals: "pharmacy counter, pharmacist consulting, clean medicine shelves, precise laboratory work, authentic pharmacy atmosphere",
+    },
+    realestate: {
+        hook: "Tired of the Berlin housing hunt?",
+        showcase: "Exclusive listings, honest advice, smooth transactions",
+        cta: "Find your perfect space in Berlin",
+        visuals: "beautiful airy apartment, sleek modern kitchen, exterior of Altbau building, happy couple receiving keys, professional real estate office",
+    },
 };
 
 /**
@@ -74,6 +92,9 @@ export const CATEGORY_KEYWORDS: Record<BusinessCategory, string[]> = {
     spiritual: ['meditation', 'wellness', 'spiritual', 'healing', 'yoga', 'mindfulness', 'retreat', 'insight', 'wisdom'],
     tech: ['software', 'app', 'platform', 'ai', 'artificial intelligence', 'data', 'cloud', 'digital', 'saas', 'automation', 'tech', 'cyber'],
     agency: ['agency', 'marketing', 'consulting', 'strategy', 'digital', 'branding', 'design', 'growth', 'advertising', 'media'],
+    healthcare: ['doctor', 'clinic', 'hospital', 'patient', 'health', 'medical', 'dentist', 'physiotherapy', 'mediziner', 'arzt'],
+    pharma: ['pharmacy', 'medicine', 'drug', 'clinical', 'laboratory', 'biotech', 'apotheke', 'laboratory', 'medikament'],
+    realestate: ['real estate', 'property', 'apartment', 'house', 'rent', 'sell', 'broker', 'immobilien', 'makler', 'wohnung'],
 };
 
 /**
@@ -87,8 +108,11 @@ export const CATEGORY_MUSIC_STYLES: Record<BusinessCategory, string> = {
     restaurant: 'berlin-techno-minimal',
     studio: 'creative-electronic',
     spiritual: 'deep-ambient-flute-sitar',
-    tech: 'tech', // Updated to match 'tech' tag in catalog
+    tech: 'tech',
     agency: 'modern-corporate-upbeat',
+    healthcare: 'calm-professional-piano',
+    pharma: 'clean-sterile-electronic',
+    realestate: 'sophisticated-luxury-jazz',
 };
 
 /**
@@ -110,6 +134,9 @@ export function detectCategoryFromKeywords(keywords: string[]): {
         spiritual: 0,
         tech: 0,
         agency: 0,
+        healthcare: 0,
+        pharma: 0,
+        realestate: 0,
     };
 
     const normalizedKeywords = keywords.map(kw => kw.toLowerCase());

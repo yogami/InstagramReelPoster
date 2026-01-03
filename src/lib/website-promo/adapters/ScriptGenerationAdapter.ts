@@ -16,10 +16,11 @@ export class ScriptGenerationAdapter implements IScriptGenerationPort {
             throw new Error('LLM client does not support promo script generation');
         }
 
-        return await this.llmClient.generatePromoScript(
+        return await this.llmClient.generatePromoScript!(
             options.websiteAnalysis,
             options.category,
-            options.language
+            options.language,
+            { formality: options.formality, tone: options.tone }
         );
     }
 

@@ -6,7 +6,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 import { EnhancedWebsiteScraper } from '../src/infrastructure/scraper/EnhancedWebsiteScraper';
-import { ContentDNAAnalyzer } from '../src/slices/website-promo/domain/services/ContentDNAAnalyzer';
+import { ContentDNAAnalyzer } from '../src/lib/website-promo/domain/services/ContentDNAAnalyzer';
 
 const TEST_CASES = [
     { url: 'https://linear.app', description: 'Streamlined PM' },

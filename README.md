@@ -212,26 +212,13 @@ The LLM is prompted to write in a specific voice:
 ```
 src/
 ├── domain/              # Core business logic
-│   ├── entities/        # ReelJob, Segment, Track, ReelManifest
-│   ├── ports/           # Interface definitions
-│   └── services/        # DurationCalculator
-├── application/         # Use cases
-│   ├── ReelOrchestrator.ts
-│   ├── JobManager.ts
-│   └── MusicSelector.ts
-├── infrastructure/      # External service adapters
-│   ├── transcription/   # OpenAI Whisper
-│   ├── llm/             # OpenAI GPT-4.1
-│   ├── tts/             # Fish Audio
-│   ├── music/           # Catalog + Kie.ai
-│   ├── images/          # DALL-E 3
-│   ├── subtitles/       # OpenAI Whisper
-│   └── shortstack/      # Video rendering
-├── presentation/        # HTTP layer
-│   ├── routes/
-│   └── middleware/
-├── config/              # Environment configuration
-└── index.ts             # Entry point
+├── application/         # Use cases & workflow orchestration
+├── lib/                 # Decoupled Internal Microservices
+│   ├── promo-engine/    # Persona training & AI script generation
+│   └── website-promo/   # URL-to-Reel pipeline
+├── infrastructure/      # Concrete adapters (LLM, TTS, Renderers)
+├── presentation/        # HTTP layer (Express routes)
+└── config/              # Environment & feature flags
 ```
 
 ## License

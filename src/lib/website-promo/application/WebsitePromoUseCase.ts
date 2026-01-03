@@ -19,6 +19,7 @@ import { ITemplateRepository } from '../ports/ITemplateRepository';
 import { ICachePort, CACHE_PREFIXES, DEFAULT_TTL } from '../ports/ICachePort';
 import { IMetricsPort, METRICS } from '../ports/IMetricsPort';
 import { IAvatarGenerationPort } from '../ports/IAvatarGenerationPort';
+import { ICompliancePort } from '../ports/ICompliancePort';
 
 export interface WebsitePromoResult {
     videoUrl: string;
@@ -33,6 +34,13 @@ export interface WebsitePromoResult {
         cached: boolean;
         translated: boolean;
         templateUsed?: string;
+        compliance?: {
+            approved: boolean;
+            score: number;
+            auditId: string;
+            riskLevel: string;
+        };
+        provenanceId?: string;
     };
 }
 
@@ -45,6 +53,7 @@ export interface WebsitePromoUseCaseDeps {
     templateRepository: ITemplateRepository;
     cachePort: ICachePort;
     metricsPort: IMetricsPort;
+    compliancePort: ICompliancePort;
     avatarPort?: IAvatarGenerationPort;
 }
 
@@ -87,27 +96,31 @@ export class WebsitePromoUseCase {
 
             // 3. Template Selection or Generation
             let script: PromoScriptPlan;
+            const scriptOptions = {
+                websiteAnalysis: analysis,
+                category,
+                language: input.language || 'en',
+                targetDurationSeconds: 17, // Standard reel length
+                formality: input.formality,
+                tone: input.tone
+            };
+
             if (input.templateId) {
                 const template = await this.deps.templateRepository.getTemplate(input.templateId);
                 if (template) {
-                    // Start with a generated script to get contextual narration
-                    script = await this.generateStandardScript(analysis, category);
-
-                    // Override with template styles and structure if available
+                    script = await this.deps.scriptPort.generateScript(scriptOptions);
                     script.musicStyle = template.musicStyle;
                     script.templateId = input.templateId;
-
-                    // Map scene durations from template hints
                     script.scenes.forEach((scene, i) => {
                         if (template.sceneHints[i]) {
                             scene.duration = template.sceneHints[i].durationSeconds;
                         }
                     });
                 } else {
-                    script = await this.generateStandardScript(analysis, category);
+                    script = await this.deps.scriptPort.generateScript(scriptOptions);
                 }
             } else {
-                script = await this.generateStandardScript(analysis, category);
+                script = await this.deps.scriptPort.generateScript(scriptOptions);
             }
 
             // 4. Multilingual Translation
@@ -122,9 +135,9 @@ export class WebsitePromoUseCase {
                 const translations = await this.deps.translationPort.translateBatch(scenesToTranslate, targetLang as any);
 
                 script.scenes.forEach((scene, i) => {
-                    const [narration, subtitle] = translations[i].translatedText.split('|||');
-                    scene.narration = narration;
-                    scene.subtitle = subtitle;
+                    const parts = translations[i].translatedText.split('|||');
+                    scene.narration = parts[0];
+                    scene.subtitle = parts[1] || parts[0];
                 });
 
                 // Translate core message and caption
@@ -134,13 +147,27 @@ export class WebsitePromoUseCase {
                 script.language = targetLang;
             }
 
-            // 5. Generate assets with voice style resolution
+            // 5. Guardian Compliance Scan (Berlin Specialist MOAT)
+            const fullScriptText = script.scenes.map(s => s.narration).join(' ') + ' ' + script.caption;
+            const compliance = await this.deps.compliancePort.checkScript({
+                text: fullScriptText,
+                language: script.language,
+                market: input.market || 'global',
+                formality: input.formality
+            });
+
+            if (!compliance.approved && compliance.riskLevel === 'high') {
+                console.warn(`[PromoSlice] Blocked by Guardian: ${compliance.violations.join(', ')}`);
+                throw new Error(`Compliance Block: ${compliance.violations[0] || 'Content rejected by safety engine'}`);
+            }
+
+            // 6. Generate assets with voice style resolution
             const finalVoiceId = resolveVoiceId(input.voiceStyle as VoiceStyle, input.voiceId);
 
             // Generate images (parallel)
             const imagesPromise = this.deps.assetPort.generateImages(script.scenes);
 
-            // Generate voiceover (sequential, but fast)
+            // Generate voiceover
             const narration = script.scenes.map(s => s.narration).join(' ');
             const voiceover = await this.deps.assetPort.generateVoiceover(narration, {
                 language: script.language,
@@ -151,28 +178,24 @@ export class WebsitePromoUseCase {
             const music = await this.deps.assetPort.selectMusic(category, voiceover.durationSeconds);
             const subtitles = await this.deps.assetPort.generateSubtitles(voiceover.url);
 
-            // 6. Optional Avatar Integration
+            // 7. Optional Avatar Integration
             let avatarVideoUrl: string | undefined;
             if (input.avatarId && this.deps.avatarPort) {
-                // SOTA Optimization: Use the pre-generated high-quality voiceover for lip-sync
-                // This ensures the avatar matches the audio exactly and reduces compute / cost.
-                console.log(`[PromoSlice] Generating optimized avatar video using pre-rendered audio...`);
-
+                console.log(`[PromoSlice] Generating optimized avatar video...`);
                 const avatarResult = await this.deps.avatarPort.generateAvatarVideo(
                     script.scenes[0].narration,
                     {
                         avatarId: input.avatarId,
                         voiceId: finalVoiceId,
                         resolution: '1080p',
-                        preRenderedBaseUrl: this.resolvePreRenderedBase(input.avatarId) // Use pre-rendered generic if available
+                        preRenderedBaseUrl: this.resolvePreRenderedBase(input.avatarId)
                     },
-                    voiceover.url // Pre-generated high-quality audio
+                    voiceover.url
                 );
                 avatarVideoUrl = avatarResult.videoUrl;
-                console.log(`[PromoSlice] Avatar video generated: ${avatarVideoUrl}`);
             }
 
-            // 7. Render video
+            // 8. Render video
             const renderResult = await this.deps.renderingPort.render(
                 {
                     ...script,
@@ -185,9 +208,20 @@ export class WebsitePromoUseCase {
                     subtitlesUrl: subtitles,
                     imageUrls: images,
                     logoUrl: input.logoUrl,
-                    avatarVideoUrl // Renderer will need to handle this as an overlay or intro
+                    avatarVideoUrl
                 }
             );
+
+            // 9. Record Asset Provenance (Audit Trail)
+            const jobId = `job_${Date.now()}`;
+            const provenanceId = await this.deps.compliancePort.recordProvenance(jobId, {
+                approved: compliance.approved,
+                score: compliance.score,
+                auditId: compliance.auditId,
+                music: { trackName: 'Promo Music', source: 'catalog', license: 'Royalty-Free' },
+                images: images.map((url, i) => ({ sceneIndex: i, source: 'flux', synthetic: true, license: 'AI-Generated' })),
+                voice: { provider: 'fish_audio', voiceId: finalVoiceId, synthetic: true, language: script.language }
+            });
 
             stopTimer();
             return {
@@ -200,7 +234,14 @@ export class WebsitePromoUseCase {
                 metadata: {
                     cached: isCached,
                     translated: isTranslated,
-                    templateUsed: input.templateId
+                    templateUsed: input.templateId,
+                    compliance: {
+                        approved: compliance.approved,
+                        score: compliance.score,
+                        auditId: compliance.auditId,
+                        riskLevel: compliance.riskLevel
+                    },
+                    provenanceId
                 }
             };
         } catch (error: any) {
@@ -209,30 +250,11 @@ export class WebsitePromoUseCase {
         }
     }
 
-    private async generateStandardScript(analysis: WebsiteAnalysis, category: BusinessCategory): Promise<PromoScriptPlan> {
-        return this.deps.scriptPort.generateScript({
-            websiteAnalysis: analysis,
-            category,
-            language: 'en',
-            targetDurationSeconds: 30
-        });
-    }
-
-    /**
-     * Resolves a pre-rendered base video for an avatar.
-     * These videos are "generic" (smiling, blinking) and have no lip movement,
-     * allowing SadTalker/OmniHuman to only generate the lips.
-     */
     private resolvePreRenderedBase(avatarId: string): string | undefined {
         const MAPPING: Record<string, string> = {
             'Imelda_Casual_Front_public': 'https://res.cloudinary.com/demo/video/upload/v1/pre-renders/imelda_casual_base.mp4',
             'Imelda_Suit_Front_public': 'https://res.cloudinary.com/demo/video/upload/v1/pre-renders/imelda_suit_base.mp4'
         };
-
-        // Also check env variables for dynamic overrides
-        if (avatarId === process.env.AVATAR_IMELDA_CASUAL) return MAPPING['Imelda_Casual_Front_public'];
-        if (avatarId === process.env.AVATAR_IMELDA_SUIT) return MAPPING['Imelda_Suit_Front_public'];
-
         return MAPPING[avatarId];
     }
 }

@@ -1,5 +1,12 @@
 # Development Rules & Definition of Done
 
+## 0. Microservice Reuse Strategy (Check First!)
+Before starting any new feature or project:
+1. Check `MICROSERVICES.md` (Internal Microservice Catalog) in the project root.
+2. If a relevant microservice exists, reuse it (import from `src/lib/` or the appropriate package).
+3. If implementing a new complex domain, design it as a potential microservice (Bounded Context) in `src/lib/` from the start.
+
+
 ## Testing Pyramid (Required for All Changes)
 
 ### 1. Unit Tests (Fastest, Cheapest)
