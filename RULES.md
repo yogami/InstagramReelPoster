@@ -34,6 +34,22 @@ Before starting any new feature or project:
 
 ---
 
+## Security & Quality Gates
+**These rules are strictly enforced. All violations must be fixed before merging.**
+
+### 1. Security (Defensive Coding)
+- **Log Injection**: Use `safeLogger` (no direct `console.log`). Sanitize all user inputs.
+- **ReDoS**: Avoid polynomial regex. Use `indexOf` or regex timeouts where possible.
+- **Secrets**: NEVER commit secrets. Use `safeLogger` to obfuscate sensitive data in logs.
+- **Dependencies**: Zero High/Critical vulnerabilities in `npm audit`.
+
+### 2. Code Quality
+- **Complexity**: Maximum Cyclomatic Complexity per function = 10. Split complex logic into helper functions (SRP).
+- **Circular Dependencies**: Zero circular dependencies allowed.
+- **Length**: Functions should be short (< 50 lines ideal).
+
+---
+
 ## Definition of Done (DoD)
 
 A feature/bugfix is DONE when ALL of the following are complete:
@@ -41,6 +57,9 @@ A feature/bugfix is DONE when ALL of the following are complete:
 - [ ] **Unit tests** pass (`npm test`)
 - [ ] **Contract tests** pass (`npx jest tests/contracts/`)
 - [ ] **Linter** passes (`npx eslint . --quiet`)
+- [ ] **Complexity** rules passed (Cyclomatic Complexity < 10)
+- [ ] **Security** check passed (CodeQL alerts cleared, `npm audit` clean)
+- [ ] **Circular Dependencies** check passed (madge/dpdm)
 - [ ] **Build** succeeds (`npm run build`)
 - [ ] **Code** committed with descriptive message
 - [ ] **Pushed** to remote repository
