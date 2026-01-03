@@ -39,7 +39,7 @@ Before starting any new feature or project:
 
 ### 1. Security (Defensive Coding)
 - **Log Injection**: Use `safeLogger` (no direct `console.log`). Sanitize all user inputs.
-- **ReDoS**: Avoid polynomial regex. Use `indexOf` or regex timeouts where possible.
+- **Railway/Secrets**: Use `RAILWAY_TOKEN` (global env var) for CLI operations. NEVER hardcode secrets.- **ReDoS**: Avoid polynomial regex. Use `indexOf` or regex timeouts where possible.
 - **Secrets**: NEVER commit secrets. Use `safeLogger` to obfuscate sensitive data in logs.
 - **Dependencies**: Zero High/Critical vulnerabilities in `npm audit`.
 
