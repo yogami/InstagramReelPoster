@@ -52,8 +52,8 @@ export default [
                 skipBlankLines: true,
                 skipComments: true
             }],
-            'complexity': ['warn', 15],  // Increased from 10 to 15
-            'max-params': ['warn', 5],   // Increased from 4 to 5
+            'complexity': ['error', 10],  // Craftsmanship standard: ≤10
+            'max-params': ['warn', 4],   // Craftsmanship standard: ≤4
             'no-magic-numbers': 'off',   // Too noisy - keep off for now
 
             // General best practices

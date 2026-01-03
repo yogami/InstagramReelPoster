@@ -8,24 +8,14 @@
  * Payload structure for LinkedIn post via Make.com webhook.
  */
 export interface LinkedInPostPayload {
-    /** Main text of the post (LinkedIn internal: commentary) */
+    /** Main text of the post */
     content: string;
-    /** Post visibility setting */
-    visibility: 'PUBLIC' | 'CONNECTIONS';
-    /** Post type */
-    type: 'ARTICLE' | 'IMAGE' | 'VIDEO' | 'NONE';
-    /** Media specific fields */
-    media?: {
-        title?: string;
-        description?: string;
-        originalUrl?: string;
-        thumbnail?: {
-            fileName?: string;
-            data?: string | null;
-        };
-    };
-    /** LinkedIn user mentions (URNs or handles) */
-    mentions?: string[];
+    /** URL of the image to post */
+    originalUrl: string;
+    /** Title of the post/image */
+    title: string;
+    /** Alternative text for accessibility */
+    altText?: string;
 }
 
 /**

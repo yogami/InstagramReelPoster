@@ -13,11 +13,12 @@
     "test:e2e": "jest --testPathPatterns=tests/e2e",
     "test:parity": "jest tests/e2e/ProductionParity.test.ts --runInBand",
     "test:coverage": "jest --coverage",
-    "test:ci": "jest --coverage --coverageThreshold='{\"global\":{\"lines\":80}}'",
+    "test:ci": "jest --coverage --coverageThreshold='{\"global\":{\"lines\":80,\"branches\":80}}'",
     "lint": "eslint src/**/*.ts",
     "lint:fix": "eslint src/**/*.ts --fix",
     "lint:strict": "eslint src/**/*.ts --max-warnings=0",
-    "quality": "npm run lint && npm run test",
+    "lint:duplication": "jscpd src --threshold 5",
+    "quality": "npm run lint:strict && npm run lint:duplication && npm run test:ci",
     "format": "prettier --write src/**/*.ts tests/**/*.ts"
   },
   "keywords": [
@@ -64,6 +65,7 @@
     "eslint": "^9.39.2",
     "globals": "^16.5.0",
     "jest": "^30.2.0",
+    "jscpd": "^4.0.5",
     "nock": "^14.0.10",
     "nodemon": "^3.1.11",
     "prettier": "^3.7.4",
