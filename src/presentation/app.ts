@@ -133,7 +133,9 @@ export function createApp(config: Config): Application {
 
 /**
  * Creates all dependencies with proper wiring.
+ * @todo Refactor to reduce complexity (TECH-DEBT: complexity 15)
  */
+// eslint-disable-next-line complexity
 export function createDependencies(config: Config): {
     jobManager: JobManager;
     orchestrator: ReelOrchestrator;

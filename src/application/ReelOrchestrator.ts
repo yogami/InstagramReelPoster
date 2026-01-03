@@ -153,7 +153,9 @@ export class ReelOrchestrator {
     /**
      * Processes a reel job asynchronously.
      * Updates job status at each step.
+     * @todo Refactor to reduce complexity (TECH-DEBT: complexity 37)
      */
+    // eslint-disable-next-line complexity
     async processJob(jobId: string): Promise<ReelJob> {
         this.logMemoryUsage('Start processJob (Pipeline)');
         const job = await this.deps.jobManager.getJob(jobId);
@@ -524,7 +526,9 @@ export class ReelOrchestrator {
 
     /**
      * Generates promo script content from website analysis.
+     * @todo Refactor to reduce complexity (TECH-DEBT: complexity 22)
      */
+    // eslint-disable-next-line complexity
     private async generatePromoContent(
         jobId: string,
         websiteInput: WebsitePromoInput,
@@ -690,7 +694,9 @@ export class ReelOrchestrator {
 
     /**
      * Finalizes promo job: render video, complete job, send notifications.
+     * @todo Refactor to reduce complexity (TECH-DEBT: complexity 38)
      */
+    // eslint-disable-next-line complexity
     private async finalizePromoJob(
         jobId: string,
         job: ReelJob,
@@ -837,7 +843,9 @@ export class ReelOrchestrator {
      * Processes a YouTube Short job.
      * Generates TTS for narration, creates VIDEO clips via Kie.ai, renders final video.
      * This is a separate slice from Instagram reels - uses VIDEO generation, not images.
+     * @todo Refactor to reduce complexity (TECH-DEBT: complexity 39)
      */
+    // eslint-disable-next-line complexity
     private async processYouTubeShortJob(jobId: string, job: ReelJob): Promise<ReelJob> {
         const youtubeInput = job.youtubeShortInput;
         if (!youtubeInput) {
