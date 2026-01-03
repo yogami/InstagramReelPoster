@@ -139,6 +139,9 @@ export interface Config {
         trainingDataPath: string; // Path to store training data
         systemPrompt: string;   // The default personality for the Personal Twin
     };
+
+    // Agent Cloud Hub
+    cloudHubUrl: string;
 }
 
 function getEnvVar(key: string, defaultValue?: string): string {
@@ -319,6 +322,9 @@ export function loadConfig(): Config {
             trainingDataPath: getEnvVar('PERSONAL_CLONE_DATA_PATH', './data/personal_clone'),
             systemPrompt: getEnvVar('PERSONAL_CLONE_SYSTEM_PROMPT', 'You are a helpful and intelligent personal AI twin. Write in a natural, conversational tone that reflects the user\'s perspective.'),
         },
+
+        // Agent Cloud Hub
+        cloudHubUrl: getEnvVar('CLOUD_HUB_URL', 'http://localhost:4000'),
     };
 }
 

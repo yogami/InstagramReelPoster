@@ -1,4 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express';
+import axios from 'axios';
 import { v4 as uuidv4 } from 'uuid';
 import { JobManager } from '../../application/JobManager';
 import { ReelOrchestrator } from '../../application/ReelOrchestrator';
@@ -156,6 +157,40 @@ async function processUpdate(
                     `_"Tell the story of Ekalavya from Mahabharata"_`
                 );
             }
+
+            // AGENT COMMAND - Remote Director
+            if (text.startsWith('/agent')) {
+                const prompt = text.replace('/agent', '').trim();
+
+                if (!prompt) {
+                    await telegramService.sendMessage(chatId, '🤖 *Agent Director*\n\nUsage: `/agent <task description>`\n\nExample: `/agent Fix the bug in ReelPoster`');
+                    return;
+                }
+
+                try {
+                    const config = getConfig();
+                    if (!config.cloudHubUrl) {
+                        await telegramService.sendMessage(chatId, '❌ Agent Cloud Hub not configured.');
+                        return;
+                    }
+
+                    console.log(`[Telegram] Forwarding agent task from ${chatId}: ${prompt}`);
+                    await telegramService.sendMessage(chatId, '🤖 *Task Received!*\n\nQueuing for local agent...');
+
+                    await axios.post(`${config.cloudHubUrl}/api/tasks`, {
+                        task: prompt,
+                        requester: `Telegram User ${chatId}`
+                    });
+
+                    await telegramService.sendMessage(chatId, '✅ *Task Queued!* The local agent will pick this up shortly.');
+
+                } catch (error: any) {
+                    console.error('[Telegram] Failed to queue agent task:', error);
+                    await telegramService.sendMessage(chatId, `❌ Failed to queue task: ${error.message}`);
+                }
+                return;
+            }
+
             return;
         }
 
