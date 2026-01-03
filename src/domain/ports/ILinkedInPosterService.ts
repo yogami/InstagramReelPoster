@@ -6,16 +6,31 @@
 
 /**
  * Payload structure for LinkedIn post via Make.com webhook.
+ * Supports both simple image posts and more complex article/media posts.
  */
 export interface LinkedInPostPayload {
+    /** Root type of the post (e.g., 'ARTICLE', 'IMAGE') */
+    type?: string;
     /** Main text of the post */
     content: string;
-    /** URL of the image to post */
-    originalUrl: string;
-    /** Title of the post/image */
-    title: string;
-    /** Alternative text for accessibility */
+    /** Visibility of the post */
+    visibility?: 'PUBLIC' | 'CONNECTIONS';
+    /** URL of the image to post (legacy/simple support) */
+    originalUrl?: string;
+    /** Title of the post/image (legacy/simple support) */
+    title?: string;
+    /** Alternative text for accessibility (legacy/simple support) */
     altText?: string;
+    /** Rich media object for structured posts */
+    media?: {
+        originalUrl?: string;
+        title?: string;
+        description?: string;
+        thumbnail?: {
+            fileName?: string;
+            data?: string | null;
+        };
+    };
 }
 
 /**
