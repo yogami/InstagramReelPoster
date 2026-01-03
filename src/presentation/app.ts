@@ -133,9 +133,7 @@ export function createApp(config: Config): Application {
 
 /**
  * Creates all dependencies with proper wiring.
- * @todo Refactor to reduce complexity (TECH-DEBT: complexity 15)
  */
-// eslint-disable-next-line complexity
 export function createDependencies(config: Config): {
     jobManager: JobManager;
     orchestrator: ReelOrchestrator;
@@ -144,6 +142,8 @@ export function createDependencies(config: Config): {
     metricsPort: IMetricsPort;
 } {
     console.log('🏗️  Creating dependency graph...');
+
+    // Core infrastructure clients
     const cloudinaryClient = createCloudinaryClient(config);
     const llmClient = createLlmClient(config);
     const ttsClient = createTtsClient(config);
@@ -168,83 +168,12 @@ export function createDependencies(config: Config): {
     const captionService = new CaptionService(llmClient);
     const growthInsightsService = new GrowthInsightsService();
 
-    // 4. Setup Website Promo Slice (Phase 3 Decoupling)
-    let websitePromoSlice = undefined;
-    if (config.featureFlags.enableWebsitePromoSlice) {
-        console.log('🚀 Initializing independent WebsitePromoSlice with Enterprise Hardening...');
-
-        // Resilience: Primary DeepL -> Secondary NoOp (Pipeline remains stable if DeepL throttles)
-        const primaryTranslation = new DeepLTranslationAdapter(config.deeplApiKey);
-        const secondaryTranslation = new NoOpTranslationAdapter();
-        const translationPort = new FallbackTranslationAdapter(
-            primaryTranslation,
-            secondaryTranslation,
-            'DeepL',
-            'English-Fallback'
-        );
-
-        const templateRepository = new InMemoryTemplateRepository();
-
-        // Scalability: Use Redis for high-concurrency caching if available
-        const cachePort = config.redisUrl
-            ? new RedisCacheAdapter(config.redisUrl)
-            : new InMemoryCacheAdapter();
-
-        const metricsPort = new PrometheusMetricsAdapter();
-
-        // 🛡️ Compliance Strategy: Berlin Specialist (Guardian AI + Zero Retention)
-        const guardianClient = new GuardianClient({
-            baseUrl: config.guardianApiUrl
-        });
-        const zeroRetentionService = new ZeroRetentionService();
-        const compliancePort = new GuardianComplianceAdapter(
-            guardianClient,
-            zeroRetentionService
-        );
-
-        // 🚀 SCALABILITY: Background Job Queue (BullMQ)
-        const jobQueuePort = config.redisUrl
-            ? new BullMqJobQueueAdapter(config.redisUrl)
-            : undefined;
-
-        let avatarPort: any;
-        if (config.sadTalkerEndpointUrl && config.fluxApiKey) {
-            console.log('🤖 Avatar Strategy: GPU Offloading (SadTalker on Beam.cloud)');
-            avatarPort = new SadTalkerAvatarAdapter(config.fluxApiKey, config.sadTalkerEndpointUrl);
-        } else if (config.heygenApiKey) {
-            console.log('🤖 Avatar Strategy: Managed Service (HeyGen V2)');
-            avatarPort = new HeyGenAvatarAdapter(config.heygenApiKey);
-        } else {
-            console.log('🤖 Avatar Strategy: Mock (Development Mode)');
-            avatarPort = new MockAvatarAdapter();
-        }
-
-        websitePromoSlice = createWebsitePromoSlice({
-            scrapingPort: new WebsiteScraperAdapter(websiteScraperClient),
-            scriptPort: new ScriptGenerationAdapter(llmClient),
-            assetPort: new AssetGenerationAdapter(
-                ttsClient,
-                primaryImageClient,
-                musicSelector,
-                subtitlesClient,
-                cloudinaryClient!
-            ),
-            renderingPort: new RenderingAdapter(videoRenderer),
-            translationPort,
-            templateRepository,
-            cachePort,
-            metricsPort,
-            compliancePort,
-            avatarPort,
-            jobQueuePort
-        });
-
-        // ⚙️ WORKER: Initialize background worker to process the queue
-        if (config.redisUrl) {
-            console.log('👷 Initializing WebsitePromoWorker (Concurrency: 2)...');
-            new WebsitePromoWorker(websitePromoSlice.orchestrator, config.redisUrl);
-        }
-    }
+    // Create Website Promo Slice if enabled
+    const websitePromoSlice = createWebsitePromoSliceIfEnabled(
+        config, websiteScraperClient, llmClient, ttsClient,
+        primaryImageClient, musicSelector, subtitlesClient,
+        cloudinaryClient!, videoRenderer
+    );
 
     const deps: OrchestratorDependencies = {
         transcriptionClient,
@@ -281,6 +210,99 @@ export function createDependencies(config: Config): {
         cloudinaryClient,
         metricsPort: (websitePromoSlice as any)?.orchestrator?.deps?.metricsPort || new ConsoleMetricsAdapter()
     };
+}
+
+/** Creates WebsitePromoSlice with all adapters if feature flag is enabled. */
+function createWebsitePromoSliceIfEnabled(
+    config: Config,
+    websiteScraperClient: any,
+    llmClient: any,
+    ttsClient: any,
+    primaryImageClient: any,
+    musicSelector: any,
+    subtitlesClient: any,
+    cloudinaryClient: MediaStorageClient,
+    videoRenderer: IVideoRenderer
+): ReturnType<typeof createWebsitePromoSlice> | undefined {
+    if (!config.featureFlags.enableWebsitePromoSlice) {
+        return undefined;
+    }
+
+    console.log('🚀 Initializing independent WebsitePromoSlice with Enterprise Hardening...');
+
+    const translationPort = createTranslationAdapter(config);
+    const avatarPort = createAvatarAdapter(config);
+    const cachePort = config.redisUrl
+        ? new RedisCacheAdapter(config.redisUrl)
+        : new InMemoryCacheAdapter();
+    const metricsPort = new PrometheusMetricsAdapter();
+    const compliancePort = createComplianceAdapter(config);
+    const jobQueuePort = config.redisUrl
+        ? new BullMqJobQueueAdapter(config.redisUrl)
+        : undefined;
+
+    const websitePromoSlice = createWebsitePromoSlice({
+        scrapingPort: new WebsiteScraperAdapter(websiteScraperClient),
+        scriptPort: new ScriptGenerationAdapter(llmClient),
+        assetPort: new AssetGenerationAdapter(
+            ttsClient,
+            primaryImageClient,
+            musicSelector,
+            subtitlesClient,
+            cloudinaryClient
+        ),
+        renderingPort: new RenderingAdapter(videoRenderer),
+        translationPort,
+        templateRepository: new InMemoryTemplateRepository(),
+        cachePort,
+        metricsPort,
+        compliancePort,
+        avatarPort,
+        jobQueuePort
+    });
+
+    // Initialize background worker if Redis is available
+    if (config.redisUrl) {
+        console.log('👷 Initializing WebsitePromoWorker (Concurrency: 2)...');
+        new WebsitePromoWorker(websitePromoSlice.orchestrator, config.redisUrl);
+    }
+
+    return websitePromoSlice;
+}
+
+/** Creates translation adapter with DeepL primary and NoOp fallback. */
+function createTranslationAdapter(config: Config) {
+    const primaryTranslation = new DeepLTranslationAdapter(config.deeplApiKey);
+    const secondaryTranslation = new NoOpTranslationAdapter();
+    return new FallbackTranslationAdapter(
+        primaryTranslation,
+        secondaryTranslation,
+        'DeepL',
+        'English-Fallback'
+    );
+}
+
+/** Creates avatar adapter based on available configuration. */
+function createAvatarAdapter(config: Config) {
+    if (config.sadTalkerEndpointUrl && config.fluxApiKey) {
+        console.log('🤖 Avatar Strategy: GPU Offloading (SadTalker on Beam.cloud)');
+        return new SadTalkerAvatarAdapter(config.fluxApiKey, config.sadTalkerEndpointUrl);
+    }
+    if (config.heygenApiKey) {
+        console.log('🤖 Avatar Strategy: Managed Service (HeyGen V2)');
+        return new HeyGenAvatarAdapter(config.heygenApiKey);
+    }
+    console.log('🤖 Avatar Strategy: Mock (Development Mode)');
+    return new MockAvatarAdapter();
+}
+
+/** Creates Guardian compliance adapter. */
+function createComplianceAdapter(config: Config) {
+    const guardianClient = new GuardianClient({
+        baseUrl: config.guardianApiUrl
+    });
+    const zeroRetentionService = new ZeroRetentionService();
+    return new GuardianComplianceAdapter(guardianClient, zeroRetentionService);
 }
 
 // --- Helper Functions ---

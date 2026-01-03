@@ -153,143 +153,179 @@ export class ReelOrchestrator {
     /**
      * Processes a reel job asynchronously.
      * Updates job status at each step.
-     * @todo Refactor to reduce complexity (TECH-DEBT: complexity 37)
      */
-    // eslint-disable-next-line complexity
     async processJob(jobId: string): Promise<ReelJob> {
         this.logMemoryUsage('Start processJob (Pipeline)');
         const job = await this.deps.jobManager.getJob(jobId);
         if (!job) throw new Error(`Job not found: ${jobId}`);
 
-        // Send initial notification
+        await this.sendInitialNotification(job);
+
+        try {
+            // Route to appropriate pipeline
+            const finalJob = await this.routeJobToPipeline(jobId, job);
+            return finalJob;
+        } catch (error) {
+            await this.handleJobError(jobId, job, error);
+            throw error;
+        }
+    }
+
+    /** Sends initial Telegram notification if configured. */
+    private async sendInitialNotification(job: ReelJob): Promise<void> {
         if (job.telegramChatId && this.deps.notificationClient) {
             await this.deps.notificationClient.sendNotification(
                 job.telegramChatId,
                 '🎬 *Starting your reel creation!*\n\nI\'ll notify you when it\'s ready. This usually takes 2-5 minutes.'
             );
         }
+    }
+
+    /** Routes job to the appropriate pipeline based on mode. */
+    private async routeJobToPipeline(jobId: string, job: ReelJob): Promise<ReelJob> {
+        // YouTube Short Mode
+        if (job.forceMode === 'youtube-short' || job.youtubeShortInput) {
+            console.log(`[${jobId}] 🎬 Using YOUTUBE SHORT pipeline`);
+            return await this.processYouTubeShortJob(jobId, job);
+        }
+
+        // Website Promo Mode
+        const forceModeCheck = (job as any)?.forceMode || (job as any)?.websitePromoInput?.forceMode;
+        if (forceModeCheck === 'website-promo' || job.websitePromoInput) {
+            console.log(`[${jobId}] 🚀 Using WEBSITE PROMO pipeline`);
+            return await this.processWebsitePromoJob(jobId, job);
+        }
+
+        // Standard Pipeline
+        console.log(`[${jobId}] 🚀 Initializing STANDARD pipeline execution...`);
+        return await this.executeStandardPipeline(jobId, job);
+    }
+
+    /** Executes the standard reel pipeline and finalizes. */
+    private async executeStandardPipeline(jobId: string, job: ReelJob): Promise<ReelJob> {
+        const pipelineDeps = this.createPipelineDependencies();
+        const steps = createStandardPipeline(pipelineDeps);
+        const initialContext = createJobContext(jobId, job);
+
+        const finalContext = await executePipeline(
+            initialContext,
+            steps,
+            async (stepName, ctx) => {
+                this.logMemoryUsage(stepName);
+                await this.updateJobStatus(jobId, ctx.job.status, `Executing ${stepName}...`);
+            }
+        );
+
+        return await this.finalizeStandardJob(jobId, finalContext.finalVideoUrl);
+    }
+
+    /** Creates pipeline dependencies with services. */
+    private createPipelineDependencies(): PipelineDependencies {
+        const voiceoverService = new VoiceoverService(
+            this.deps.ttsClient,
+            this.deps.fallbackTtsClient,
+            this.deps.storageClient
+        );
+
+        const primaryImage = this.deps.primaryImageClient || this.deps.fallbackImageClient;
+        const imageGenerationService = new ImageGenerationService(
+            primaryImage,
+            this.deps.fallbackImageClient,
+            this.deps.storageClient,
+            this.deps.jobManager
+        );
+
+        return { ...this.deps, voiceoverService, imageGenerationService };
+    }
+
+    /** Finalizes standard job: upload, notify, analytics. */
+    private async finalizeStandardJob(jobId: string, videoUrl: string | undefined): Promise<ReelJob> {
+        let finalJob = await this.deps.jobManager.getJob(jobId);
+        if (!finalJob) throw new Error('Job disappeared after pipeline completion');
+
+        let finalVideoUrl = videoUrl;
+        finalVideoUrl = await this.persistVideoIfNeeded(jobId, finalVideoUrl);
+
+        if (finalVideoUrl && finalVideoUrl !== videoUrl) {
+            finalJob = await this.deps.jobManager.updateJob(jobId, { finalVideoUrl, status: 'completed' });
+        }
+
+        if (!finalJob) throw new Error('Job disappeared during finalization');
+
+        await this.sendCompletionNotification(finalJob);
+        await this.triggerCallbackIfNeeded(finalJob);
+        await this.recordAnalyticsIfEnabled(jobId, finalJob);
+
+        return finalJob;
+    }
+
+    /** Uploads video to permanent storage if needed. */
+    private async persistVideoIfNeeded(jobId: string, videoUrl: string | undefined): Promise<string | undefined> {
+        if (!videoUrl || !this.deps.storageClient || videoUrl.includes('cloudinary')) {
+            return videoUrl;
+        }
 
         try {
-            // YouTube Short Mode Branch
-            if (job.forceMode === 'youtube-short' || job.youtubeShortInput) {
-                console.log(`[${jobId}] 🎬 Using YOUTUBE SHORT pipeline (forceMode: ${job.forceMode})`);
-                return await this.processYouTubeShortJob(jobId, job);
-            }
+            await this.updateJobStatus(jobId, 'uploading', 'Uploading to permanent storage...');
+            const uploadResult = await this.deps.storageClient.uploadVideo(videoUrl, {
+                folder: 'instagram-reels/final-videos',
+                publicId: `reel_${jobId}_${Date.now()}`
+            });
+            return uploadResult.url;
+        } catch (e: any) {
+            console.error(`Upload failed: ${e.message || 'Unknown error'}`);
+            return videoUrl;
+        }
+    }
 
-            // Website Promo Mode Branch
-            const forceModeCheck = (job as any)?.forceMode || (job as any)?.websitePromoInput?.forceMode;
-            if (forceModeCheck === 'website-promo' || job.websitePromoInput) {
-                console.log(`[${jobId}] 🚀 Using WEBSITE PROMO pipeline (forceMode: ${forceModeCheck})`);
-                return await this.processWebsitePromoJob(jobId, job);
-            }
+    /** Sends completion notification via Telegram. */
+    private async sendCompletionNotification(job: ReelJob): Promise<void> {
+        if (!job.telegramChatId || !this.deps.notificationClient || job.status !== 'completed') {
+            return;
+        }
+        const processingTime = Math.round((Date.now() - job.createdAt.getTime()) / 1000);
+        await this.deps.notificationClient.sendNotification(
+            job.telegramChatId,
+            `✅ *Your reel is ready!*\n\nProcessing took ${processingTime}s.`
+        );
+    }
 
-            // STANDARD PIPELINE
-            console.log(`[${jobId}] 🚀 Initializing STANDARD pipeline execution...`);
+    /** Triggers callback webhook if configured. */
+    private async triggerCallbackIfNeeded(job: ReelJob): Promise<void> {
+        if (job.callbackUrl && job.status === 'completed') {
+            await this.notifyCallback(job);
+        }
+    }
 
-            // 1. Construct Services
-            const voiceoverService = new VoiceoverService(
-                this.deps.ttsClient,
-                this.deps.fallbackTtsClient,
-                this.deps.storageClient
-            );
+    /** Records analytics if growth insights service is enabled. */
+    private async recordAnalyticsIfEnabled(jobId: string, job: ReelJob): Promise<void> {
+        if (!this.deps.growthInsightsService || job.status !== 'completed') {
+            return;
+        }
+        try {
+            await this.deps.growthInsightsService.recordAnalytics({
+                reelId: jobId,
+                hookUsed: job.hookPlan?.chosenHook || 'None',
+                targetDurationSeconds: job.targetDurationSeconds || 0,
+                actualDurationSeconds: job.voiceoverDurationSeconds || 0,
+                postedAt: new Date().toISOString()
+            });
+            console.log(`[${jobId}] Post-run analytics recorded.`);
+        } catch (err) {
+            console.warn(`[${jobId}] Failed to record post-run analytics:`, err);
+        }
+    }
 
-            const primaryImage = this.deps.primaryImageClient || this.deps.fallbackImageClient;
-            const imageGenerationService = new ImageGenerationService(
-                primaryImage,
-                this.deps.fallbackImageClient,
-                this.deps.storageClient,
-                this.deps.jobManager
-            );
+    /** Handles job errors with notifications. */
+    private async handleJobError(jobId: string, job: ReelJob, error: unknown): Promise<void> {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        await this.deps.jobManager.failJob(jobId, errorMessage);
 
-            // 2. Prepare Pipeline Dependencies
-            const pipelineDeps: PipelineDependencies = {
-                ...this.deps,
-                voiceoverService,
-                imageGenerationService
-            };
-
-            // 3. Create Pipeline
-            const steps = createStandardPipeline(pipelineDeps);
-
-            // 4. Create Initial Context
-            const initialContext = createJobContext(jobId, job);
-
-            // 5. Execute Pipeline
-            const finalContext = await executePipeline(
-                initialContext,
-                steps,
-                async (stepName, ctx) => {
-                    this.logMemoryUsage(stepName);
-                    // Update the job status for progress tracking
-                    await this.updateJobStatus(jobId, ctx.job.status, `Executing ${stepName}...`);
-                }
-            );
-
-            // 6. Post-Pipeline Finalization
-            let finalVideoUrl = finalContext.finalVideoUrl;
-            let finalJob = await this.deps.jobManager.getJob(jobId);
-            if (!finalJob) throw new Error('Job disappeared after pipeline completion');
-
-            // Persistence
-            if (finalVideoUrl && this.deps.storageClient && !finalVideoUrl.includes('cloudinary')) {
-                try {
-                    await this.updateJobStatus(jobId, 'uploading', 'Uploading to permanent storage...');
-                    const uploadResult = await this.deps.storageClient.uploadVideo(finalVideoUrl, {
-                        folder: 'instagram-reels/final-videos',
-                        publicId: `reel_${jobId}_${Date.now()}`
-                    });
-                    finalVideoUrl = uploadResult.url;
-                    finalJob = await this.deps.jobManager.updateJob(jobId, { finalVideoUrl, status: 'completed' });
-                } catch (e: any) {
-                    console.error(`Upload failed: ${e.message || 'Unknown error'}`);
-                }
-            }
-
-            if (!finalJob) throw new Error('Job disappeared during finalization');
-
-            // Notifications
-            if (finalJob.telegramChatId && this.deps.notificationClient && finalJob.status === 'completed') {
-                const processingTime = Math.round((Date.now() - finalJob.createdAt.getTime()) / 1000);
-                await this.deps.notificationClient.sendNotification(
-                    finalJob.telegramChatId,
-                    `✅ *Your reel is ready!*\n\nProcessing took ${processingTime}s.`
-                );
-            }
-
-            // Callbacks
-            if (finalJob.callbackUrl && finalJob.status === 'completed') {
-                await this.notifyCallback(finalJob);
-            }
-
-            // Analytics
-            if (this.deps.growthInsightsService && finalJob.status === 'completed') {
-                try {
-                    await this.deps.growthInsightsService.recordAnalytics({
-                        reelId: jobId,
-                        hookUsed: finalJob.hookPlan?.chosenHook || 'None',
-                        targetDurationSeconds: finalJob.targetDurationSeconds || 0,
-                        actualDurationSeconds: finalJob.voiceoverDurationSeconds || 0,
-                        postedAt: new Date().toISOString()
-                    });
-                    console.log(`[${jobId}] Post-run analytics recorded.`);
-                } catch (err) {
-                    console.warn(`[${jobId}] Failed to record post-run analytics:`, err);
-                }
-            }
-
-            return finalJob;
-
-        } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-            await this.deps.jobManager.failJob(jobId, errorMessage);
-            if (job.telegramChatId && this.deps.notificationClient) {
-                // Determine friendly error
-                let friendly = errorMessage;
-                if (errorMessage.includes('insufficient credits')) friendly = 'Service credits exhausted. Please contact admin.';
-
-                await this.deps.notificationClient.sendNotification(job.telegramChatId, `❌ Error: ${friendly}`);
-            }
-            throw error;
+        if (job.telegramChatId && this.deps.notificationClient) {
+            const friendly = errorMessage.includes('insufficient credits')
+                ? 'Service credits exhausted. Please contact admin.'
+                : errorMessage;
+            await this.deps.notificationClient.sendNotification(job.telegramChatId, `❌ Error: ${friendly}`);
         }
     }
 
@@ -526,9 +562,7 @@ export class ReelOrchestrator {
 
     /**
      * Generates promo script content from website analysis.
-     * @todo Refactor to reduce complexity (TECH-DEBT: complexity 22)
      */
-    // eslint-disable-next-line complexity
     private async generatePromoContent(
         jobId: string,
         websiteInput: WebsitePromoInput,
@@ -542,106 +576,123 @@ export class ReelOrchestrator {
         console.log('🧠 Running Intelligence Layer (Extract -> Normalize -> Classify -> Blueprint)...');
 
         // 1. Sophisticated Extraction (LLM-based)
-        if (websiteAnalysis.rawText) {
-            try {
-                const config = getConfig();
-                const gptService = new GptService(config.openRouterApiKey || config.llmApiKey, 'gpt-4o');
-                const intelService = new WebsiteIntelligenceService(gptService);
-                const extraIntel = await intelService.extractSophisticatedContactInfo(websiteAnalysis.rawText);
+        await this.enrichAnalysisWithLlmExtraction(jobId, websiteAnalysis);
 
-                // Merge sophisticated info (Overwrites heuristic regex results if LLM found something)
-                if (extraIntel.detectedBusinessName) websiteAnalysis.detectedBusinessName = extraIntel.detectedBusinessName;
-                if (extraIntel.phone) websiteAnalysis.phone = extraIntel.phone;
-                if (extraIntel.email) websiteAnalysis.email = extraIntel.email;
-                if (extraIntel.address) websiteAnalysis.address = extraIntel.address;
-                if (extraIntel.openingHours) websiteAnalysis.openingHours = extraIntel.openingHours;
-                if (extraIntel.socialLinks) {
-                    websiteAnalysis.socialLinks = websiteAnalysis.socialLinks
-                        ? { ...websiteAnalysis.socialLinks, ...extraIntel.socialLinks }
-                        : extraIntel.socialLinks;
-                }
-                console.log(`[${jobId}] Sophisticated extraction complete:`, {
-                    phone: !!websiteAnalysis.phone,
-                    hours: !!websiteAnalysis.openingHours,
-                    address: !!websiteAnalysis.address
-                });
-            } catch (err) {
-                console.warn(`[${jobId}] Sophisticated extraction failed, continuing with scraped info:`, err);
-            }
-        }
+        // 2. Generate script via Blueprint pipeline
+        const promoScript = await this.generateScriptFromBlueprint(websiteAnalysis, websiteInput.language);
 
-        // 2. Normalize
-        const normalizer = new PageNormalizer();
-        const normalizedPage = normalizer.normalize(websiteAnalysis);
-
-        // 2. Classify
-        const classifier = new SmartSiteClassifier();
-        const classification = await classifier.classify(normalizedPage);
-        console.log('🔍 Site Classification:', JSON.stringify(classification, null, 2));
-
-        // 3. Blueprint
-        const blueprintFactory = new BlueprintFactory();
-        const blueprint = blueprintFactory.create(normalizedPage, classification);
-        console.log('📐 Video Blueprint Beats:', JSON.stringify(blueprint.beats.map(b => b.kind), null, 2));
-
-        // 4. Generate Script via LLM
-        if (!this.deps.llmClient.generateScriptFromBlueprint) {
-            throw new Error('LLM Client does not support generateScriptFromBlueprint');
-        }
-        const promoScript = await this.deps.llmClient.generateScriptFromBlueprint(blueprint, websiteInput.language);
-
-        // Enrich with business name
-        // Priority: Input > Analysis > LLM > Default
-        let businessName = websiteInput.businessName || websiteAnalysis.detectedBusinessName || promoScript.businessName;
-
-        if (!businessName || businessName === 'Brand') {
-            businessName = 'My Business';
-        }
-
-        // Enrich script object
+        // 3. Enrich with business name and logo
+        const businessName = this.resolveBusinessName(websiteInput, websiteAnalysis, promoScript);
         promoScript.businessName = businessName;
-
-        // Include logo from input if present
-        if (websiteInput.logoUrl) {
-            promoScript.logoUrl = websiteInput.logoUrl;
-            promoScript.logoPosition = websiteInput.logoPosition || 'end';
-        }
+        this.applyLogoSettings(promoScript, websiteInput);
 
         await this.deps.jobManager.updateJob(jobId, { promoScriptPlan: promoScript });
         console.log(`[${jobId}] Script generated: "${promoScript.coreMessage}" via Blueprint`);
 
-        // Compliance Check: Scan script for brand safety, formality, and transparency
-        if (this.deps.complianceClient) {
-            console.log(`[${jobId}] 🛡️ Running Guardian compliance scan...`);
-            const fullScript = promoScript.scenes.map((s: { narration: string }) => s.narration).join(' ');
-            const language = websiteInput.language || 'de';
+        // 4. Compliance Check
+        await this.runComplianceCheck(jobId, promoScript, websiteInput.language);
 
-            const complianceResult = await this.deps.complianceClient.scanScript(fullScript, language);
+        return { promoScript, businessName };
+    }
 
-            if (!complianceResult.approved) {
-                console.warn(`[${jobId}] ⚠️ Compliance issues detected (score: ${complianceResult.score}):`, complianceResult.violations);
-                console.log(`[${jobId}] 💡 Correction hints:`, complianceResult.correctionHints);
-                // Log but don't block - violations stored for audit trail
-            } else {
-                console.log(`[${jobId}] ✅ Compliance check passed (score: ${complianceResult.score}, auditId: ${complianceResult.auditId})`);
-            }
+    /** Enriches website analysis with sophisticated LLM extraction. */
+    private async enrichAnalysisWithLlmExtraction(jobId: string, analysis: WebsiteAnalysis): Promise<void> {
+        if (!analysis.rawText) return;
 
-            // Store compliance result in job for audit trail
-            await this.deps.jobManager.updateJob(jobId, {
-                complianceResult: {
-                    approved: complianceResult.approved,
-                    score: complianceResult.score,
-                    auditId: complianceResult.auditId,
-                    violations: complianceResult.violations,
-                    scannedAt: new Date().toISOString()
-                }
+        try {
+            const config = getConfig();
+            const gptService = new GptService(config.openRouterApiKey || config.llmApiKey, 'gpt-4o');
+            const intelService = new WebsiteIntelligenceService(gptService);
+            const extraIntel = await intelService.extractSophisticatedContactInfo(analysis.rawText);
+
+            this.mergeExtractedInfo(analysis, extraIntel);
+            console.log(`[${jobId}] Sophisticated extraction complete:`, {
+                phone: !!analysis.phone,
+                hours: !!analysis.openingHours,
+                address: !!analysis.address
             });
+        } catch (err) {
+            console.warn(`[${jobId}] Sophisticated extraction failed, continuing with scraped info:`, err);
+        }
+    }
+
+    /** Merges extracted LLM info into website analysis. */
+    private mergeExtractedInfo(analysis: WebsiteAnalysis, extraIntel: any): void {
+        if (extraIntel.detectedBusinessName) analysis.detectedBusinessName = extraIntel.detectedBusinessName;
+        if (extraIntel.phone) analysis.phone = extraIntel.phone;
+        if (extraIntel.email) analysis.email = extraIntel.email;
+        if (extraIntel.address) analysis.address = extraIntel.address;
+        if (extraIntel.openingHours) analysis.openingHours = extraIntel.openingHours;
+        if (extraIntel.socialLinks) {
+            analysis.socialLinks = analysis.socialLinks
+                ? { ...analysis.socialLinks, ...extraIntel.socialLinks }
+                : extraIntel.socialLinks;
+        }
+    }
+
+    /** Generates promo script using the Blueprint pipeline. */
+    private async generateScriptFromBlueprint(analysis: WebsiteAnalysis, language?: string): Promise<PromoScriptPlan> {
+        const normalizer = new PageNormalizer();
+        const normalizedPage = normalizer.normalize(analysis);
+
+        const classifier = new SmartSiteClassifier();
+        const classification = await classifier.classify(normalizedPage);
+        console.log('🔍 Site Classification:', JSON.stringify(classification, null, 2));
+
+        const blueprintFactory = new BlueprintFactory();
+        const blueprint = blueprintFactory.create(normalizedPage, classification);
+        console.log('📐 Video Blueprint Beats:', JSON.stringify(blueprint.beats.map(b => b.kind), null, 2));
+
+        if (!this.deps.llmClient.generateScriptFromBlueprint) {
+            throw new Error('LLM Client does not support generateScriptFromBlueprint');
+        }
+        return await this.deps.llmClient.generateScriptFromBlueprint(blueprint, language);
+    }
+
+    /** Resolves business name from input, analysis, or script. */
+    private resolveBusinessName(
+        input: WebsitePromoInput,
+        analysis: WebsiteAnalysis,
+        script: PromoScriptPlan
+    ): string {
+        const name = input.businessName || analysis.detectedBusinessName || script.businessName;
+        return (!name || name === 'Brand') ? 'My Business' : name;
+    }
+
+    /** Applies logo settings from input to script. */
+    private applyLogoSettings(script: PromoScriptPlan, input: WebsitePromoInput): void {
+        if (input.logoUrl) {
+            script.logoUrl = input.logoUrl;
+            script.logoPosition = input.logoPosition || 'end';
+        }
+    }
+
+    /** Runs Guardian compliance check on generated script. */
+    private async runComplianceCheck(jobId: string, script: PromoScriptPlan, language?: string): Promise<void> {
+        if (!this.deps.complianceClient) return;
+
+        console.log(`[${jobId}] 🛡️ Running Guardian compliance scan...`);
+        const fullScript = script.scenes.map((s: { narration: string }) => s.narration).join(' ');
+        const lang = language || 'de';
+
+        const result = await this.deps.complianceClient.scanScript(fullScript, lang);
+
+        if (!result.approved) {
+            console.warn(`[${jobId}] ⚠️ Compliance issues detected (score: ${result.score}):`, result.violations);
+            console.log(`[${jobId}] 💡 Correction hints:`, result.correctionHints);
+        } else {
+            console.log(`[${jobId}] ✅ Compliance check passed (score: ${result.score}, auditId: ${result.auditId})`);
         }
 
-        return {
-            promoScript,
-            businessName
-        };
+        await this.deps.jobManager.updateJob(jobId, {
+            complianceResult: {
+                approved: result.approved,
+                score: result.score,
+                auditId: result.auditId,
+                violations: result.violations,
+                scannedAt: new Date().toISOString()
+            }
+        });
     }
 
     /**
@@ -694,9 +745,7 @@ export class ReelOrchestrator {
 
     /**
      * Finalizes promo job: render video, complete job, send notifications.
-     * @todo Refactor to reduce complexity (TECH-DEBT: complexity 38)
      */
-    // eslint-disable-next-line complexity
     private async finalizePromoJob(
         jobId: string,
         job: ReelJob,
@@ -705,76 +754,115 @@ export class ReelOrchestrator {
         businessName: string
     ): Promise<ReelJob> {
         await this.deps.jobManager.updateStatus(jobId, 'building_manifest', 'Preparing final video...');
-        // Re-fetch job to ensure we have the latest websiteAnalysis (e.g. updated logo URL or contact info from subpages)
+
         const updatedJob = await this.deps.jobManager.getJob(jobId);
         const websiteAnalysis = updatedJob?.websiteAnalysis || job.websiteAnalysis;
 
-        // Populate branding for Info Slides if we have data
-        if (websiteAnalysis) {
-            const template = getPromptTemplate(category);
-            const isPersonalSite = websiteAnalysis.siteType === 'personal';
-
-            // For personal sites: use social links, portfolio URL
-            // For business sites: use business contact info
-            if (isPersonalSite) {
-                const socialText = [];
-                if (websiteAnalysis.socialLinks?.linkedin) socialText.push(`LinkedIn: ${websiteAnalysis.socialLinks.linkedin}`);
-                if (websiteAnalysis.socialLinks?.github) socialText.push(`GitHub: ${websiteAnalysis.socialLinks.github}`);
-                if (websiteAnalysis.socialLinks?.twitter) socialText.push(`Twitter: ${websiteAnalysis.socialLinks.twitter}`);
-
-                manifest.branding = {
-                    logoUrl: websiteAnalysis.personalInfo?.headshotUrl || websiteAnalysis.logoUrl || manifest.logoUrl || '',
-                    businessName: businessName,
-                    address: websiteAnalysis.address, // Include if detected
-                    hours: websiteAnalysis.openingHours, // Include if detected
-                    phone: websiteAnalysis.phone, // Include if detected
-                    email: websiteAnalysis.email, // Keep email if available
-                    ctaText: 'View Portfolio', // Personal CTA
-                    qrCodeUrl: websiteAnalysis.sourceUrl, // Main portfolio URL, not reservation
-                };
-
-                console.log(`[PersonalPromo] Branding configured for personal site: email=${websiteAnalysis.email}, socials=${socialText.join(', ')}`);
-            } else {
-                // Business site: use existing logic
-                manifest.branding = {
-                    logoUrl: websiteAnalysis.logoUrl || manifest.logoUrl || '',
-                    businessName: businessName,
-                    address: websiteAnalysis.address,
-                    hours: websiteAnalysis.openingHours,
-                    phone: websiteAnalysis.phone,
-                    email: websiteAnalysis.email,
-                    ctaText: template?.cta || 'Mehr erfahren',
-                    qrCodeUrl: websiteAnalysis.reservationLink || job.websitePromoInput?.websiteUrl,
-                };
-            }
-        };
-
-        // Populate Overlays for Restaurant Pivot (Rating + QR)
-        if (category === 'restaurant' && websiteAnalysis) {
-            manifest.overlays = [];
-
-            // We assume strict 3-scene structure: Hook, Showcase, CTA
-            if (manifest.segments && manifest.segments.length >= 3) {
-                const showcaseScene = manifest.segments[1]; // Scene 2
-                const ctaScene = manifest.segments[2];      // Scene 3
-
-                // Rating Badge (during Showcase)
-                if (websiteAnalysis.rating) {
-                    manifest.overlays.push({
-                        type: 'rating_badge',
-                        content: websiteAnalysis.rating,
-                        start: showcaseScene.start + 0.5,
-                        end: showcaseScene.end - 0.5,
-                        position: 'top_right'
-                    });
-                }
-
-                // QR Code removed as per user feedback (focus on contact info in branding)
-            }
-        }
+        // Populate branding and overlays
+        this.populateManifestBranding(manifest, websiteAnalysis, category, businessName, job);
+        this.populateManifestOverlays(manifest, websiteAnalysis, category);
 
         await this.deps.jobManager.updateJob(jobId, { manifest });
+        this.logManifestDetails(manifest);
 
+        // Render and persist
+        const finalVideoUrl = await this.renderAndPersistVideo(jobId, manifest);
+
+        // Complete job
+        const completedJob = completeJob(await this.deps.jobManager.getJob(jobId) as ReelJob, finalVideoUrl, manifest);
+        await this.deps.jobManager.updateJob(jobId, { status: 'completed', finalVideoUrl, manifest });
+
+        // Notify
+        await this.sendPromoCompletionNotification(completedJob, businessName, category, finalVideoUrl, job);
+        await this.notifyCallback(completedJob);
+
+        return completedJob;
+    }
+
+    /** Populates manifest branding based on site type. */
+    private populateManifestBranding(
+        manifest: ReelManifest,
+        analysis: WebsiteAnalysis | undefined,
+        category: BusinessCategory,
+        businessName: string,
+        job: ReelJob
+    ): void {
+        if (!analysis) return;
+
+        const isPersonalSite = analysis.siteType === 'personal';
+        manifest.branding = isPersonalSite
+            ? this.createPersonalBranding(analysis, businessName, manifest.logoUrl)
+            : this.createBusinessBranding(analysis, category, businessName, manifest.logoUrl, job);
+
+        if (isPersonalSite) {
+            console.log(`[PersonalPromo] Branding configured for personal site`);
+        }
+    }
+
+    /** Creates branding for personal sites. */
+    private createPersonalBranding(
+        analysis: WebsiteAnalysis,
+        businessName: string,
+        fallbackLogoUrl?: string
+    ): NonNullable<ReelManifest['branding']> {
+        return {
+            logoUrl: analysis.personalInfo?.headshotUrl || analysis.logoUrl || fallbackLogoUrl || '',
+            businessName,
+            address: analysis.address,
+            hours: analysis.openingHours,
+            phone: analysis.phone,
+            email: analysis.email,
+            ctaText: 'View Portfolio',
+            qrCodeUrl: analysis.sourceUrl,
+        };
+    }
+
+    /** Creates branding for business sites. */
+    private createBusinessBranding(
+        analysis: WebsiteAnalysis,
+        category: BusinessCategory,
+        businessName: string,
+        fallbackLogoUrl: string | undefined,
+        job: ReelJob
+    ): NonNullable<ReelManifest['branding']> {
+        const template = getPromptTemplate(category);
+        return {
+            logoUrl: analysis.logoUrl || fallbackLogoUrl || '',
+            businessName,
+            address: analysis.address,
+            hours: analysis.openingHours,
+            phone: analysis.phone,
+            email: analysis.email,
+            ctaText: template?.cta || 'Mehr erfahren',
+            qrCodeUrl: analysis.reservationLink || job.websitePromoInput?.websiteUrl,
+        };
+    }
+
+    /** Populates manifest overlays for restaurant category. */
+    private populateManifestOverlays(
+        manifest: ReelManifest,
+        analysis: WebsiteAnalysis | undefined,
+        category: BusinessCategory
+    ): void {
+        if (category !== 'restaurant' || !analysis) return;
+        if (!manifest.segments || manifest.segments.length < 3) return;
+
+        manifest.overlays = [];
+        const showcaseScene = manifest.segments[1];
+
+        if (analysis.rating) {
+            manifest.overlays.push({
+                type: 'rating_badge',
+                content: analysis.rating,
+                start: showcaseScene.start + 0.5,
+                end: showcaseScene.end - 0.5,
+                position: 'top_right'
+            });
+        }
+    }
+
+    /** Logs manifest details before rendering. */
+    private logManifestDetails(manifest: ReelManifest): void {
         console.log('[Manifest] Before rendering:', {
             duration: manifest.durationSeconds,
             segmentCount: manifest.segments?.length || 0,
@@ -782,12 +870,14 @@ export class ReelOrchestrator {
             hasBranding: !!manifest.branding,
             branding: manifest.branding
         });
+    }
 
+    /** Renders video and persists to Cloudinary if available. */
+    private async renderAndPersistVideo(jobId: string, manifest: ReelManifest): Promise<string> {
         await this.deps.jobManager.updateStatus(jobId, 'rendering', 'Rendering final video...');
         const renderResult = await this.deps.videoRenderer.render(manifest);
         let finalVideoUrl = renderResult.videoUrl;
 
-        // Persist to Cloudinary if available
         if (this.deps.storageClient && finalVideoUrl && !finalVideoUrl.includes('cloudinary')) {
             try {
                 await this.deps.jobManager.updateStatus(jobId, 'uploading', 'Saving to permanent storage...');
@@ -801,19 +891,24 @@ export class ReelOrchestrator {
             }
         }
 
-        const completedJob = completeJob(await this.deps.jobManager.getJob(jobId) as ReelJob, finalVideoUrl, manifest);
-        await this.deps.jobManager.updateJob(jobId, { status: 'completed', finalVideoUrl, manifest });
+        return finalVideoUrl;
+    }
 
-        const hookName = getViralHookName(job.hookPlan?.chosenHook || job.promoScriptPlan?.hookType);
+    /** Sends promo completion notification. */
+    private async sendPromoCompletionNotification(
+        job: ReelJob,
+        businessName: string,
+        category: BusinessCategory,
+        videoUrl: string,
+        originalJob: ReelJob
+    ): Promise<void> {
+        if (!job.telegramChatId || !this.deps.notificationClient) return;
 
-        if (completedJob.telegramChatId && this.deps.notificationClient) {
-            await this.deps.notificationClient.sendNotification(
-                completedJob.telegramChatId,
-                `🎉 *Your website promo reel is ready!*\n\n🏪 ${businessName}\n📁 Category: ${category}\n🪝 Strategy: ${hookName}\n\n${finalVideoUrl}`
-            );
-        }
-        await this.notifyCallback(completedJob);
-        return completedJob;
+        const hookName = getViralHookName(originalJob.hookPlan?.chosenHook || originalJob.promoScriptPlan?.hookType);
+        await this.deps.notificationClient.sendNotification(
+            job.telegramChatId,
+            `🎉 *Your website promo reel is ready!*\n\n🏪 ${businessName}\n📁 Category: ${category}\n🪝 Strategy: ${hookName}\n\n${videoUrl}`
+        );
     }
 
     /**
@@ -842,88 +937,114 @@ export class ReelOrchestrator {
     /**
      * Processes a YouTube Short job.
      * Generates TTS for narration, creates VIDEO clips via Kie.ai, renders final video.
-     * This is a separate slice from Instagram reels - uses VIDEO generation, not images.
-     * @todo Refactor to reduce complexity (TECH-DEBT: complexity 39)
      */
-    // eslint-disable-next-line complexity
     private async processYouTubeShortJob(jobId: string, job: ReelJob): Promise<ReelJob> {
         const youtubeInput = job.youtubeShortInput;
-        if (!youtubeInput) {
-            throw new Error('YouTube Short input is required');
-        }
-
-        if (!this.deps.animatedVideoClient) {
-            throw new Error('AnimatedVideoClient is required for YouTube Shorts (Kie.ai integration)');
-        }
+        if (!youtubeInput) throw new Error('YouTube Short input is required');
+        if (!this.deps.animatedVideoClient) throw new Error('AnimatedVideoClient is required for YouTube Shorts');
 
         this.logMemoryUsage('Start YouTube Short Pipeline');
 
-        // 1. Generate TTS for full narration (with speed adjustment if needed)
-        const fullNarration = youtubeInput.scenes.map(s => s.narration).join(' ');
+        // 1. Generate voiceover with speed adjustment
+        const { voiceoverUrl, actualTtsDuration } = await this.generateYouTubeVoiceover(jobId, job, youtubeInput);
+
+        // 2. Analyze scenes using LLM
+        const scriptAnalysis = await this.analyzeYouTubeScenes(jobId, youtubeInput);
+
+        // 3. Generate scene visuals (video or image)
+        const { segments, videoClipUrls } = await this.generateYouTubeSceneVisuals(
+            jobId, scriptAnalysis, youtubeInput, actualTtsDuration
+        );
+
+        await this.deps.jobManager.updateJob(jobId, {
+            segments,
+            isAnimatedVideoMode: true,
+            animatedVideoUrls: videoClipUrls,
+        });
+
+        // 4. Select music
+        const musicResult = await this.selectYouTubeMusic(jobId, actualTtsDuration, youtubeInput.tone);
+
+        // 5. Build manifest and render
+        const { finalVideoUrl, manifest } = await this.buildAndRenderYouTubeManifest(
+            jobId, voiceoverUrl, musicResult, segments, videoClipUrls, actualTtsDuration
+        );
+
+        // 6. Complete job and notify
+        return await this.completeYouTubeJob(jobId, manifest, finalVideoUrl, youtubeInput, actualTtsDuration, videoClipUrls.length);
+    }
+
+    /** Generates TTS voiceover for YouTube Short with speed adjustment. */
+    private async generateYouTubeVoiceover(
+        jobId: string,
+        job: ReelJob,
+        input: NonNullable<ReelJob['youtubeShortInput']>
+    ): Promise<{ voiceoverUrl: string; actualTtsDuration: number }> {
+        const fullNarration = input.scenes.map(s => s.narration).join(' ');
         await this.updateJobStatus(jobId, 'synthesizing_voiceover', 'Generating voiceover...');
 
         const voiceId = job.voiceId || getConfig().ttsCloningVoiceId;
-        const targetDuration = youtubeInput.totalDurationSeconds;
+        const targetDuration = input.totalDurationSeconds;
 
-        // First pass: synthesize at normal speed to measure duration
         let ttsResult = await this.deps.ttsClient.synthesize(fullNarration, { voiceId });
         let voiceoverUrl = ttsResult.audioUrl;
         let actualTtsDuration = ttsResult.durationSeconds || targetDuration;
 
-        // If TTS exceeds target by >10%, re-synthesize with calculated speed
+        // Re-synthesize with speed if overrun
         const durationOverrun = actualTtsDuration / targetDuration;
         if (durationOverrun > 1.1) {
-            // Cap speed at 1.8x to maintain quality (Fish Audio supports up to 2.0)
             const requiredSpeed = Math.min(durationOverrun, 1.8);
-            console.log(`[${jobId}] TTS overrun: ${actualTtsDuration.toFixed(1)}s vs target ${targetDuration}s. Re-synthesizing at ${requiredSpeed.toFixed(2)}x speed...`);
-
-            await this.updateJobStatus(jobId, 'synthesizing_voiceover', `Adjusting narration speed (${requiredSpeed.toFixed(1)}x)...`);
+            console.log(`[${jobId}] TTS overrun: ${actualTtsDuration.toFixed(1)}s. Re-synthesizing at ${requiredSpeed.toFixed(2)}x`);
+            await this.updateJobStatus(jobId, 'synthesizing_voiceover', `Adjusting speed (${requiredSpeed.toFixed(1)}x)...`);
             ttsResult = await this.deps.ttsClient.synthesize(fullNarration, { voiceId, speed: requiredSpeed });
             voiceoverUrl = ttsResult.audioUrl;
             actualTtsDuration = ttsResult.durationSeconds || (targetDuration / requiredSpeed);
         }
 
-        await this.deps.jobManager.updateJob(jobId, {
-            voiceoverUrl,
-            voiceoverDurationSeconds: actualTtsDuration,
-        });
+        await this.deps.jobManager.updateJob(jobId, { voiceoverUrl, voiceoverDurationSeconds: actualTtsDuration });
+        console.log(`[${jobId}] TTS finalized: ${actualTtsDuration.toFixed(1)}s`);
 
-        console.log(`[${jobId}] TTS finalized: ${actualTtsDuration.toFixed(1)}s (target: ${targetDuration}s)`);
+        return { voiceoverUrl, actualTtsDuration };
+    }
 
-        // 2. Analyze scenes using LLM for accurate prompt enhancement
-        await this.updateJobStatus(jobId, 'analyzing_scenes', 'Analyzing scenes for visual accuracy...');
+    /** Analyzes YouTube scenes using LLM for visual accuracy. */
+    private async analyzeYouTubeScenes(
+        jobId: string,
+        input: NonNullable<ReelJob['youtubeShortInput']>
+    ) {
+        await this.updateJobStatus(jobId, 'analyzing_scenes', 'Analyzing scenes...');
         const sceneAnalyzer = new YouTubeSceneAnalyzer();
 
-        // Build full script text for context
-        const fullScriptText = youtubeInput.scenes.map(s =>
+        const fullScriptText = input.scenes.map(s =>
             `[${s.title}]\nVisual: ${s.visualPrompt}\nNarration: ${s.narration}`
         ).join('\n\n');
 
         const scriptAnalysis = await sceneAnalyzer.analyzeScript(
-            youtubeInput.title,
-            youtubeInput.scenes,
-            youtubeInput.tone || 'epic',
+            input.title,
+            input.scenes,
+            input.tone || 'epic',
             fullScriptText
         );
 
-        // Log analysis results
         for (const analyzed of scriptAnalysis.scenes) {
             console.log(`[${jobId}] Scene "${analyzed.original.title}" → ${analyzed.assetType.toUpperCase()}`);
-            console.log(`[${jobId}]   Enhanced: ${analyzed.enhancedPrompt.substring(0, 100)}...`);
-        }
-        if (scriptAnalysis.warnings.length > 0) {
-            console.warn(`[${jobId}] Analysis warnings:`, scriptAnalysis.warnings);
         }
 
-        // 3. Calculate proportional scene durations based on actual TTS length
-        const durationRatio = actualTtsDuration / targetDuration;
+        return scriptAnalysis;
+    }
 
-        // 4. Generate VIDEO or IMAGE for each scene based on analysis
+    /** Generates video or image visuals for each YouTube scene. */
+    private async generateYouTubeSceneVisuals(
+        jobId: string,
+        scriptAnalysis: Awaited<ReturnType<YouTubeSceneAnalyzer['analyzeScript']>>,
+        input: NonNullable<ReelJob['youtubeShortInput']>,
+        actualTtsDuration: number
+    ): Promise<{ segments: Segment[]; videoClipUrls: string[] }> {
         await this.updateJobStatus(jobId, 'generating_animated_video', 'Creating scene visuals...');
         const segments: Segment[] = [];
         const videoClipUrls: string[] = [];
         let currentTime = 0;
-
+        const durationRatio = actualTtsDuration / input.totalDurationSeconds;
         const primaryImage = this.deps.primaryImageClient || this.deps.fallbackImageClient;
 
         for (let i = 0; i < scriptAnalysis.scenes.length; i++) {
@@ -931,113 +1052,150 @@ export class ReelOrchestrator {
             const originalScene = analyzed.original;
             const sceneDuration = (originalScene.durationSeconds || 10) * durationRatio;
 
-            console.log(`[${jobId}] Scene ${i + 1}/${scriptAnalysis.scenes.length}: ${sceneDuration.toFixed(1)}s (${analyzed.assetType})`);
-
             if (analyzed.assetType === 'video') {
-                // Generate VIDEO clips via Kie.ai
-                const clipsNeeded = Math.ceil(sceneDuration / 10);
-                const clipDuration = clipsNeeded > 1 ? 10 : (sceneDuration <= 5 ? 5 : 10);
-
-                for (let clipIdx = 0; clipIdx < clipsNeeded; clipIdx++) {
-                    try {
-                        const clipPrompt = clipIdx === 0
-                            ? analyzed.enhancedPrompt
-                            : `${analyzed.enhancedPrompt} (continuation, part ${clipIdx + 1})`;
-
-                        const videoResult = await this.deps.animatedVideoClient!.generateAnimatedVideo({
-                            durationSeconds: clipDuration,
-                            theme: clipPrompt,
-                            storyline: originalScene.narration,
-                            mood: analyzed.visualSpec.mood || youtubeInput.tone || 'epic',
-                        });
-
-                        let videoUrl = videoResult.videoUrl;
-
-                        // Upload to Cloudinary for persistent storage
-                        if (this.deps.storageClient && videoUrl && !videoUrl.includes('cloudinary')) {
-                            const uploaded = await this.deps.storageClient.uploadVideo(videoUrl, {
-                                folder: 'youtube-shorts/scene-clips',
-                                publicId: `youtube_${jobId}_scene${i}_clip${clipIdx}`,
-                            });
-                            videoUrl = uploaded.url;
-                        }
-
-                        videoClipUrls.push(videoUrl);
-                        console.log(`[${jobId}] Clip ${videoClipUrls.length} generated: ${videoUrl.substring(0, 60)}...`);
-
-                    } catch (error) {
-                        console.error(`[${jobId}] Failed to generate video for scene ${i}, clip ${clipIdx}:`, error);
-                        // Use fallback placeholder video
-                        videoClipUrls.push('https://res.cloudinary.com/djol0rpn5/video/upload/v1734612999/samples/elephants.mp4');
-                    }
-                }
-
-                // Create segment for this scene using actual clip duration
-                const segmentDuration = clipsNeeded * clipDuration;
-                segments.push(createSegment({
-                    index: i,
-                    commentary: originalScene.narration,
-                    imagePrompt: originalScene.visualPrompt,
-                    // Store first clip URL as "imageUrl" for compatibility, but mark as video
-                    imageUrl: videoClipUrls[videoClipUrls.length - clipsNeeded] || '',
-                    startSeconds: currentTime,
-                    endSeconds: currentTime + segmentDuration,
-                    caption: originalScene.title,
-                }));
-
-                currentTime += segmentDuration;
+                const { segment, urls } = await this.generateVideoSceneClips(
+                    jobId, i, analyzed, originalScene, sceneDuration, currentTime, input.tone
+                );
+                segments.push(segment);
+                videoClipUrls.push(...urls);
+                currentTime += segment.endSeconds - segment.startSeconds;
             } else {
-                // Generate IMAGE via Flux and apply Ken Burns motion
-                try {
-                    const imageResult = await primaryImage.generateImage(analyzed.enhancedPrompt);
-                    let imageUrl = imageResult.imageUrl;
-
-                    // Upload to Cloudinary
-                    if (this.deps.storageClient && imageUrl && !imageUrl.includes('cloudinary')) {
-                        const uploaded = await this.deps.storageClient.uploadImage(imageUrl, {
-                            folder: 'youtube-shorts/scene-images',
-                            publicId: `youtube_${jobId}_scene${i}_image`,
-                        });
-                        imageUrl = uploaded.url;
-                    }
-
-                    // For images, we still need video clips for the renderer
-                    // Use Ken Burns effect by marking with turbo: prefix
-                    videoClipUrls.push(`turbo:${imageUrl}`);
-                    console.log(`[${jobId}] Image generated for scene ${i + 1}: ${imageUrl.substring(0, 60)}...`);
-
-                } catch (error) {
-                    console.error(`[${jobId}] Failed to generate image for scene ${i}:`, error);
-                    videoClipUrls.push('turbo:https://res.cloudinary.com/djol0rpn5/image/upload/v1734612999/samples/landscapes/nature-mountains.jpg');
-                }
-
-                segments.push(createSegment({
-                    index: i,
-                    commentary: originalScene.narration,
-                    imagePrompt: originalScene.visualPrompt,
-                    imageUrl: videoClipUrls[videoClipUrls.length - 1].replace('turbo:', '') || '',
-                    startSeconds: currentTime,
-                    endSeconds: currentTime + sceneDuration,
-                    caption: originalScene.title,
-                }));
-
+                const { segment, url } = await this.generateImageSceneClip(
+                    jobId, i, analyzed, originalScene, sceneDuration, currentTime, primaryImage
+                );
+                segments.push(segment);
+                videoClipUrls.push(url);
                 currentTime += sceneDuration;
             }
         }
 
-        // Mark job as using animated video mode
-        await this.deps.jobManager.updateJob(jobId, {
-            segments,
-            isAnimatedVideoMode: true,
-            animatedVideoUrls: videoClipUrls,
+        return { segments, videoClipUrls };
+    }
+
+    /** Generates video clips for a single scene. */
+    private async generateVideoSceneClips(
+        jobId: string,
+        sceneIndex: number,
+        analyzed: any,
+        originalScene: any,
+        sceneDuration: number,
+        currentTime: number,
+        tone?: string
+    ): Promise<{ segment: Segment; urls: string[] }> {
+        const urls: string[] = [];
+        const clipsNeeded = Math.ceil(sceneDuration / 10);
+        const clipDuration = clipsNeeded > 1 ? 10 : (sceneDuration <= 5 ? 5 : 10);
+
+        for (let clipIdx = 0; clipIdx < clipsNeeded; clipIdx++) {
+            const url = await this.generateSingleVideoClip(jobId, sceneIndex, clipIdx, analyzed, originalScene, clipDuration, tone);
+            urls.push(url);
+        }
+
+        const segmentDuration = clipsNeeded * clipDuration;
+        const segment = createSegment({
+            index: sceneIndex,
+            commentary: originalScene.narration,
+            imagePrompt: originalScene.visualPrompt,
+            imageUrl: urls[0] || '',
+            startSeconds: currentTime,
+            endSeconds: currentTime + segmentDuration,
+            caption: originalScene.title,
         });
 
-        // 5. Select music (epic/cinematic for YouTube Shorts)
+        return { segment, urls };
+    }
+
+    /** Generates a single video clip for a scene. */
+    private async generateSingleVideoClip(
+        jobId: string,
+        sceneIndex: number,
+        clipIdx: number,
+        analyzed: any,
+        originalScene: any,
+        clipDuration: number,
+        tone?: string
+    ): Promise<string> {
+        try {
+            const clipPrompt = clipIdx === 0
+                ? analyzed.enhancedPrompt
+                : `${analyzed.enhancedPrompt} (continuation, part ${clipIdx + 1})`;
+
+            const videoResult = await this.deps.animatedVideoClient!.generateAnimatedVideo({
+                durationSeconds: clipDuration,
+                theme: clipPrompt,
+                storyline: originalScene.narration,
+                mood: analyzed.visualSpec.mood || tone || 'epic',
+            });
+
+            return await this.persistVideoClip(videoResult.videoUrl, jobId, sceneIndex, clipIdx);
+        } catch (error) {
+            console.error(`[${jobId}] Failed to generate video for scene ${sceneIndex}:`, error);
+            return 'https://res.cloudinary.com/djol0rpn5/video/upload/v1734612999/samples/elephants.mp4';
+        }
+    }
+
+    /** Persists video clip to Cloudinary if available. */
+    private async persistVideoClip(videoUrl: string, jobId: string, sceneIndex: number, clipIdx: number): Promise<string> {
+        if (!this.deps.storageClient || !videoUrl || videoUrl.includes('cloudinary')) {
+            return videoUrl;
+        }
+
+        const uploaded = await this.deps.storageClient.uploadVideo(videoUrl, {
+            folder: 'youtube-shorts/scene-clips',
+            publicId: `youtube_${jobId}_scene${sceneIndex}_clip${clipIdx}`,
+        });
+        return uploaded.url;
+    }
+
+    /** Generates image for a scene with Ken Burns effect. */
+    private async generateImageSceneClip(
+        jobId: string,
+        sceneIndex: number,
+        analyzed: any,
+        originalScene: any,
+        sceneDuration: number,
+        currentTime: number,
+        imageClient: IImageClient
+    ): Promise<{ segment: Segment; url: string }> {
+        let url: string;
+        try {
+            const imageResult = await imageClient.generateImage(analyzed.enhancedPrompt);
+            let imageUrl = imageResult.imageUrl;
+
+            if (this.deps.storageClient && imageUrl && !imageUrl.includes('cloudinary')) {
+                const uploaded = await this.deps.storageClient.uploadImage(imageUrl, {
+                    folder: 'youtube-shorts/scene-images',
+                    publicId: `youtube_${jobId}_scene${sceneIndex}_image`,
+                });
+                imageUrl = uploaded.url;
+            }
+            url = `turbo:${imageUrl}`;
+            console.log(`[${jobId}] Image generated for scene ${sceneIndex + 1}`);
+        } catch (error) {
+            console.error(`[${jobId}] Failed to generate image for scene ${sceneIndex}:`, error);
+            url = 'turbo:https://res.cloudinary.com/djol0rpn5/image/upload/v1734612999/samples/landscapes/nature-mountains.jpg';
+        }
+
+        const segment = createSegment({
+            index: sceneIndex,
+            commentary: originalScene.narration,
+            imagePrompt: originalScene.visualPrompt,
+            imageUrl: url.replace('turbo:', '') || '',
+            startSeconds: currentTime,
+            endSeconds: currentTime + sceneDuration,
+            caption: originalScene.title,
+        });
+
+        return { segment, url };
+    }
+
+    /** Selects music for YouTube Short. */
+    private async selectYouTubeMusic(jobId: string, duration: number, tone?: string) {
         await this.updateJobStatus(jobId, 'selecting_music', 'Selecting background music...');
         const musicResult = await this.deps.musicSelector.selectMusic(
             ['epic', 'cinematic', 'ambient'],
-            actualTtsDuration,
-            youtubeInput.tone || 'epic'
+            duration,
+            tone || 'epic'
         );
 
         if (musicResult) {
@@ -1047,8 +1205,18 @@ export class ReelOrchestrator {
                 musicSource: musicResult.source as 'catalog' | 'internal' | 'ai',
             });
         }
+        return musicResult;
+    }
 
-        // 6. Build manifest with VIDEO clips instead of images
+    /** Builds manifest and renders YouTube Short video. */
+    private async buildAndRenderYouTubeManifest(
+        jobId: string,
+        voiceoverUrl: string,
+        musicResult: any,
+        segments: Segment[],
+        videoClipUrls: string[],
+        actualTtsDuration: number
+    ): Promise<{ finalVideoUrl: string; manifest: ReelManifest }> {
         await this.updateJobStatus(jobId, 'building_manifest', 'Preparing video manifest...');
         const manifest = createReelManifest({
             durationSeconds: actualTtsDuration,
@@ -1058,18 +1226,14 @@ export class ReelOrchestrator {
             subtitlesUrl: '',
         });
 
-        // Mark manifest as video-based for renderer
         (manifest as any).isVideoMode = true;
         (manifest as any).videoClipUrls = videoClipUrls;
-
         await this.deps.jobManager.updateJob(jobId, { manifest });
 
-        // 7. Render final video (concatenate clips + audio)
         await this.updateJobStatus(jobId, 'rendering', 'Rendering final video...');
         const renderResult = await this.deps.videoRenderer.render(manifest);
         let finalVideoUrl = renderResult.videoUrl;
 
-        // 8. Upload to permanent storage
         if (this.deps.storageClient && finalVideoUrl && !finalVideoUrl.includes('cloudinary')) {
             try {
                 await this.updateJobStatus(jobId, 'uploading', 'Saving to permanent storage...');
@@ -1083,29 +1247,33 @@ export class ReelOrchestrator {
             }
         }
 
-        // 9. Complete job
+        return { finalVideoUrl, manifest };
+    }
+
+    /** Completes YouTube Short job and sends notifications. */
+    private async completeYouTubeJob(
+        jobId: string,
+        manifest: ReelManifest,
+        finalVideoUrl: string,
+        input: NonNullable<ReelJob['youtubeShortInput']>,
+        actualTtsDuration: number,
+        clipCount: number
+    ): Promise<ReelJob> {
         const completedJob = completeJob(
             await this.deps.jobManager.getJob(jobId) as ReelJob,
             finalVideoUrl,
             manifest
         );
-        await this.deps.jobManager.updateJob(jobId, {
-            status: 'completed',
-            finalVideoUrl,
-            manifest,
-        });
+        await this.deps.jobManager.updateJob(jobId, { status: 'completed', finalVideoUrl, manifest });
 
-        // 10. Notify user
         if (completedJob.telegramChatId && this.deps.notificationClient) {
             await this.deps.notificationClient.sendNotification(
                 completedJob.telegramChatId,
-                `✅ *Your YouTube Short is ready!*\n\n🎬 ${youtubeInput.title}\n⏱️ ${actualTtsDuration.toFixed(1)}s\n🎞️ ${videoClipUrls.length} video clips\n\n${finalVideoUrl}`
+                `✅ *Your YouTube Short is ready!*\n\n🎬 ${input.title}\n⏱️ ${actualTtsDuration.toFixed(1)}s\n🎞️ ${clipCount} clips\n\n${finalVideoUrl}`
             );
         }
 
-        // 11. Callback
         await this.notifyCallback(completedJob);
-
         return completedJob;
     }
 }
