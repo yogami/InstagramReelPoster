@@ -1,14 +1,11 @@
-FROM node:20
+# Optimized for Google Cloud Run / Antigravity Zero-Cost Hosting
+FROM node:20-slim
 
-# Install FFmpeg, Python3, pip, and basic tools
+# Install FFmpeg and basic system tools
 RUN apt-get update && apt-get install -y \
     ffmpeg \
-    python3 \
-    python3-pip \
+    curl \
     && rm -rf /var/lib/apt/lists/*
-
-# Install Python dependencies for WebOrganizer (SOTA classifier)
-RUN pip3 install --no-cache-dir transformers torch --break-system-packages
 
 WORKDIR /app
 
@@ -22,6 +19,9 @@ RUN npx playwright install chromium
 RUN npx playwright install-deps chromium
 
 COPY . .
+
+# Install Remotion puppet sub-project dependencies
+RUN cd scripts/remotion-puppet && npm install
 
 RUN npm run build
 
