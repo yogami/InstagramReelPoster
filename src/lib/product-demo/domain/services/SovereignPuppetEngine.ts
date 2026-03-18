@@ -92,7 +92,10 @@ export class SovereignPuppetEngine {
         console.log(`\n=== 🎭 Initiating Sovereign Puppet Engine for Job: ${jobId} ===\n`);
 
         const publicDir = path.join(this.remotionDir, 'public');
-        
+        if (!fs.existsSync(publicDir)) {
+            fs.mkdirSync(publicDir, { recursive: true });
+            console.log(`[Puppet] Created Remotion public dir: ${publicDir}`);
+        }
         // 1. Generate TTS audio for each dialogue turn
         console.log(`--- Step 1: Generating Fish Audio TTS for ${turns.length} turns ---`);
         const timeline: TimelineTurn[] = [];
