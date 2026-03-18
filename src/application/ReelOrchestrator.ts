@@ -336,9 +336,16 @@ export class ReelOrchestrator {
             const contextWithInstructions = await instructionExtractor.execute(createJobContext(jobId, { ...job, transcript }));
             const providedCommentary = contextWithInstructions.job.providedCommentary;
 
-            // 3. Generate dialogue script via LLM
+            // 3. Generate dialogue script via LLM (OpenRouter primary, Gemini fallback)
             await this.updateJobStatus(jobId, 'generating_commentary', 'Crafting character dialogue...');
-            const dialogueGen = new PuppetDialogueGenerator(this.deps.llmClient);
+            const config = getConfig();
+            let dialogueLlm: any = this.deps.llmClient;
+            if (config.openRouterApiKey) {
+                const { OpenRouterTextClient } = await import('../infrastructure/llm/OpenRouterTextClient');
+                dialogueLlm = new OpenRouterTextClient(config.openRouterApiKey, config.openRouterModel);
+                console.log(`[${jobId}] 🔀 Using OpenRouter (${config.openRouterModel}) as primary LLM`);
+            }
+            const dialogueGen = new PuppetDialogueGenerator(dialogueLlm);
             const dialogueResult = await dialogueGen.generateDialogue(transcript || providedCommentary || "", providedCommentary);
 
             await this.deps.jobManager.updateJob(jobId, {
@@ -347,7 +354,6 @@ export class ReelOrchestrator {
 
             // 4. Engine Execution
             await this.updateJobStatus(jobId, 'rendering', 'Igniting Sovereign Puppet Engine...');
-            const config = getConfig();
             const engine = new SovereignPuppetEngine({
                 replicateApiToken: config.replicateApiToken,
                 fishApiKey: config.ttsCloningApiKey,
@@ -356,8 +362,8 @@ export class ReelOrchestrator {
                 cloudinaryCloudName: config.cloudinaryCloudName,
                 cloudinaryApiKey: config.cloudinaryApiKey,
                 cloudinaryApiSecret: config.cloudinaryApiSecret,
-                makeWebhookUrl: "",
-                makeApiKey: "",
+                makeWebhookUrl: config.makeWebhookUrl,
+                makeApiKey: process.env.MAKE_API_KEY || "",
             });
 
             const finalVideoUrl = await engine.execute(
@@ -479,9 +485,10 @@ export class ReelOrchestrator {
             return;
         }
         const processingTime = Math.round((Date.now() - job.createdAt.getTime()) / 1000);
+        const videoLine = job.finalVideoUrl ? `\n\n🎬 ${job.finalVideoUrl}` : '';
         await this.deps.notificationClient.sendNotification(
             job.telegramChatId,
-            `✅ *Your reel is ready!*\n\nProcessing took ${processingTime}s.`
+            `✅ *Your reel is ready!*\n\nProcessing took ${processingTime}s.${videoLine}`
         );
     }
 

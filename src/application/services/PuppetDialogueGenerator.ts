@@ -22,16 +22,17 @@ export class PuppetDialogueGenerator {
     async generateDialogue(userInput: string, providedCommentary?: string): Promise<PuppetDialogueResult> {
         const strictEnforcement = providedCommentary
             ? `CRITICAL: The user provided exact dialogue. Use their text word-for-word, splitting it between Marco and Luna as a conversation. Only generate the scene/visual prompt.\n\nEXACT TEXT: """${providedCommentary}"""`
-            : `Transform the user's random thought into a profound, cinematic 2-character dialogue. Marco is introspective and philosophical. Luna challenges his ideas and grounds them in reality. The dialogue should feel like a scene from a film — emotionally charged, with pauses and subtext.\n\nUSER'S THOUGHT: """${userInput}"""`;
+            : `Transform the user's random thought into a deep, cinematic 2-character dialogue. Marco is introspective and quietly honest. Luna challenges his ideas but also reveals her own vulnerability. The dialogue should feel like a scene from a film — emotionally raw, with pauses and subtext. Use SIMPLE words. No philosophical jargon — just two real people talking about something that matters to them.\n\nUSER'S THOUGHT: """${userInput}"""`;
 
         const prompt = `${strictEnforcement}
 
 Generate a dialogue scene matching this JSON schema. Output MUST be valid JSON only.
 
 Rules:
-- 4 to 6 turns of dialogue (alternating Marco and Luna)
+- 10 to 14 turns of dialogue (alternating Marco and Luna). This is a ~1 minute conversation.
 - Each line: 1-2 sentences max. Natural speech with pauses ("...") and emotion.
-- scene: A one-line description of the setting (e.g. "Two friends on a rooftop at sunset")
+- Keep it raw and honest — like two people in a late-night conversation, NOT a TED talk.
+- scene: A one-line description of the setting (e.g. "Two friends at a dimly lit café, late at night")
 - visualPrompt: A detailed, photorealistic prompt for the background image (9:16 vertical, cinematic, moody). NO TEXT in the image.
 - caption: A provocative Instagram caption with 3-5 hashtags.
 
