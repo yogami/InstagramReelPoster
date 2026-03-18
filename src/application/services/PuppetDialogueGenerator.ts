@@ -22,7 +22,21 @@ export class PuppetDialogueGenerator {
     async generateDialogue(userInput: string, providedCommentary?: string): Promise<PuppetDialogueResult> {
         const strictEnforcement = providedCommentary
             ? `CRITICAL: The user provided exact dialogue. Use their text word-for-word, splitting it between Marco and Luna as a conversation. Only generate the scene/visual prompt.\n\nEXACT TEXT: """${providedCommentary}"""`
-            : `Transform the user's random thought into a deep, cinematic 2-character dialogue. Marco is introspective and quietly honest. Luna challenges his ideas but also reveals her own vulnerability. The dialogue should feel like a scene from a film — emotionally raw, with pauses and subtext. Use SIMPLE words. No philosophical jargon — just two real people talking about something that matters to them.\n\nUSER'S THOUGHT: """${userInput}"""`;
+            : `Transform the user's thought into a cinematic 2-character dialogue for Instagram Reels (Gen Y/Z audience).
+
+CHARACTERS:
+- Marco (late 20s): Self-aware but stuck. Uses dry humor when things get heavy. Says "I don't know" a lot. Starts sentences, backtracks, restarts. The kind of guy who's been to therapy twice and quit both times.
+- Luna (late 20s): Sharp, calls out deflection instantly. Vulnerable underneath the sarcasm. Uses specific examples instead of abstract feelings. The friend who texts you "we need to talk" at 2am.
+
+VOICE RULES — this is NOT a podcast or TED talk. It's two real people in their late 20s:
+- Use therapy-adjacent language naturally: "I think I'm projecting", "that's my avoidant side talking", "I'm self-sabotaging again"
+- Be SPECIFIC, not generic: "I scrolled your ex's profile for 40 minutes" NOT "I feel jealous"
+- Include interruptions: "wait no that came out wrong—", "actually, forget I said that"
+- Dark humor as deflection: when it gets too real, one of them cracks a joke, then the other calls it out
+- Unfinished thoughts: "maybe we just… I don't know", "it's like we're both trying to—"
+- NO philosophy, NO quotes, NO life lessons. Just two people who know they're messed up and can't fix it.
+
+USER'S THOUGHT: """${userInput}"""`;
 
         const prompt = `${strictEnforcement}
 
@@ -30,12 +44,12 @@ Generate a dialogue scene matching this JSON schema. Output MUST be valid JSON o
 
 Rules:
 - 10 to 14 turns of dialogue (alternating Marco and Luna). This is a ~1 minute conversation.
-- Each line: 1-2 sentences max. Natural speech with pauses ("...") and emotion.
-- Keep it raw and honest — like two people in a late-night conversation, NOT a TED talk.
-- CRITICAL: Do NOT censor or asterisk-mask ANY words. This dialogue will be read aloud by text-to-speech. Asterisks will be spoken literally. Instead of censoring, use natural euphemisms: "intimacy" instead of "sex", "being together" instead of "sleeping together", "desire" instead of "lust", etc. Write the words fully — no s*x, f**k, sh*t or any masked words.
-- scene: A one-line description of the setting (e.g. "Two friends at a dimly lit café, late at night")
-- visualPrompt: A detailed, photorealistic prompt for the background image (9:16 vertical, cinematic, moody). NO TEXT in the image.
-- caption: A provocative Instagram caption with 3-5 hashtags.
+- Each line: 1-2 sentences max. Messy, real speech. Pauses ("..."), trail-offs, self-corrections.
+- The conversation should have an ARC: starts light/defensive → one person cracks → the other follows → ends raw and unresolved (no neat conclusions)
+- CRITICAL: Do NOT censor or asterisk-mask ANY words. This is read by text-to-speech — asterisks get spoken literally. Use euphemisms: "intimacy" not "sex", "hooking up" not "sleeping around", "messing around" not profanity. Write words fully.
+- scene: A one-line description of the setting (e.g. "Two friends on a rooftop at 2am, city lights below")
+- visualPrompt: A detailed, photorealistic prompt for the background image (9:16 vertical, cinematic, moody, urban). NO TEXT in the image.
+- caption: A short, punchy Instagram caption that Gen Z would screenshot. Max 2 sentences + 3-5 relevant hashtags.
 
 JSON Schema:
 {
