@@ -1,3 +1,6 @@
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
 import axios from 'axios';
 import {
     ReelJob,
@@ -60,7 +63,6 @@ import { PageNormalizer } from '../domain/services/PageNormalizer';
 import { SmartSiteClassifier } from '../domain/services/SmartSiteClassifier';
 import { BlueprintFactory } from '../domain/services/BlueprintFactory';
 import { WebsiteIntelligenceService } from '../domain/services/WebsiteIntelligenceService';
-import { GptService } from '../infrastructure/llm/GptService';
 
 // Pipeline Imports
 import { createJobContext, executePipeline } from './pipelines/PipelineInfrastructure';
@@ -71,6 +73,16 @@ import { PromoAssetService } from './services/PromoAssetService';
 import { OrchestratorErrorService } from './services/OrchestratorErrorService';
 import { IComplianceClient } from '../infrastructure/compliance/GuardianClient';
 import { WebsitePromoSlice } from '../lib/website-promo';
+import { ScenarioScriptGenerator } from './services/ScenarioScriptGenerator';
+import { ScenarioVoiceoverService } from './services/ScenarioVoiceoverService';
+import { ScenarioVisualService } from './services/ScenarioVisualService';
+import { ScenarioReelRenderer } from '../infrastructure/video/ScenarioReelRenderer';
+import { ScenarioInput, ScenarioScript } from '../domain/entities/ScenarioScript';
+import { StillscapeScriptGenerator } from './services/StillscapeScriptGenerator';
+import { SovereignStillscapeEngine } from '../lib/product-demo/domain/services/SovereignStillscapeEngine';
+import { PuppetDialogueGenerator } from './services/PuppetDialogueGenerator';
+import { SovereignPuppetEngine } from '../lib/product-demo/domain/services/SovereignPuppetEngine';
+import { InstructionExtractionStep } from './pipelines/steps/InstructionExtractionStep';
 
 export interface OrchestratorDependencies {
     transcriptionClient: ITranscriptionClient;
@@ -93,6 +105,7 @@ export interface OrchestratorDependencies {
     callbackHeader?: string;
     notificationClient?: INotificationClient;
     complianceClient?: IComplianceClient;
+    lipSyncClient?: import('../domain/ports/ILipSyncClient').ILipSyncClient;
     /** Optional: Independent Website Promo slice for decoupled processing */
     websitePromoSlice?: WebsitePromoSlice;
 }
@@ -183,6 +196,12 @@ export class ReelOrchestrator {
 
     /** Routes job to the appropriate pipeline based on mode. */
     private async routeJobToPipeline(jobId: string, job: ReelJob): Promise<ReelJob> {
+        // Scenario Mode (Relationship Dialogue Reels)
+        if (job.forceMode === 'scenario' || job.scenarioInput) {
+            console.log(`[${jobId}] 🎭 Using SCENARIO pipeline`);
+            return await this.processScenarioJob(jobId, job);
+        }
+
         // YouTube Short Mode
         if (job.forceMode === 'youtube-short' || job.youtubeShortInput) {
             console.log(`[${jobId}] 🎬 Using YOUTUBE SHORT pipeline`);
@@ -196,12 +215,18 @@ export class ReelOrchestrator {
             return await this.processWebsitePromoJob(jobId, job);
         }
 
-        // Standard Pipeline
-        console.log(`[${jobId}] 🚀 Initializing STANDARD pipeline execution...`);
-        return await this.executeStandardPipeline(jobId, job);
+        // SVG Puppet Dialogue Mode
+        if (job.forceMode === 'puppet-dialogue') {
+            console.log(`[${jobId}] 🎭 Using PUPPET DIALOGUE pipeline`);
+            return await this.processPuppetDialogueJob(jobId, job);
+        }
+
+        // Standard Pipeline (Now Sovereign Stillscape Engine)
+        console.log(`[${jobId}] 🚀 Initializing SOVEREIGN STILLSCAPE pipeline execution...`);
+        return await this.processStillscapeJob(jobId, job);
     }
 
-    /** Executes the standard reel pipeline and finalizes. */
+    /** Executes the legacy standard reel pipeline and finalizes (Deprecated). */
     private async executeStandardPipeline(jobId: string, job: ReelJob): Promise<ReelJob> {
         const pipelineDeps = this.createPipelineDependencies();
         const steps = createStandardPipeline(pipelineDeps);
@@ -217,6 +242,152 @@ export class ReelOrchestrator {
         );
 
         return await this.finalizeStandardJob(jobId, finalContext.finalVideoUrl);
+    }
+
+    /** Processes the new baseline Stillscape generation. */
+    private async processStillscapeJob(jobId: string, job: ReelJob): Promise<ReelJob> {
+        try {
+            await this.updateJobStatus(jobId, 'planning', 'Transcribing and understanding intent...');
+            
+            // 1. Transcription if necessary
+            let transcript = job.transcript;
+            if (!transcript && job.sourceAudioUrl) {
+                transcript = await this.deps.transcriptionClient.transcribe(job.sourceAudioUrl);
+                await this.deps.jobManager.updateJob(jobId, { transcript });
+            }
+
+            if (!transcript && !job.providedCommentary) {
+                throw new Error("No transcript or provided commentary available to generate video.");
+            }
+
+            // 2. Extract specific phrasing instructions if any (e.g. "use this exact phrasing")
+            const instructionExtractor = new InstructionExtractionStep(this.deps.jobManager);
+            const contextWithInstructions = await instructionExtractor.execute(createJobContext(jobId, { ...job, transcript }));
+            const providedCommentary = contextWithInstructions.job.providedCommentary;
+
+            // 3. Generate 5-Act Script
+            await this.updateJobStatus(jobId, 'generating_commentary', 'Drafting Stillscape philosophical narrative...');
+            const scriptGen = new StillscapeScriptGenerator(this.deps.llmClient);
+            const scriptResult = await scriptGen.generateScript(transcript || providedCommentary || "", providedCommentary);
+            
+            await this.deps.jobManager.updateJob(jobId, { 
+                mainCaption: scriptResult.caption
+            });
+
+            // 4. Engine Execution
+            await this.updateJobStatus(jobId, 'rendering', 'Igniting Sovereign Stillscape Engine...');
+            const config = getConfig();
+            const engine = new SovereignStillscapeEngine({
+                 replicateApiToken: config.replicateApiToken,
+                 fishApiKey: config.ttsCloningApiKey,
+                 fishVoiceId: config.ttsCloningPromoVoiceId || "716594c03801446bb87a964a1c2a5895",
+                 cloudinaryCloudName: config.cloudinaryCloudName,
+                 cloudinaryApiKey: config.cloudinaryApiKey,
+                 cloudinaryApiSecret: config.cloudinaryApiSecret,
+                 // We disable webhook sending in the engine because ReelOrchestrator handles it
+                 makeWebhookUrl: "", 
+                 makeApiKey: ""
+            });
+
+            const finalVideoUrl = await engine.execute(jobId, scriptResult.caption, scriptResult.acts);
+
+            // 5. Finalize Job
+            const manifest: any = { durationSeconds: 60, segments: [] };
+            const completedJob = completeJob(
+                await this.deps.jobManager.getJob(jobId) as ReelJob,
+                finalVideoUrl,
+                manifest
+            );
+            await this.deps.jobManager.updateJob(jobId, {
+                status: 'completed',
+                finalVideoUrl,
+                manifest,
+            });
+
+            // Trigger orchestrator's built-in notifications and webhooks
+            await this.sendCompletionNotification(completedJob);
+            await this.notifyCallback(completedJob);
+
+            return completedJob;
+        } catch (error) {
+            console.error(`[${jobId}] Stillscape pipeline failed:`, error);
+            return await this.errorService.handlePromoJobError(jobId, job, error);
+        }
+    }
+
+    /** Processes the SVG puppet dialogue pipeline. */
+    private async processPuppetDialogueJob(jobId: string, job: ReelJob): Promise<ReelJob> {
+        try {
+            await this.updateJobStatus(jobId, 'planning', 'Preparing puppet dialogue...');
+
+            // 1. Transcription if necessary
+            let transcript = job.transcript;
+            if (!transcript && job.sourceAudioUrl) {
+                transcript = await this.deps.transcriptionClient.transcribe(job.sourceAudioUrl);
+                await this.deps.jobManager.updateJob(jobId, { transcript });
+            }
+
+            if (!transcript && !job.providedCommentary) {
+                throw new Error("No transcript or provided commentary available.");
+            }
+
+            // 2. Extract specific phrasing instructions
+            const instructionExtractor = new InstructionExtractionStep(this.deps.jobManager);
+            const contextWithInstructions = await instructionExtractor.execute(createJobContext(jobId, { ...job, transcript }));
+            const providedCommentary = contextWithInstructions.job.providedCommentary;
+
+            // 3. Generate dialogue script via LLM
+            await this.updateJobStatus(jobId, 'generating_commentary', 'Crafting character dialogue...');
+            const dialogueGen = new PuppetDialogueGenerator(this.deps.llmClient);
+            const dialogueResult = await dialogueGen.generateDialogue(transcript || providedCommentary || "", providedCommentary);
+
+            await this.deps.jobManager.updateJob(jobId, {
+                mainCaption: dialogueResult.caption,
+            });
+
+            // 4. Engine Execution
+            await this.updateJobStatus(jobId, 'rendering', 'Igniting Sovereign Puppet Engine...');
+            const config = getConfig();
+            const engine = new SovereignPuppetEngine({
+                replicateApiToken: config.replicateApiToken,
+                fishApiKey: config.ttsCloningApiKey,
+                fishMaleVoiceId: config.scenarioMaleVoiceId || "716594c03801446bb87a964a1c2a5895",
+                fishFemaleVoiceId: config.scenarioFemaleVoiceId || "716594c03801446bb87a964a1c2a5895",
+                cloudinaryCloudName: config.cloudinaryCloudName,
+                cloudinaryApiKey: config.cloudinaryApiKey,
+                cloudinaryApiSecret: config.cloudinaryApiSecret,
+                makeWebhookUrl: "",
+                makeApiKey: "",
+            });
+
+            const finalVideoUrl = await engine.execute(
+                jobId,
+                dialogueResult.caption,
+                dialogueResult.visualPrompt,
+                dialogueResult.turns
+            );
+
+            // 5. Finalize Job
+            const manifest: any = { durationSeconds: 30, segments: [] };
+            const completedJob = completeJob(
+                await this.deps.jobManager.getJob(jobId) as ReelJob,
+                finalVideoUrl,
+                manifest
+            );
+            await this.deps.jobManager.updateJob(jobId, {
+                status: 'completed',
+                finalVideoUrl,
+                manifest,
+            });
+
+            await this.sendCompletionNotification(completedJob);
+            await this.notifyCallback(completedJob);
+
+            return completedJob;
+        } catch (error) {
+            console.error(`[${jobId}] Puppet dialogue pipeline failed:`, error);
+            return await this.errorService.handlePromoJobError(jobId, job, error);
+        }
     }
 
     /** Creates pipeline dependencies with services. */
@@ -244,7 +415,10 @@ export class ReelOrchestrator {
         if (!finalJob) throw new Error('Job disappeared after pipeline completion');
 
         let finalVideoUrl = videoUrl;
-        finalVideoUrl = await this.persistVideoIfNeeded(jobId, finalVideoUrl);
+
+        // Pass the explicit local path from the job state if it exists, otherwise pass the URL
+        const pathOrUrl = (finalJob as any).localVideoPath || videoUrl;
+        finalVideoUrl = await this.persistVideoIfNeeded(jobId, pathOrUrl);
 
         if (finalVideoUrl && finalVideoUrl !== videoUrl) {
             finalJob = await this.deps.jobManager.updateJob(jobId, { finalVideoUrl, status: 'completed' });
@@ -260,21 +434,42 @@ export class ReelOrchestrator {
     }
 
     /** Uploads video to permanent storage if needed. */
-    private async persistVideoIfNeeded(jobId: string, videoUrl: string | undefined): Promise<string | undefined> {
-        if (!videoUrl || !this.deps.storageClient || videoUrl.includes('cloudinary')) {
-            return videoUrl;
+    private async persistVideoIfNeeded(jobId: string, pathOrUrl: string | undefined): Promise<string | undefined> {
+        if (!pathOrUrl || !this.deps.storageClient || pathOrUrl.includes('cloudinary')) {
+            return pathOrUrl;
         }
 
         try {
             await this.updateJobStatus(jobId, 'uploading', 'Uploading to permanent storage...');
-            const uploadResult = await this.deps.storageClient.uploadVideo(videoUrl, {
+
+            // If it's a local filesystem path (like from RemotionRenderer)
+            if (pathOrUrl.startsWith('/') && !pathOrUrl.startsWith('/renders/')) {
+                const uploadResult = await this.deps.storageClient.uploadVideo(pathOrUrl, {
+                    folder: 'instagram-reels/final-videos',
+                    publicId: `reel_${jobId}_${Date.now()}`
+                });
+                return uploadResult.url;
+            }
+
+            // If it's a public path relative to the server root (like FFmpegRenderer output)
+            if (pathOrUrl.startsWith('/renders/')) {
+                const absolutePath = require('path').join(process.cwd(), 'public', pathOrUrl);
+                const uploadResult = await this.deps.storageClient.uploadVideo(absolutePath, {
+                    folder: 'instagram-reels/final-videos',
+                    publicId: `reel_${jobId}_${Date.now()}`
+                });
+                return uploadResult.url;
+            }
+
+            // Otherwise assume it's a remote URL
+            const uploadResult = await this.deps.storageClient.uploadVideo(pathOrUrl, {
                 folder: 'instagram-reels/final-videos',
                 publicId: `reel_${jobId}_${Date.now()}`
             });
             return uploadResult.url;
         } catch (e: any) {
-            console.error(`Upload failed: ${e.message || 'Unknown error'}`);
-            return videoUrl;
+            console.error(`Upload failed: ${e.message || 'Unknown error'}`, e);
+            return pathOrUrl;
         }
     }
 
@@ -421,6 +616,165 @@ export class ReelOrchestrator {
             parableTheme: job.parableIntent?.coreTheme,
             parableCulture: job.parableScriptPlan?.sourceChoice?.culture,
         };
+    }
+
+    /**
+     * Processes a scenario reel job (relationship dialogue format).
+     * Pipeline: Script → Image → Multi-Voice TTS → FFmpeg Render → Upload
+     */
+    public async processScenarioJob(jobId: string, job: ReelJob): Promise<ReelJob> {
+        const scenarioInput: ScenarioInput = job.scenarioInput || {};
+        console.log(`[${jobId}] 🎭 Scenario Pipeline: topic="${scenarioInput.topic || 'random'}"`);
+
+        try {
+            // Step 1: Generate script
+            await this.updateJobStatus(jobId, 'planning', 'Generating scenario script...');
+            const scriptGen = new ScenarioScriptGenerator(this.deps.llmClient);
+            const script = await scriptGen.generate(scenarioInput);
+            await this.deps.jobManager.updateJob(jobId, {
+                scenarioScript: script,
+                mainCaption: `${script.title} 🎭`,
+                hashtags: script.hashtags,
+            });
+            console.log(`[${jobId}] Script: "${script.title}" — ${script.dialogue.length} lines, ${script.wordCount} words`);
+
+            // Step 2: Synthesize multi-voice dialogue audio via Fish Audio TTS
+            await this.updateJobStatus(jobId, 'generating_voiceover', 'Synthesizing dialogue voices...');
+
+            const { loadConfig } = await import('../config');
+            const config = loadConfig();
+            const { FishAudioTtsClient } = await import('../infrastructure/tts/FishAudioTtsClient');
+
+            const fishApiKey = config.ttsCloningApiKey;
+            const maleVoiceId = config.scenarioMaleVoiceId || config.ttsCloningVoiceId;
+            const femaleVoiceId = config.scenarioFemaleVoiceId || config.ttsCloningPromoVoiceId;
+
+            const maleTts = new FishAudioTtsClient(fishApiKey, maleVoiceId);
+            const femaleTts = new FishAudioTtsClient(fishApiKey, femaleVoiceId);
+
+            const voiceoverService = new ScenarioVoiceoverService(maleTts, femaleTts);
+            const { audioSegments, timingMarkers, totalDurationSeconds } =
+                await voiceoverService.synthesizeDialogue(script);
+
+            await this.deps.jobManager.updateJob(jobId, {
+                voiceoverDurationSeconds: totalDurationSeconds,
+                targetDurationSeconds: totalDurationSeconds,
+            });
+
+            // Step 3: Generate background — lip-sync animation or text-to-video / image
+            await this.updateJobStatus(jobId, 'generating_background', 'Creating cinematic background...');
+
+            let backgroundUrl: string;
+            let backgroundType: 'video' | 'image' = 'image';
+
+            if (config.useLipSync && this.deps.lipSyncClient) {
+                // Lip-sync mode: animate character image with audio
+                const lipSyncClient = this.deps.lipSyncClient;
+                console.log(`[${jobId}] Using ${lipSyncClient.constructor.name} for lip-sync`);
+
+                // Use the first audio segment + character image for lip-sync
+                // TODO: Support per-character images from a character library
+                const characterImagePath = path.join(__dirname, '../../assets/characters/default.png');
+
+                // Concatenate all audio segments into one file for lip-sync
+                const { execSync } = await import('child_process');
+                const concatDir = path.join(os.tmpdir(), `lipsync-concat-${Date.now()}`);
+                fs.mkdirSync(concatDir, { recursive: true });
+                const concatListPath = path.join(concatDir, 'concat.txt');
+                const concatAudioPath = path.join(concatDir, 'combined.mp3');
+                const concatList = audioSegments.map(seg => `file '${seg.audioUrl}'`).join('\n');
+                fs.writeFileSync(concatListPath, concatList);
+                execSync(`ffmpeg -y -f concat -safe 0 -i "${concatListPath}" -c copy "${concatAudioPath}"`, { stdio: 'pipe' });
+
+                // If test duration is set, trim audio to save credits (3-5s = 10-16 free tests)
+                let lipSyncDuration = totalDurationSeconds;
+                let lipSyncAudioPath = concatAudioPath;
+                if (config.lipSyncTestDuration > 0 && config.lipSyncTestDuration < totalDurationSeconds) {
+                    lipSyncDuration = config.lipSyncTestDuration;
+                    const trimmedPath = path.join(concatDir, 'trimmed.mp3');
+                    execSync(`ffmpeg -y -i "${concatAudioPath}" -t ${lipSyncDuration} -c copy "${trimmedPath}"`, { stdio: 'pipe' });
+                    lipSyncAudioPath = trimmedPath;
+                    console.log(`[${jobId}] Test mode: trimmed audio to ${lipSyncDuration}s (saves credits)`);
+                }
+
+                const result = await lipSyncClient.generateLipSync({
+                    imagePath: characterImagePath,
+                    audioPath: lipSyncAudioPath,
+                    durationSeconds: lipSyncDuration,
+                    characterName: script.characters?.[0]?.name || 'character',
+                });
+
+                backgroundUrl = result.videoPath;
+                backgroundType = 'video';
+                console.log(`[${jobId}] Lip-sync background generated: ${backgroundUrl}`);
+            } else {
+                // Video generation (Kie.ai) or Static image (Imagen 3) fallback
+                const visualService = new ScenarioVisualService(
+                    this.deps.fallbackImageClient,
+                    this.deps.animatedVideoClient
+                );
+                const result = await visualService.generateScene(script);
+                backgroundUrl = result.url;
+                backgroundType = result.type;
+                console.log(`[${jobId}] ${backgroundType === 'video' ? 'KieVideo' : 'Imagen'} background generated: ${backgroundUrl}`);
+            }
+
+            // Step 4: Composite reel with ScenarioReelRenderer
+            await this.updateJobStatus(jobId, 'rendering', 'Compositing final reel...');
+
+            const renderer = new ScenarioReelRenderer();
+            const { videoPath, durationSeconds: finalDuration } = await renderer.render({
+                script,
+                backgroundUrl,
+                backgroundType,
+                audioSegments,
+                timingMarkers,
+                totalDurationSeconds,
+            });
+
+            // Step 5: Upload and finalize
+            let finalVideoUrl = `file://${videoPath}`;
+            if (this.deps.storageClient) {
+                await this.updateJobStatus(jobId, 'uploading', 'Uploading to cloud storage...');
+                try {
+                    const uploadResult = await this.deps.storageClient.uploadVideo(videoPath, {
+                        folder: 'instagram-reels/scenarios',
+                        publicId: `scenario_${jobId}_${Date.now()}`
+                    });
+                    finalVideoUrl = uploadResult.url;
+                } catch (e: any) {
+                    console.warn(`[${jobId}] Upload failed, using local path: ${e.message}`);
+                }
+            }
+
+            const manifest: any = {
+                voiceoverUrl: '',
+                subtitlesUrl: '',
+                durationSeconds: totalDurationSeconds,
+                segments: [],
+            };
+
+            const completedJob = completeJob(
+                await this.deps.jobManager.getJob(jobId) as ReelJob,
+                finalVideoUrl,
+                manifest
+            );
+            await this.deps.jobManager.updateJob(jobId, {
+                status: 'completed',
+                finalVideoUrl,
+                manifest,
+            });
+
+            // Notifications
+            await this.sendCompletionNotification(completedJob);
+            await this.notifyCallback(completedJob);
+
+            console.log(`[${jobId}] ✅ Scenario reel complete: ${finalVideoUrl}`);
+            return completedJob;
+
+        } catch (error) {
+            return await this.errorService.handlePromoJobError(jobId, job, error);
+        }
     }
 
     /**
@@ -600,9 +954,7 @@ export class ReelOrchestrator {
         if (!analysis.rawText) return;
 
         try {
-            const config = getConfig();
-            const gptService = new GptService(config.openRouterApiKey || config.llmApiKey, 'gpt-4o');
-            const intelService = new WebsiteIntelligenceService(gptService);
+            const intelService = new WebsiteIntelligenceService(this.deps.llmClient);
             const extraIntel = await intelService.extractSophisticatedContactInfo(analysis.rawText);
 
             this.mergeExtractedInfo(analysis, extraIntel);
@@ -641,7 +993,7 @@ export class ReelOrchestrator {
 
         const blueprintFactory = new BlueprintFactory();
         const blueprint = blueprintFactory.create(normalizedPage, classification);
-        console.log('📐 Video Blueprint Beats:', JSON.stringify(blueprint.beats.map(b => b.kind), null, 2));
+        console.log('📐 Video Blueprint Beats:', JSON.stringify(blueprint.beats.map((b: any) => b.kind), null, 2));
 
         if (!this.deps.llmClient.generateScriptFromBlueprint) {
             throw new Error('LLM Client does not support generateScriptFromBlueprint');
@@ -1013,7 +1365,7 @@ export class ReelOrchestrator {
         input: NonNullable<ReelJob['youtubeShortInput']>
     ) {
         await this.updateJobStatus(jobId, 'analyzing_scenes', 'Analyzing scenes...');
-        const sceneAnalyzer = new YouTubeSceneAnalyzer();
+        const sceneAnalyzer = new YouTubeSceneAnalyzer(this.deps.llmClient);
 
         const fullScriptText = input.scenes.map(s =>
             `[${s.title}]\nVisual: ${s.visualPrompt}\nNarration: ${s.narration}`

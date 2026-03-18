@@ -6,8 +6,8 @@ import { ReelOrchestrator } from '../../application/ReelOrchestrator';
 import { asyncHandler, UnauthorizedError } from '../middleware/errorHandler';
 import { ChatService } from '../services/ChatService';
 import { getConfig } from '../../config';
-import { isLinkedInRequest, extractRawNote, createLinkedInDraft, LinkedInDraft, assemblePostContent } from '../../domain/entities/LinkedInDraft';
-import { GptLinkedInDraftService } from '../../infrastructure/linkedin/GptLinkedInDraftService';
+import { LinkedInDraft, assemblePostContent, createLinkedInDraft, extractRawNote, isLinkedInRequest } from '../../domain/entities/LinkedInDraft';
+import { GeminiLinkedInDraftService } from '../../infrastructure/linkedin/GeminiLinkedInDraftService';
 import { WebhookLinkedInPosterService } from '../../infrastructure/linkedin/WebhookLinkedInPosterService';
 import { YouTubeScriptParser } from '../../infrastructure/youtube/YouTubeScriptParser';
 
@@ -119,6 +119,7 @@ async function processUpdate(
             `🎙️ *VoiceGen Bot*\n\n` +
             `*Commands:*\n` +
             `• /reel <prompt> - Create a new Instagram Reel\n` +
+            `• /dialogue <thought> - Create a dialogue reel (Marco & Luna)\n` +
             `• /agent <task> - Trigger a local agent task\n` +
             `• /linkedin <note> - Draft a LinkedIn post\n\n` +
             `*Other:* \n` +
@@ -220,7 +221,7 @@ async function processUpdate(
             }
             await telegramService.sendMessage(chatId, '📝 *Generating LinkedIn draft...*');
             const config = getConfig();
-            const linkedInService = new GptLinkedInDraftService(config.llmApiKey, config.llmModel);
+            const linkedInService = new GeminiLinkedInDraftService(config.googleAiApiKey || config.llmApiKey);
             const draftContent = await linkedInService.generateDraftContent(rawNote);
             const draft = createLinkedInDraft(uuidv4(), { chatId, rawNote }, draftContent);
             pendingLinkedInDrafts.set(chatId, draft);
@@ -268,7 +269,36 @@ async function processUpdate(
         return;
     }
 
-    // 7. YOUTUBE SHORT
+    // 7. PUPPET DIALOGUE COMMAND
+    if (trimmedText.startsWith('/dialogue')) {
+        const thought = trimmedText.replace('/dialogue', '').trim();
+        if (!thought) {
+            await telegramService.sendMessage(chatId, '🎭 *Dialogue Reel*\n\nUsage: `/dialogue <your thought or topic>`\n\nExample: `/dialogue why do we chase things we don\'t need`');
+            return;
+        }
+
+        try {
+            const job = await jobManager.createJob({
+                transcript: thought,
+                providedCommentary: thought,
+                forceMode: 'puppet-dialogue',
+                targetDurationRange: { min: 10, max: 60 },
+                callbackUrl: makeWebhookUrl,
+                telegramChatId: chatId,
+            });
+            await telegramService.sendMessage(chatId, `🎭 *Dialogue Reel Started!*\n\nThought: _"${thought.substring(0, 80)}..."_\nJob ID: \`${job.id}\`\n\nMarco & Luna are discussing your idea...`);
+            orchestrator.processJob(job.id).catch((err) => {
+                console.error(`Puppet dialogue job ${job.id} failed:`, err);
+                telegramService.sendMessage(chatId, `❌ Dialogue job failed: ${err.message}`);
+            });
+        } catch (error) {
+            console.error('[Telegram] Puppet dialogue failed:', error);
+            await telegramService.sendMessage(chatId, `❌ Error: ${error instanceof Error ? error.message : 'Unknown'}`);
+        }
+        return;
+    }
+
+    // 8. YOUTUBE SHORT
     if (YouTubeScriptParser.isYouTubeRequest(trimmedText)) {
         try {
             const youtubeInput = YouTubeScriptParser.parse(trimmedText);

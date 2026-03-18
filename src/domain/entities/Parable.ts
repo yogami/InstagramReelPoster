@@ -19,7 +19,7 @@ export type ContentMode = 'direct-message' | 'parable';
  * - 'parable': Force parable mode
  * - 'website-promo': Force website promotional reel mode
  */
-export type ForceMode = 'direct' | 'parable' | 'website-promo' | 'youtube-short';
+export type ForceMode = 'direct' | 'parable' | 'website-promo' | 'youtube-short' | 'scenario' | 'puppet-dialogue';
 
 /**
  * Source type for parable content.

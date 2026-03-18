@@ -34,11 +34,13 @@ export function createReelRoutes(
                 throw new BadRequestError('sourceAudioUrl is required and must be a string');
             }
 
-            // Validate URL format
-            try {
-                new URL(sourceAudioUrl);
-            } catch {
-                throw new BadRequestError('sourceAudioUrl must be a valid URL');
+            // Validate URL format (allow user_prompt: override)
+            if (!sourceAudioUrl.startsWith('user_prompt:')) {
+                try {
+                    new URL(sourceAudioUrl);
+                } catch {
+                    throw new BadRequestError('sourceAudioUrl must be a valid URL or start with user_prompt:');
+                }
             }
 
             // Validate duration range if provided
@@ -52,8 +54,8 @@ export function createReelRoutes(
             }
 
             // Validate forceMode if provided
-            if (forceMode && !['direct', 'parable', 'website-promo'].includes(forceMode)) {
-                throw new BadRequestError('forceMode must be "direct", "parable", or "website-promo"');
+            if (forceMode && !['direct', 'parable', 'website-promo', 'puppet-dialogue'].includes(forceMode)) {
+                throw new BadRequestError('forceMode must be "direct", "parable", "website-promo", or "puppet-dialogue"');
             }
 
             // Create job
@@ -84,6 +86,72 @@ export function createReelRoutes(
                 status: job.status,
                 message: 'Reel processing started',
                 contentMode: forceMode || 'auto-detect',
+            });
+        })
+    );
+
+    /**
+     * POST /scenario
+     *
+     * Starts a new episode of the microdrama series.
+     *
+     * Body (all optional — defaults to duo Ren+Zara with random topic):
+     * {
+     *   "format":     "solo" | "duo" | "group"   — episode type
+     *   "theme":      string                      — free-form episode premise (any idea)
+     *   "topic":      string                      — topic library key (ignored if theme set)
+     *   "characters": ["Ren", "Zara"]             — cast names from the roster
+     *   "targetDurationSeconds": 50
+     * }
+     */
+    router.post(
+        '/scenario',
+        asyncHandler(async (req: Request, res: Response) => {
+            const {
+                format,
+                theme,
+                topic,
+                characters,
+                characterNames,     // legacy compat
+                targetDurationSeconds,
+                callbackUrl,
+            } = req.body;
+
+            // Validate format if provided
+            const validFormats = ['solo', 'duo', 'group'];
+            if (format && !validFormats.includes(format)) {
+                throw new BadRequestError(`format must be one of: ${validFormats.join(', ')}`);
+            }
+
+            const input: ReelJobInput = {
+                scenarioInput: {
+                    format: format || 'duo',
+                    theme: theme || undefined,
+                    topic: topic || undefined,
+                    characters: Array.isArray(characters) ? characters : undefined,
+                    characterNames: characterNames || undefined,
+                    targetDurationSeconds: targetDurationSeconds || 50,
+                },
+                callbackUrl,
+                forceMode: 'scenario',
+            };
+            const job = await jobManager.createJob(input);
+
+            const displayTheme = theme || topic || 'random';
+            const displayCast = Array.isArray(characters) ? characters.join(' & ') : (characterNames ? `${characterNames.male} & ${characterNames.female}` : 'Ren & Zara');
+            console.log(`[${job.id}] 🎭 Episode started | Format: ${format || 'duo'} | Cast: ${displayCast} | Theme: "${displayTheme}"`);
+
+            orchestrator.processJob(job.id).catch((error: unknown) => {
+                console.error(`Job ${job.id} failed:`, error);
+            });
+
+            res.status(202).json({
+                jobId: job.id,
+                status: job.status,
+                message: 'Episode generation started',
+                format: format || 'duo',
+                theme: displayTheme,
+                cast: displayCast,
             });
         })
     );
