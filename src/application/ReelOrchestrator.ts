@@ -357,8 +357,8 @@ export class ReelOrchestrator {
             const engine = new SovereignPuppetEngine({
                 replicateApiToken: config.replicateApiToken,
                 fishApiKey: config.ttsCloningApiKey,
-                fishMaleVoiceId: config.scenarioMaleVoiceId || "716594c03801446bb87a964a1c2a5895",
-                fishFemaleVoiceId: config.scenarioFemaleVoiceId || "716594c03801446bb87a964a1c2a5895",
+                fishMaleVoiceId: process.env.FISH_AUDIO_SCENARIO_MALE_VOICE_ID || "802e3bc2b27e49c2995d23ef70e6ac89",
+                fishFemaleVoiceId: process.env.FISH_AUDIO_SCENARIO_FEMALE_VOICE_ID || "3895f5f7c6ac43f092bec1b2c04f431f",
                 cloudinaryCloudName: config.cloudinaryCloudName,
                 cloudinaryApiKey: config.cloudinaryApiKey,
                 cloudinaryApiSecret: config.cloudinaryApiSecret,
