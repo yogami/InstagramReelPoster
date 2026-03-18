@@ -196,25 +196,8 @@ export class SovereignPuppetEngine {
         });
         console.log(`[Puppet:CDN] Uploaded: ${res.secure_url}`);
 
-        // 7. Webhook dispatch
-        if (this.config.makeWebhookUrl) {
-            console.log(`[Puppet:Webhook] Dispatching to Make.com...`);
-            const payload = {
-                jobId,
-                status: 'completed',
-                caption,
-                video_url: res.secure_url,
-                url: res.secure_url,
-                videoUrl: res.secure_url,
-                metadata: { createdAt: new Date(), completedAt: new Date(), test: false, engine: 'puppet' },
-            };
-            const whRes = await axios.post(this.config.makeWebhookUrl, payload, {
-                headers: { 'Content-Type': 'application/json', 'x-make-apikey': this.config.makeApiKey },
-            });
-            console.log(`✅ [Puppet Engine] Complete. Webhook: ${whRes.status}`);
-        } else {
-            console.log(`[Puppet:Webhook] No webhook URL — skipping.`);
-        }
+        // 7. Webhook dispatch is handled by the orchestrator's notifyCallback()
+        console.log(`[Puppet:CDN] ✅ Video ready. Webhook dispatch delegated to orchestrator.`);
 
         // 8. Cleanup Remotion public dir (remove temp audio/bg files)
         for (const f of fs.readdirSync(publicDir)) {
