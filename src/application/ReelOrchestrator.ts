@@ -336,28 +336,23 @@ export class ReelOrchestrator {
             const contextWithInstructions = await instructionExtractor.execute(createJobContext(jobId, { ...job, transcript }));
             const providedCommentary = contextWithInstructions.job.providedCommentary;
 
-            // 3. Generate dialogue script via LLM (OpenRouter primary, Gemini fallback)
+            // 3. Generate dialogue script via LLM (Gemini primary, OpenRouter fallback)
             await this.updateJobStatus(jobId, 'generating_commentary', 'Crafting character dialogue...');
             const config = getConfig();
-            let dialogueLlm: any = this.deps.llmClient; // Gemini (default)
-            let openRouterLlm: any = null;
-            if (config.openRouterApiKey) {
-                const { OpenRouterTextClient } = await import('../infrastructure/llm/OpenRouterTextClient');
-                openRouterLlm = new OpenRouterTextClient(config.openRouterApiKey, config.openRouterModel);
-                dialogueLlm = openRouterLlm;
-                console.log(`[${jobId}] 🔀 Using OpenRouter (${config.openRouterModel}) as primary LLM, Gemini as fallback`);
-            }
-            const dialogueGen = new PuppetDialogueGenerator(dialogueLlm);
+            const dialogueGen = new PuppetDialogueGenerator(this.deps.llmClient); // Gemini (primary)
             let dialogueResult;
             try {
+                console.log(`[${jobId}] 🔀 Using Gemini as primary LLM`);
                 dialogueResult = await dialogueGen.generateDialogue(transcript || providedCommentary || "", providedCommentary);
-            } catch (openRouterErr: any) {
-                if (openRouterLlm && this.deps.llmClient !== openRouterLlm) {
-                    console.warn(`[${jobId}] ⚠️ OpenRouter failed: ${openRouterErr.message}. Falling back to Gemini...`);
-                    const geminiDialogueGen = new PuppetDialogueGenerator(this.deps.llmClient);
-                    dialogueResult = await geminiDialogueGen.generateDialogue(transcript || providedCommentary || "", providedCommentary);
+            } catch (geminiErr: any) {
+                console.warn(`[${jobId}] ⚠️ Gemini failed: ${geminiErr.message}. Falling back to OpenRouter...`);
+                if (config.openRouterApiKey) {
+                    const { OpenRouterTextClient } = await import('../infrastructure/llm/OpenRouterTextClient');
+                    const openRouterLlm = new OpenRouterTextClient(config.openRouterApiKey, config.openRouterModel);
+                    const openRouterDialogueGen = new PuppetDialogueGenerator(openRouterLlm as any);
+                    dialogueResult = await openRouterDialogueGen.generateDialogue(transcript || providedCommentary || "", providedCommentary);
                 } else {
-                    throw openRouterErr;
+                    throw geminiErr;
                 }
             }
 
@@ -370,8 +365,8 @@ export class ReelOrchestrator {
             const engine = new SovereignPuppetEngine({
                 replicateApiToken: config.replicateApiToken,
                 fishApiKey: config.ttsCloningApiKey,
-                fishMaleVoiceId: process.env.FISH_AUDIO_SCENARIO_MALE_VOICE_ID || "802e3bc2b27e49c2995d23ef70e6ac89",
-                fishFemaleVoiceId: process.env.FISH_AUDIO_SCENARIO_FEMALE_VOICE_ID || "3895f5f7c6ac43f092bec1b2c04f431f",
+                fishMaleVoiceId: process.env.FISH_AUDIO_SCENARIO_MALE_VOICE_ID || "716594c03801446bb87a964a1c2a5895",
+                fishFemaleVoiceId: process.env.FISH_AUDIO_SCENARIO_FEMALE_VOICE_ID || "933563129e564b19a115bedd57b7406a",
                 cloudinaryCloudName: config.cloudinaryCloudName,
                 cloudinaryApiKey: config.cloudinaryApiKey,
                 cloudinaryApiSecret: config.cloudinaryApiSecret,
