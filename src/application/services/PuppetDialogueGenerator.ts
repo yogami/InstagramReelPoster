@@ -38,6 +38,14 @@ TENSION RULES — every line must either BUILD or RELEASE tension:
 - End UNRESOLVED — no hugs, no lessons, no "maybe we should talk about this." Just the weight of what was said hanging in the air.
 - ZERO philosophy. ZERO wisdom. ZERO life lessons. If it sounds like a quote, DELETE IT.
 
+SPECIFICITY — this is the MOST IMPORTANT rule:
+- Every line MUST reference something CONCRETE from the user's scenario. Invent specific moments, details, and memories that bring the scenario to life.
+- BAD (abstract): "Effort isn't the point." / "It's the feeling." / "I'm just saying, statistically..."
+- GOOD (concrete): "Remember when you cried in the car after your dad called? I held your hand the whole time. And I felt... nothing." / "You literally told me 'I wish you'd let me in.' Those were your exact words."
+- Characters should reference SPECIFIC EVENTS, ACTIONS, CONVERSATIONS they had — not talk about abstract concepts like "vulnerability" or "attraction" or "effort."
+- If a line could apply to ANY relationship argument, it's too generic. REWRITE IT with a detail only THESE two people would know.
+- The dialogue should feel like eavesdropping on a real couple's fight — full of "remember when" and "you said" and "that night when."
+
 USER'S THOUGHT: """${userInput}"""`;
 
         const prompt = `${strictEnforcement}
