@@ -47,6 +47,7 @@ Generate a dialogue scene matching this JSON schema. Output MUST be valid JSON o
 Rules:
 - 10 to 14 turns of dialogue (alternating Marco and Luna). This is a ~1 minute scene.
 - Each line: 1-2 sentences max. Messy, real speech. Pauses ("..."), trail-offs, loaded silences.
+- EMOTION CUES: Prefix lines with stage directions in parentheses to guide vocal delivery. Examples: "(sighs) I don't know anymore...", "(laughing nervously) Yeah, totally normal.", "(softly) I didn't mean it like that.", "(sarcastically) Oh sure, because THAT worked out great.", "(quietly) ...forget it." These cues make the TTS sound human — use them naturally, not on every line.
 - ARC: playful/flirty → tension builds → someone says something too real → the other retreats → ends unresolved
 - CRITICAL: Do NOT censor or asterisk-mask ANY words. This is read by text-to-speech — asterisks get spoken literally. Use euphemisms: "intimacy" not "sex", "hooking up" not explicit terms. Write words fully.
 - scene: One-line setting description matching the content (e.g. "A crowded rooftop party, bass thumping, city skyline behind them")
