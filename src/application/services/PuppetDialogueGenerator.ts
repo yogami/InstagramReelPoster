@@ -22,45 +22,63 @@ export class PuppetDialogueGenerator {
     async generateDialogue(userInput: string, providedCommentary?: string): Promise<PuppetDialogueResult> {
         const strictEnforcement = providedCommentary
             ? `CRITICAL: The user provided exact dialogue. Use their text word-for-word, splitting it between Marco and Luna as a conversation. Only generate the scene/visual prompt.\n\nEXACT TEXT: """${providedCommentary}"""`
-            : `Transform the user's thought into a DRAMATIC 2-character dialogue for Instagram Reels. Target audience: Gen Y/Z (18-32).
+            : `Write a short, dramatic 2-character dialogue for Instagram Reels. Audience: young Europeans (18-32) who speak English as a SECOND language. Use SIMPLE words. Short sentences. No complex vocabulary.
 
-CHARACTERS — they communicate DIFFERENTLY:
-- Marco (late 20s, male): Thinks in LOGIC. Deflects emotion with reasoning. When Luna gets emotional, he tries to "solve" it instead of feeling it. Uses humor to avoid vulnerability. When cornered, goes quiet or says something accidentally honest that surprises even him. His lines should feel like he's building walls in real-time.
-- Luna (late 20s, female): Thinks in FEELING. Communicates through subtext — what she doesn't say matters more than what she does. Asks loaded questions she already knows the answer to. Uses silence as a weapon. When she's hurt, she gets sharper, not softer. Her lines should feel like she's testing him and he keeps failing.
+CHARACTERS:
+- Marco (guy, late 20s): Doesn't like talking about feelings. When Luna gets emotional, he tries to fix it or change the subject. Says things like "I don't know what you want from me." Goes quiet when he's hurt.
+- Luna (girl, late 20s): Feels everything deeply. Says what she feels directly — no games. When she's hurt, she gets cold. Says things like "You know exactly what you did." Not afraid to say hard truths.
 
-TENSION RULES — every line must either BUILD or RELEASE tension:
-- This is a SCENE, not a discussion. Think Netflix drama, not podcast.
-- Luna says things that sound casual but are loaded with subtext: "Oh, so you DO notice things about me" (meaning: you never pay attention)
-- Marco says things that sound logical but reveal insecurity: "I'm just saying, statistically..." (meaning: I'm terrified)
-- Include DRAMATIC BEATS: one of them says something that lands like a punch. The other goes quiet. Then pivots.
-- CONFLICT is the engine. They want different things. They misread each other. They almost connect, then one of them ruins it.
-- Flirting should feel like a power play — who blinks first, who shows their hand.
-- End UNRESOLVED — no hugs, no lessons, no "maybe we should talk about this." Just the weight of what was said hanging in the air.
-- ZERO philosophy. ZERO wisdom. ZERO life lessons. If it sounds like a quote, DELETE IT.
+HOW TO WRITE THE DIALOGUE:
+- Use SIMPLE English. Think B1-B2 level. No big words. No "statistically" or "recalibrated" or "ecosystem."
+- Each line: MAX 8-10 words. People don't give speeches. They say short, sharp things.
+- Show feelings through ACTIONS and MEMORIES, not through clever words.
+- BAD: "Your emotional vulnerability triggered something primal in me."
+- GOOD: "I saw you cry last week. And I felt... nothing. I hate that."
+- BAD: "I'm just saying, statistically, people prefer..."
+- GOOD: "You said you loved me. Then you stopped calling."
+- Light therapy-speak is OK: "you're projecting", "that's your trauma talking", "I need space", "you're deflecting." These are simple and Gen Z uses them. But keep it casual — never academic.
 
-SPECIFICITY — this is the MOST IMPORTANT rule:
-- Every line MUST reference something CONCRETE from the user's scenario. Invent specific moments, details, and memories that bring the scenario to life.
-- BAD (abstract): "Effort isn't the point." / "It's the feeling." / "I'm just saying, statistically..."
-- GOOD (concrete): "Remember when you cried in the car after your dad called? I held your hand the whole time. And I felt... nothing." / "You literally told me 'I wish you'd let me in.' Those were your exact words."
-- Characters should reference SPECIFIC EVENTS, ACTIONS, CONVERSATIONS they had — not talk about abstract concepts like "vulnerability" or "attraction" or "effort."
-- If a line could apply to ANY relationship argument, it's too generic. REWRITE IT with a detail only THESE two people would know.
-- The dialogue should feel like eavesdropping on a real couple's fight — full of "remember when" and "you said" and "that night when."
+STORY RULES:
+- Tell the SPECIFIC STORY from the user's scenario. Invent real moments: names of places, what happened, what someone wore, what time it was.
+- BAD: "Effort isn't the point." (too vague — what effort? when?)
+- GOOD: "That night at Sara's party. You held my hand in front of everyone. First time."
+- The conversation should feel like a REAL FIGHT or a REAL MOMENT between two people. Not a debate. Not a podcast.
+- End without resolution. No lessons. No "maybe we should talk." Just silence or someone walking away.
+- ZERO philosophy. ZERO quotes. ZERO wisdom. If a line sounds smart, delete it and write something that sounds REAL.
 
-USER'S THOUGHT: """${userInput}"""`;
+EMOTION CUES — add stage directions in parentheses before some lines to guide how they sound:
+- "(sighs) I don't know anymore..."
+- "(quiet) ...forget it."
+- "(cold) That's not what I asked."
+- These cues are metadata — they will be removed before the voice reads the line. Use them to set the emotional tone.
+
+EXAMPLE OF GOOD DIALOGUE (vulnerability topic):
+Marco: "You told me to open up. So I did."
+Luna: "(quiet) I know."
+Marco: "I told you about my dad. About the nights I couldn't sleep."  
+Luna: "I remember."
+Marco: "So what changed?"
+Luna: "(long pause) ...I don't know. I saw you cry in the car. And something in me just... turned off."
+Marco: "Turned off."
+Luna: "I wanted to hold you. And I also wanted to leave. Both at the same time."
+Marco: "(quiet) ...that's messed up."
+Luna: "I know. I hate it."
+
+^ THIS is the quality and simplicity we need. Every line is simple. Every line is specific. Every line hurts.
+
+USER'S SCENARIO: """${userInput}"""`
 
         const prompt = `${strictEnforcement}
 
 Generate a dialogue scene matching this JSON schema. Output MUST be valid JSON only.
 
 Rules:
-- 10 to 14 turns of dialogue (alternating Marco and Luna). This is a ~1 minute scene.
-- Each line: 1-2 sentences max. Messy, real speech. Pauses ("..."), trail-offs, loaded silences.
-- EMOTION CUES: Prefix lines with stage directions in parentheses to guide vocal delivery. Examples: "(sighs) I don't know anymore...", "(laughing nervously) Yeah, totally normal.", "(softly) I didn't mean it like that.", "(sarcastically) Oh sure, because THAT worked out great.", "(quietly) ...forget it." These cues make the TTS sound human — use them naturally, not on every line.
-- ARC: playful/flirty → tension builds → someone says something too real → the other retreats → ends unresolved
-- CRITICAL: Do NOT censor or asterisk-mask ANY words. This is read by text-to-speech — asterisks get spoken literally. Use euphemisms: "intimacy" not "sex", "hooking up" not explicit terms. Write words fully.
-- scene: One-line setting description matching the content (e.g. "A crowded rooftop party, bass thumping, city skyline behind them")
+- 10 to 12 turns of dialogue (alternating Marco and Luna). This is a ~45 second scene.
+- Each line: 1 short sentence. Max 8-10 words. Simple English.
+- CRITICAL: Do NOT censor or asterisk-mask ANY words. This is read by text-to-speech — asterisks get spoken literally. Use simple words: "being close" not explicit terms. Write words fully.
+- scene: One-line setting description matching the content (e.g. "Late night. Empty parking lot. His car, her standing outside.")
 - visualPrompt: A detailed, photorealistic prompt for the background image (9:16 vertical, cinematic lighting, moody atmosphere). The scene should MATCH the dialogue situation. NO TEXT in the image.
-- caption: A short, punchy Instagram caption that makes you stop scrolling. Max 1-2 sentences + 3-5 hashtags.
+- caption: A short Instagram caption — simple, emotional, relatable. Max 1 sentence + 3-5 hashtags.
 
 JSON Schema:
 {
