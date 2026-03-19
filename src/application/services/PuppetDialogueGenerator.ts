@@ -126,8 +126,8 @@ JSON Schema:
     private sanitizeForTTS(text: string): string {
         let sanitized = text;
         // Strip emotion stage directions — these are metadata for writing style, not narration
-        // Matches: (sighs), (softly), (laughing nervously), etc.
-        sanitized = sanitized.replace(/\([\w\s]+\)\s*/g, '');
+        // Matches: (sighs), (softly), (goes quiet, then abruptly), (looks up, her expression unreadable), etc.
+        sanitized = sanitized.replace(/\([^)]+\)\s*/g, '');
         // Replace censored words with euphemisms (order matters)
         sanitized = sanitized.replace(/f\*\*king/gi, 'freaking');
         sanitized = sanitized.replace(/f\*\*ked/gi, 'freaked');
