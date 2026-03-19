@@ -122,7 +122,7 @@ export function createJobRoutes(jobManager: JobManager): Router {
             try {
                 const headers: Record<string, string> = {
                     'Content-Type': 'application/json',
-                    'x-make-apikey': '4LyPD8E3TVRmh_F'
+                    'x-make-apikey': process.env.MAKE_API_KEY || ''
                 };
 
                 console.log('Sending test webhook to:', webhookUrl);

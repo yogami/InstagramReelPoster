@@ -581,7 +581,7 @@ export class ReelOrchestrator {
     private getCallbackHeaders(): Record<string, string> {
         return {
             'Content-Type': 'application/json',
-            'x-make-apikey': '4LyPD8E3TVRmh_F'
+            'x-make-apikey': process.env.MAKE_API_KEY || ''
         };
     }
 
