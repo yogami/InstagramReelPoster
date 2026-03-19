@@ -339,21 +339,33 @@ export class ReelOrchestrator {
             // 3. Generate dialogue script via LLM (Gemini primary, OpenRouter fallback)
             await this.updateJobStatus(jobId, 'generating_commentary', 'Crafting character dialogue...');
             const config = getConfig();
-            const dialogueGen = new PuppetDialogueGenerator(this.deps.llmClient); // Gemini (primary)
             let dialogueResult;
-            try {
-                console.log(`[${jobId}] 🔀 Using Gemini as primary LLM`);
-                dialogueResult = await dialogueGen.generateDialogue(transcript || providedCommentary || "", providedCommentary);
-            } catch (geminiErr: any) {
-                console.warn(`[${jobId}] ⚠️ Gemini failed: ${geminiErr.message}. Falling back to OpenRouter...`);
-                if (config.openRouterApiKey) {
-                    const { OpenRouterTextClient } = await import('../infrastructure/llm/OpenRouterTextClient');
-                    const openRouterLlm = new OpenRouterTextClient(config.openRouterApiKey, config.openRouterModel);
-                    const openRouterDialogueGen = new PuppetDialogueGenerator(openRouterLlm as any);
-                    dialogueResult = await openRouterDialogueGen.generateDialogue(transcript || providedCommentary || "", providedCommentary);
-                } else {
-                    throw geminiErr;
+
+            // Try Gemini first (dedicated client, not the injected deps.llmClient which may be OpenRouter)
+            if (config.googleAiApiKey) {
+                try {
+                    const { GeminiLlmClient } = await import('../infrastructure/llm/GeminiLlmClient');
+                    const geminiModel = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
+                    const geminiLlm = new GeminiLlmClient(config.googleAiApiKey, geminiModel);
+                    console.log(`[${jobId}] 🔀 Using Gemini (${geminiModel}) as primary LLM`);
+                    const dialogueGen = new PuppetDialogueGenerator(geminiLlm);
+                    dialogueResult = await dialogueGen.generateDialogue(transcript || providedCommentary || "", providedCommentary);
+                } catch (geminiErr: any) {
+                    console.warn(`[${jobId}] ⚠️ Gemini failed: ${geminiErr.message}. Falling back to OpenRouter...`);
                 }
+            }
+
+            // Fallback to OpenRouter if Gemini failed or unavailable
+            if (!dialogueResult && config.openRouterApiKey) {
+                const { OpenRouterTextClient } = await import('../infrastructure/llm/OpenRouterTextClient');
+                const openRouterLlm = new OpenRouterTextClient(config.openRouterApiKey, config.openRouterModel);
+                console.log(`[${jobId}] 🔀 Falling back to OpenRouter (${config.openRouterModel})`);
+                const openRouterDialogueGen = new PuppetDialogueGenerator(openRouterLlm as any);
+                dialogueResult = await openRouterDialogueGen.generateDialogue(transcript || providedCommentary || "", providedCommentary);
+            }
+
+            if (!dialogueResult) {
+                throw new Error('Dialogue generation failed: no LLM available (both Gemini and OpenRouter failed)');
             }
 
             await this.deps.jobManager.updateJob(jobId, {
