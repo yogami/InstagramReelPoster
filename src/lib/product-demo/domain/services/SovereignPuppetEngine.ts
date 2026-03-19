@@ -130,6 +130,34 @@ export class SovereignPuppetEngine {
             currentFrame += durationFrames + GAP_FRAMES;
         }
 
+        // 1.5 Generate FLUX character portraits (open/closed mouth variants)
+        console.log(`\n--- Step 1.5: Generating FLUX character portraits ---`);
+        const portraitPrompts = {
+            marco_closed: "Upper body portrait of a handsome confident man, late 20s, Mediterranean features, short dark hair, light stubble, wearing a fitted dark henley shirt, mouth closed, neutral confident expression, 3/4 profile facing right, warm cinematic lighting, shallow depth of field, dark moody background, photorealistic, 8k",
+            marco_open: "Upper body portrait of a handsome confident man, late 20s, Mediterranean features, short dark hair, light stubble, wearing a fitted dark henley shirt, mouth slightly open speaking, 3/4 profile facing right, warm cinematic lighting, shallow depth of field, dark moody background, photorealistic, 8k",
+            luna_closed: "Upper body portrait of a beautiful woman, late 20s, warm olive skin, flowing dark wavy hair past shoulders, wearing a stylish fitted top, mouth closed, thoughtful expression with slight attitude, 3/4 profile facing left, warm cinematic lighting, shallow depth of field, dark moody background, photorealistic, 8k",
+            luna_open: "Upper body portrait of a beautiful woman, late 20s, warm olive skin, flowing dark wavy hair past shoulders, wearing a stylish fitted top, mouth slightly open speaking, 3/4 profile facing left, warm cinematic lighting, shallow depth of field, dark moody background, photorealistic, 8k",
+        };
+
+        const portraitFiles: Record<string, string> = {};
+        let useFluxPortraits = true;
+
+        try {
+            for (const [key, prompt] of Object.entries(portraitPrompts)) {
+                console.log(`[Puppet:FLUX] Generating portrait: ${key}`);
+                const url = await this.generateFluxImage(prompt);
+                const filename = `puppet_${jobId}_${key}.png`;
+                const filePath = path.join(publicDir, filename);
+                const imgRes = await axios.get(url, { responseType: 'arraybuffer' });
+                fs.writeFileSync(filePath, imgRes.data);
+                portraitFiles[key] = filename;
+            }
+            console.log(`[Puppet:FLUX] All 4 portraits generated`);
+        } catch (err: any) {
+            console.warn(`[Puppet:FLUX] Portrait generation failed, falling back to SVG: ${err.message}`);
+            useFluxPortraits = false;
+        }
+
         // 2. Generate background image
         console.log(`\n--- Step 2: Generating FLUX background ---`);
         let bgImageUrl = '';
@@ -155,10 +183,16 @@ export class SovereignPuppetEngine {
         // 4. Render via Remotion CLI
         console.log(`\n--- Step 3: Rendering via Remotion CLI ---`);
         const outputPath = path.join(this.tmpDir, `${jobId}_puppet_raw.mp4`);
-        const inputProps = {
+        const inputProps: Record<string, any> = {
             timeline,
             backgroundUrl: bgFilename,
         };
+
+        // Pass portrait data if available
+        if (useFluxPortraits) {
+            inputProps.characterMode = 'flux-portraits';
+            inputProps.portraits = portraitFiles;
+        }
 
         // Write props to a file to avoid shell quoting issues
         const propsFile = path.join(this.tmpDir, `${jobId}_props.json`);
