@@ -339,14 +339,27 @@ export class ReelOrchestrator {
             // 3. Generate dialogue script via LLM (OpenRouter primary, Gemini fallback)
             await this.updateJobStatus(jobId, 'generating_commentary', 'Crafting character dialogue...');
             const config = getConfig();
-            let dialogueLlm: any = this.deps.llmClient;
+            let dialogueLlm: any = this.deps.llmClient; // Gemini (default)
+            let openRouterLlm: any = null;
             if (config.openRouterApiKey) {
                 const { OpenRouterTextClient } = await import('../infrastructure/llm/OpenRouterTextClient');
-                dialogueLlm = new OpenRouterTextClient(config.openRouterApiKey, config.openRouterModel);
-                console.log(`[${jobId}] 🔀 Using OpenRouter (${config.openRouterModel}) as primary LLM`);
+                openRouterLlm = new OpenRouterTextClient(config.openRouterApiKey, config.openRouterModel);
+                dialogueLlm = openRouterLlm;
+                console.log(`[${jobId}] 🔀 Using OpenRouter (${config.openRouterModel}) as primary LLM, Gemini as fallback`);
             }
             const dialogueGen = new PuppetDialogueGenerator(dialogueLlm);
-            const dialogueResult = await dialogueGen.generateDialogue(transcript || providedCommentary || "", providedCommentary);
+            let dialogueResult;
+            try {
+                dialogueResult = await dialogueGen.generateDialogue(transcript || providedCommentary || "", providedCommentary);
+            } catch (openRouterErr: any) {
+                if (openRouterLlm && this.deps.llmClient !== openRouterLlm) {
+                    console.warn(`[${jobId}] ⚠️ OpenRouter failed: ${openRouterErr.message}. Falling back to Gemini...`);
+                    const geminiDialogueGen = new PuppetDialogueGenerator(this.deps.llmClient);
+                    dialogueResult = await geminiDialogueGen.generateDialogue(transcript || providedCommentary || "", providedCommentary);
+                } else {
+                    throw openRouterErr;
+                }
+            }
 
             await this.deps.jobManager.updateJob(jobId, {
                 mainCaption: dialogueResult.caption,
