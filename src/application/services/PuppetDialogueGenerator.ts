@@ -42,7 +42,7 @@ THE HOOK (MOST IMPORTANT PART):
 - Examples of GREAT hooks: "The 1 text that proves you're just a situationship." / "He said body count doesn't matter. Then he asked this..." / "Why 'matching their energy' is destroying your dating life."
 
 DIALOGUE RULES:
-- 5 to 7 turns ONLY. This is a ~45 second scene. 100-130 words TOTAL.
+- 7 to 10 turns. This is a ~50-60 second scene. 130-180 words TOTAL.
 - START IN MEDIA RES — mid-argument. NO greetings, no setup, no "hey can we talk."
 - Each line: MAX 8-10 words. Simple B1-B2 English. Short, sharp.
 - END WITH AN OPEN DEBATE QUESTION OR UNCOMFORTABLE TRUTH. Never resolve the conflict. Leave viewers arguing in comments.
@@ -77,7 +77,7 @@ USER'S SCENARIO: """${userInput}"""`
 Generate a dialogue scene matching this JSON schema. Output MUST be valid JSON only.
 
 Rules:
-- 5 to 7 turns of dialogue (alternating Marco and Luna). This is a ~45 second scene.
+- 7 to 10 turns of dialogue (alternating Marco and Luna). This is a ~50-60 second scene.
 - Each line: 1 short sentence. Max 8-10 words. Simple English.
 - CRITICAL: Do NOT censor or asterisk-mask ANY words. Write words fully. Use simple euphemisms if needed.
 - hook: THE FIRST-FRAME TEXT. 4-8 words. Bold, provocative, specific. This is what makes people STOP scrolling.
