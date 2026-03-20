@@ -1,5 +1,5 @@
 import React from "react";
-import { AbsoluteFill, Audio, Sequence, useCurrentFrame, staticFile } from "remotion";
+import { AbsoluteFill, Audio, Sequence, useCurrentFrame, staticFile, interpolate, spring, useVideoConfig } from "remotion";
 import { CharacterPuppet } from "./CharacterPuppet";
 
 interface DialogueTurn {
@@ -13,6 +13,7 @@ interface DialogueTurn {
 interface PuppetDialogueProps {
   timeline: DialogueTurn[];
   backgroundUrl: string;
+  hook?: string;
 }
 
 const CafeTableScene: React.FC<{
@@ -76,15 +77,19 @@ const CafeTableScene: React.FC<{
 
 export const PuppetDialogueScene: React.FC<PuppetDialogueProps> = ({
   timeline,
+  hook,
 }) => {
   const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
 
   let activeSpeaker: string | null = null;
   let activeLine: string | null = null;
+  let turnStartFrame = 0;
   for (const turn of timeline) {
     if (frame >= turn.startFrame && frame < turn.startFrame + turn.durationFrames) {
       activeSpeaker = turn.speaker;
       activeLine = turn.line;
+      turnStartFrame = turn.startFrame;
       break;
     }
   }
@@ -92,8 +97,29 @@ export const PuppetDialogueScene: React.FC<PuppetDialogueProps> = ({
   const marcoTurns = timeline.filter((t) => t.speaker === "marco");
   const lunaTurns = timeline.filter((t) => t.speaker === "luna");
 
+  // === CAMERA ZOOM — subtle focus on active speaker, both stay in frame ===
+  const zoomProgress = activeSpeaker
+    ? spring({ frame: frame - turnStartFrame, fps, config: { damping: 80, stiffness: 60 } })
+    : 0;
+
+  const ZOOM_SCALE = 1.12; // Subtle zoom — both characters stay visible
+  // Gentle shift toward speaker — not enough to cut the other person out
+  const targetX = activeSpeaker === "marco" ? 60 : activeSpeaker === "luna" ? -60 : 0;
+  const targetY = -50; // Slight upward to focus on face area
+
+  const cameraScale = interpolate(zoomProgress, [0, 1], [1, ZOOM_SCALE]);
+  const cameraX = interpolate(zoomProgress, [0, 1], [0, targetX]);
+  const cameraY = interpolate(zoomProgress, [0, 1], [0, targetY]);
+
   return (
     <AbsoluteFill>
+      {/* === CAMERA CONTAINER — zooms into active speaker === */}
+      <div style={{
+        position: "absolute", inset: 0,
+        transform: `scale(${cameraScale}) translate(${cameraX}px, ${cameraY}px)`,
+        transformOrigin: "center center",
+        transition: !activeSpeaker ? "transform 0.5s ease-out" : undefined,
+      }}>
       {/* === ROOT LEVEL AUDIO === */}
       {timeline.map((turn, i) => (
         <Sequence key={`audio-${i}`} from={turn.startFrame} durationInFrames={turn.durationFrames + 10}>
@@ -181,8 +207,44 @@ export const PuppetDialogueScene: React.FC<PuppetDialogueProps> = ({
           pointerEvents: "none",
         }} />
       )}
+      </div>{/* end camera container */}
 
-      {/* === SPEAKER NAME TAG === */}
+      {/* === FIRST-FRAME HOOK TEXT OVERLAY === */}
+      {hook && frame < 75 && (
+        <div style={{
+          position: "absolute",
+          inset: 0,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 100,
+          pointerEvents: "none",
+          opacity: interpolate(frame, [0, 5, 55, 75], [0, 1, 1, 0], { extrapolateRight: "clamp" }),
+        }}>
+          <div style={{
+            transform: `scale(${spring({ frame, fps, config: { damping: 60, stiffness: 120 } })})`,
+            padding: "20px 40px",
+            maxWidth: "85%",
+            textAlign: "center" as const,
+          }}>
+            <span style={{
+              color: "#ffffff",
+              fontSize: 58,
+              fontFamily: "'Montserrat', 'Impact', 'Helvetica Neue', Arial, sans-serif",
+              fontWeight: 900,
+              textTransform: "uppercase" as const,
+              letterSpacing: 2,
+              lineHeight: 1.2,
+              textShadow: "0 4px 12px rgba(0,0,0,0.8), 0 2px 4px rgba(0,0,0,0.9), 2px 2px 0px #000, -2px -2px 0px #000, 2px -2px 0px #000, -2px 2px 0px #000",
+              WebkitTextStroke: "1px rgba(0,0,0,0.3)",
+            }}>
+              {hook}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* === SPEAKER NAME TAG (outside camera zoom so it stays readable) === */}
       {activeSpeaker && (
         <div style={{
           position: "absolute", bottom: 260, left: 0, right: 0,

@@ -6,6 +6,7 @@ export interface PuppetDialogueTurn {
 }
 
 export interface PuppetDialogueResult {
+    hook: string;
     caption: string;
     scene: string;
     visualPrompt: string;
@@ -21,50 +22,53 @@ export class PuppetDialogueGenerator {
      */
     async generateDialogue(userInput: string, providedCommentary?: string): Promise<PuppetDialogueResult> {
         const strictEnforcement = providedCommentary
-            ? `CRITICAL: The user provided exact dialogue. Use their text word-for-word, splitting it between Marco and Luna as a conversation. Only generate the scene/visual prompt.\n\nEXACT TEXT: """${providedCommentary}"""`
-            : `Write a short, dramatic 2-character dialogue for Instagram Reels. Audience: young Europeans (18-32) who speak English as a SECOND language. Use SIMPLE words. Short sentences. No complex vocabulary.
+            ? `CRITICAL: The user provided exact dialogue. Use their text word-for-word, splitting it between Marco and Luna as a conversation. Only generate the hook/scene/visual prompt.\n\nEXACT TEXT: """${providedCommentary}"""`
+            : `Write a SHORT, EXPLOSIVE 2-character dialogue for Instagram Reels / YouTube Shorts. This must feel like catching a REAL ARGUMENT in progress.
+
+AUDIENCE: European Gen Y/Z (18-32), English as second language. They watch @stoiccole, @TheIntrovertedAttorney. They live in the world of situationships, hypergamy debates, body count wars, and broken monogamy.
 
 CHARACTERS:
-- Marco (guy, late 20s): Doesn't like talking about feelings. When Luna gets emotional, he tries to fix it or change the subject. Says things like "I don't know what you want from me." Goes quiet when he's hurt.
-- Luna (girl, late 20s): Feels everything deeply. Says what she feels directly — no games. When she's hurt, she gets cold. Says things like "You know exactly what you did." Not afraid to say hard truths.
+- Marco (guy, late 20s): Direct, blunt, doesn't sugarcoat. Says uncomfortable truths. Goes quiet when he's hurt. Uses simple words that hit hard.
+- Luna (girl, late 20s): Sharp, emotional, calls out hypocrisy. When hurt, gets cold. Not afraid to say the hardest thing in the room.
 
-HOW TO WRITE THE DIALOGUE:
-- Use SIMPLE English. Think B1-B2 level. No big words. No "statistically" or "recalibrated" or "ecosystem."
-- Each line: MAX 8-10 words. People don't give speeches. They say short, sharp things.
-- Show feelings through ACTIONS and MEMORIES, not through clever words.
-- BAD: "Your emotional vulnerability triggered something primal in me."
-- GOOD: "I saw you cry last week. And I felt... nothing. I hate that."
-- BAD: "I'm just saying, statistically, people prefer..."
+THE HOOK (MOST IMPORTANT PART):
+- Generate a "hook" — this is the FIRST FRAME TEXT that viewers see while scrolling. It must make them STOP.
+- 4-8 words MAX. Bold, provocative, specific.
+- Use one of these formats:
+  • Negative Warning: "Stop doing X if you want Y" / "The 1 text that proves X"
+  • Scenario Setup: "POV: [specific situation]" / "Dating in 2026 be like…"
+  • Contrarian: "Unpopular opinion: X is actually Y"
+  • Curiosity Gap: Use 2026 dating terms (delusionship, clear-coding, orbiting, breadcrumbing, beige flags)
+- Examples of GREAT hooks: "The 1 text that proves you're just a situationship." / "He said body count doesn't matter. Then he asked this..." / "Why 'matching their energy' is destroying your dating life."
+
+DIALOGUE RULES:
+- 5 to 7 turns ONLY. This is a ~45 second scene. 100-130 words TOTAL.
+- START IN MEDIA RES — mid-argument. NO greetings, no setup, no "hey can we talk."
+- Each line: MAX 8-10 words. Simple B1-B2 English. Short, sharp.
+- END WITH AN OPEN DEBATE QUESTION OR UNCOMFORTABLE TRUTH. Never resolve the conflict. Leave viewers arguing in comments.
+- Show feelings through SPECIFIC MOMENTS, not clever words.
+- BAD: "Your emotional architecture is fundamentally incompatible."
 - GOOD: "You said you loved me. Then you stopped calling."
-- Light therapy-speak is OK: "you're projecting", "that's your trauma talking", "I need space", "you're deflecting." These are simple and Gen Z uses them. But keep it casual — never academic.
+- Use 2026 dating vocabulary naturally: situationship, body count, high value, orbiting, breadcrumbing, clear-coding, delusionship.
+- Zero philosophy. Zero quotes. If a line sounds smart, delete it and write something that sounds like a REAL fight.
 
-STORY RULES:
-- Tell the SPECIFIC STORY from the user's scenario. Invent real moments: names of places, what happened, what someone wore, what time it was.
-- BAD: "Effort isn't the point." (too vague — what effort? when?)
-- GOOD: "That night at Sara's party. You held my hand in front of everyone. First time."
-- The conversation should feel like a REAL FIGHT or a REAL MOMENT between two people. Not a debate. Not a podcast.
-- End without resolution. No lessons. No "maybe we should talk." Just silence or someone walking away.
-- ZERO philosophy. ZERO quotes. ZERO wisdom. If a line sounds smart, delete it and write something that sounds REAL.
-
-EMOTION CUES — add stage directions in parentheses before some lines to guide how they sound:
-- "(sighs) I don't know anymore..."
-- "(quiet) ...forget it."
+EMOTION CUES — add parenthetical stage directions before some lines:
 - "(cold) That's not what I asked."
-- These cues are metadata — they will be removed before the voice reads the line. Use them to set the emotional tone.
+- "(quiet) ...forget it."
+- These are metadata — removed before voice reads the line.
 
-EXAMPLE OF GOOD DIALOGUE (vulnerability topic):
-Marco: "You told me to open up. So I did."
-Luna: "(quiet) I know."
-Marco: "I told you about my dad. About the nights I couldn't sleep."  
-Luna: "I remember."
-Marco: "So what changed?"
-Luna: "(long pause) ...I don't know. I saw you cry in the car. And something in me just... turned off."
-Marco: "Turned off."
-Luna: "I wanted to hold you. And I also wanted to leave. Both at the same time."
-Marco: "(quiet) ...that's messed up."
-Luna: "I know. I hate it."
+EXAMPLE OF VIRAL DIALOGUE:
+Hook: "He said body count doesn't matter. Then he asked this..."
+Marco: "So how many guys before me?"
+Luna: "(cold) Why does it matter?"
+Marco: "It doesn't. I'm just asking."
+Luna: "Then why do you look like that?"
+Marco: "Like what?"
+Luna: "Like you already decided the answer is too high."
+Marco: "(quiet) ...because it is."
+[END — no resolution]
 
-^ THIS is the quality and simplicity we need. Every line is simple. Every line is specific. Every line hurts.
+^ Every line is simple. Specific. Hurts. Triggers comments.
 
 USER'S SCENARIO: """${userInput}"""`
 
@@ -73,15 +77,17 @@ USER'S SCENARIO: """${userInput}"""`
 Generate a dialogue scene matching this JSON schema. Output MUST be valid JSON only.
 
 Rules:
-- 10 to 12 turns of dialogue (alternating Marco and Luna). This is a ~45 second scene.
+- 5 to 7 turns of dialogue (alternating Marco and Luna). This is a ~45 second scene.
 - Each line: 1 short sentence. Max 8-10 words. Simple English.
-- CRITICAL: Do NOT censor or asterisk-mask ANY words. This is read by text-to-speech — asterisks get spoken literally. Use simple words: "being close" not explicit terms. Write words fully.
-- scene: One-line setting description matching the content (e.g. "Late night. Empty parking lot. His car, her standing outside.")
-- visualPrompt: A detailed, photorealistic prompt for the background image (9:16 vertical, cinematic lighting, moody atmosphere). The scene should MATCH the dialogue situation. NO TEXT in the image.
-- caption: A short Instagram caption — simple, emotional, relatable. Max 1 sentence + 3-5 hashtags.
+- CRITICAL: Do NOT censor or asterisk-mask ANY words. Write words fully. Use simple euphemisms if needed.
+- hook: THE FIRST-FRAME TEXT. 4-8 words. Bold, provocative, specific. This is what makes people STOP scrolling.
+- scene: One-line setting description (e.g. "Late night. Empty parking lot. His car, her standing outside.")
+- visualPrompt: A detailed, photorealistic prompt for the background image (9:16 vertical, cinematic lighting, moody atmosphere). NO TEXT, NO PEOPLE in the image.
+- caption: Short Instagram caption — polarizing + emoji + debate CTA + 3-5 hashtags. Example: "Marco just exposed the 2026 dating game 😭 Who's right? 👇 #DatingIn2026 #Situationship #ModernDating"
 
 JSON Schema:
 {
+  "hook": "...",
   "caption": "...",
   "scene": "...",
   "visualPrompt": "...",

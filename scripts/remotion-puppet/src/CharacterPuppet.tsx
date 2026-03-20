@@ -17,9 +17,11 @@ export const CharacterPuppet: React.FC<{
 }> = ({ baseX, baseY, isFlipped = false, audioSrc, audioStartFrame, character = "marco" }) => {
   const frame = useCurrentFrame();
 
-  const audioData = useAudioData(audioSrc);
+  // Guard: useAudioData requires a valid src string — use a dummy when idle
+  const hasAudio = !!audioSrc && audioSrc !== "";
+  const audioData = useAudioData(hasAudio ? audioSrc : "guy_line1.mp3");
   let isTalking = false;
-  if (audioData) {
+  if (hasAudio && audioData) {
     const audioFrame = frame - audioStartFrame;
     if (audioFrame >= 0) {
       const visualization = visualizeAudio({ fps: 30, frame: audioFrame, audioData, numberOfSamples: 16 });
@@ -31,6 +33,14 @@ export const CharacterPuppet: React.FC<{
   const breathY = Math.sin(frame / 18) * 1.5;
   const headBob = isTalking ? Math.sin(frame / 3) * 1.5 : 0;
   const isMale = character === "marco";
+
+  // Eye blink — ~3 second cycle, eyes closed for 3 frames
+  const blinkOffset = isMale ? 0 : 40; // Offset so they don't blink in unison
+  const blinkCycle = (frame + blinkOffset) % 90; // Every 3 seconds at 30fps
+  const isBlinking = blinkCycle >= 0 && blinkCycle <= 3;
+
+  // Body sway when talking — subtle lean
+  const bodySway = isTalking ? Math.sin(frame / 8) * 2 : 0;
 
   return (
     <div
@@ -54,8 +64,7 @@ export const CharacterPuppet: React.FC<{
         {isMale ? (
           /* ====== MARCO — 3/4 PROFILE facing RIGHT, seated ====== */
           <g id="marco-seated">
-            {/* Torso — turned 3/4 right */}
-            <g id="body">
+            <g id="body" transform={`translate(${bodySway}, 0)`}>
               <path
                 d="M 100 450 C 100 350, 130 310, 155 300 L 195 295 C 230 300, 280 340, 280 450 Z"
                 fill="#2d3436" stroke="#1e272e" strokeWidth="2"
@@ -80,12 +89,20 @@ export const CharacterPuppet: React.FC<{
               {/* Ear */}
               <ellipse cx="258" cy="175" rx="10" ry="16" fill="#dfe6e9" stroke="#b2bec3" strokeWidth="1.5" />
 
-              {/* Right eye (closer, larger) */}
-              <ellipse cx="220" cy="160" rx="9" ry="11" fill="white" />
-              <circle cx="224" cy="160" r="5" fill="#2d3436" />
-              {/* Left eye (further, smaller) */}
-              <ellipse cx="170" cy="162" rx="7" ry="9" fill="white" />
-              <circle cx="173" cy="162" r="4" fill="#2d3436" />
+              {/* Eyes — with blink */}
+              {isBlinking ? (
+                <>
+                  <line x1="212" y1="160" x2="230" y2="160" stroke="#2d3436" strokeWidth="2" strokeLinecap="round" />
+                  <line x1="164" y1="162" x2="178" y2="162" stroke="#2d3436" strokeWidth="2" strokeLinecap="round" />
+                </>
+              ) : (
+                <>
+                  <ellipse cx="220" cy="160" rx="9" ry="11" fill="white" />
+                  <circle cx="224" cy="160" r="5" fill="#2d3436" />
+                  <ellipse cx="170" cy="162" rx="7" ry="9" fill="white" />
+                  <circle cx="173" cy="162" r="4" fill="#2d3436" />
+                </>
+              )}
 
               {/* Eyebrows */}
               <line x1="210" y1="146" x2="234" y2="148" stroke="#2d3436" strokeWidth="3" strokeLinecap="round" />
@@ -108,8 +125,7 @@ export const CharacterPuppet: React.FC<{
         ) : (
           /* ====== LUNA — 3/4 PROFILE facing RIGHT (flipped to face LEFT), seated ====== */
           <g id="luna-seated">
-            {/* Torso — purple turtleneck */}
-            <g id="body">
+            <g id="body" transform={`translate(${bodySway}, 0)`}>
               <path
                 d="M 110 450 C 110 355, 135 315, 158 305 L 192 300 C 225 305, 270 345, 270 450 Z"
                 fill="#6c5ce7" stroke="#5f27cd" strokeWidth="2"
@@ -138,14 +154,22 @@ export const CharacterPuppet: React.FC<{
               <ellipse cx="253" cy="178" rx="9" ry="14" fill="#ffeaa7" stroke="#fdcb6e" strokeWidth="1.5" />
               <circle cx="253" cy="196" r="3" fill="#fd79a8" />
 
-              {/* Right eye (closer, larger) */}
-              <ellipse cx="218" cy="162" rx="10" ry="12" fill="white" />
-              <circle cx="222" cy="162" r="5" fill="#0984e3" />
-              <circle cx="224" cy="160" r="1.5" fill="white" />
-              {/* Left eye (further, smaller) */}
-              <ellipse cx="168" cy="164" rx="7" ry="10" fill="white" />
-              <circle cx="171" cy="164" r="4" fill="#0984e3" />
-              <circle cx="173" cy="162" r="1" fill="white" />
+              {/* Eyes — with blink */}
+              {isBlinking ? (
+                <>
+                  <line x1="210" y1="162" x2="228" y2="162" stroke="#2d3436" strokeWidth="2" strokeLinecap="round" />
+                  <line x1="162" y1="164" x2="176" y2="164" stroke="#2d3436" strokeWidth="2" strokeLinecap="round" />
+                </>
+              ) : (
+                <>
+                  <ellipse cx="218" cy="162" rx="10" ry="12" fill="white" />
+                  <circle cx="222" cy="162" r="5" fill="#0984e3" />
+                  <circle cx="224" cy="160" r="1.5" fill="white" />
+                  <ellipse cx="168" cy="164" rx="7" ry="10" fill="white" />
+                  <circle cx="171" cy="164" r="4" fill="#0984e3" />
+                  <circle cx="173" cy="162" r="1" fill="white" />
+                </>
+              )}
 
               {/* Eyelashes */}
               <path d="M 207 152 L 204 146" stroke="#2d3436" strokeWidth="1.5" />

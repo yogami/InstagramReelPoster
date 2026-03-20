@@ -390,7 +390,8 @@ export class ReelOrchestrator {
                 jobId,
                 dialogueResult.caption,
                 dialogueResult.visualPrompt,
-                dialogueResult.turns
+                dialogueResult.turns,
+                dialogueResult.hook
             );
 
             // 5. Finalize Job

@@ -87,7 +87,8 @@ export class SovereignPuppetEngine {
         jobId: string,
         caption: string,
         visualPrompt: string,
-        turns: PuppetDialogueTurn[]
+        turns: PuppetDialogueTurn[],
+        hook?: string
     ): Promise<string> {
         console.log(`\n=== 🎭 Initiating Sovereign Puppet Engine for Job: ${jobId} ===\n`);
 
@@ -158,6 +159,7 @@ export class SovereignPuppetEngine {
         const inputProps = {
             timeline,
             backgroundUrl: bgFilename,
+            hook: hook || '',
         };
 
         // Write props to a file to avoid shell quoting issues
