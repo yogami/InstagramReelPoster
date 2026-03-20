@@ -7,23 +7,27 @@ export class OpenRouterTextClient {
     private readonly models: string[];
     private readonly baseUrl = 'https://openrouter.ai/api/v1/chat/completions';
 
-    /** Free models ranked by quality for dialogue generation */
-    private static readonly FREE_FALLBACK_CHAIN = [
+    /** Models ranked by reliability for dialogue JSON generation.
+     *  Paid models first (sub-penny costs), free as fallback */
+    private static readonly FALLBACK_CHAIN = [
+        // Paid — cheap and reliable for structured JSON ($0.0003/M tokens)
+        'deepseek/deepseek-v3.2',
+        'deepseek/deepseek-chat-v3.1',
+        'google/gemma-3-27b-it',
+        // Free fallbacks
         'google/gemma-3-27b-it:free',
         'meta-llama/llama-3.3-70b-instruct:free',
-        'nousresearch/hermes-3-llama-3.1-405b:free',
         'qwen/qwen3-coder:free',
         'mistralai/mistral-small-3.1-24b-instruct:free',
-        'google/gemma-3-12b-it:free',
     ];
 
     constructor(apiKey: string, model?: string) {
         this.apiKey = apiKey;
         // Put the preferred model first, then append all others
         if (model) {
-            this.models = [model, ...OpenRouterTextClient.FREE_FALLBACK_CHAIN.filter(m => m !== model)];
+            this.models = [model, ...OpenRouterTextClient.FALLBACK_CHAIN.filter(m => m !== model)];
         } else {
-            this.models = [...OpenRouterTextClient.FREE_FALLBACK_CHAIN];
+            this.models = [...OpenRouterTextClient.FALLBACK_CHAIN];
         }
     }
 
