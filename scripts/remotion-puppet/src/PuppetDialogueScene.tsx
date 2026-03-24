@@ -1,6 +1,6 @@
 import React from "react";
 import { AbsoluteFill, Audio, Sequence, useCurrentFrame, staticFile, interpolate, spring, useVideoConfig } from "remotion";
-import { CharacterPuppet } from "./CharacterPuppet";
+import { CharacterPuppet, EmotionType } from "./CharacterPuppet";
 
 interface DialogueTurn {
   speaker: "marco" | "luna";
@@ -8,6 +8,7 @@ interface DialogueTurn {
   audioFile: string;
   startFrame: number;
   durationFrames: number;
+  emotion?: EmotionType;
 }
 
 interface PuppetDialogueProps {
@@ -146,6 +147,7 @@ export const PuppetDialogueScene: React.FC<PuppetDialogueProps> = ({
             audioSrc={staticFile(turn.audioFile)}
             audioStartFrame={0}
             character="marco"
+            emotion={turn.emotion || "neutral"}
           />
         </Sequence>
       ))}
@@ -173,6 +175,7 @@ export const PuppetDialogueScene: React.FC<PuppetDialogueProps> = ({
             audioSrc={staticFile(turn.audioFile)}
             audioStartFrame={0}
             character="luna"
+            emotion={turn.emotion || "neutral"}
           />
         </Sequence>
       ))}

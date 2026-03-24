@@ -7,6 +7,8 @@ import { useAudioData, visualizeAudio } from "@remotion/media-utils";
  * When isFlipped=true (CSS scaleX(-1)), the character faces LEFT.
  * Seated upper body only.
  */
+export type EmotionType = "neutral" | "angry" | "cold" | "smug" | "vulnerable";
+
 export const CharacterPuppet: React.FC<{
   baseX: number;
   baseY: number;
@@ -14,7 +16,8 @@ export const CharacterPuppet: React.FC<{
   audioSrc: string;
   audioStartFrame: number;
   character?: "marco" | "luna";
-}> = ({ baseX, baseY, isFlipped = false, audioSrc, audioStartFrame, character = "marco" }) => {
+  emotion?: EmotionType;
+}> = ({ baseX, baseY, isFlipped = false, audioSrc, audioStartFrame, character = "marco", emotion = "neutral" }) => {
   const frame = useCurrentFrame();
 
   // Guard: useAudioData requires a valid src string — use a dummy when idle
@@ -104,9 +107,33 @@ export const CharacterPuppet: React.FC<{
                 </>
               )}
 
-              {/* Eyebrows */}
-              <line x1="210" y1="146" x2="234" y2="148" stroke="#2d3436" strokeWidth="3" strokeLinecap="round" />
-              <line x1="160" y1="150" x2="178" y2="148" stroke="#2d3436" strokeWidth="2.5" strokeLinecap="round" />
+              {/* Eyebrows — emotion-aware */}
+              {emotion === "angry" ? (
+                <>
+                  <line x1="208" y1="152" x2="234" y2="142" stroke="#2d3436" strokeWidth="3.5" strokeLinecap="round" />
+                  <line x1="162" y1="154" x2="180" y2="144" stroke="#2d3436" strokeWidth="3" strokeLinecap="round" />
+                </>
+              ) : emotion === "cold" ? (
+                <>
+                  <line x1="210" y1="148" x2="234" y2="148" stroke="#2d3436" strokeWidth="3" strokeLinecap="round" />
+                  <line x1="160" y1="150" x2="178" y2="150" stroke="#2d3436" strokeWidth="2.5" strokeLinecap="round" />
+                </>
+              ) : emotion === "smug" ? (
+                <>
+                  <line x1="208" y1="142" x2="234" y2="148" stroke="#2d3436" strokeWidth="3" strokeLinecap="round" />
+                  <line x1="160" y1="150" x2="178" y2="148" stroke="#2d3436" strokeWidth="2.5" strokeLinecap="round" />
+                </>
+              ) : emotion === "vulnerable" ? (
+                <>
+                  <line x1="212" y1="142" x2="232" y2="148" stroke="#2d3436" strokeWidth="2.5" strokeLinecap="round" />
+                  <line x1="164" y1="146" x2="178" y2="150" stroke="#2d3436" strokeWidth="2" strokeLinecap="round" />
+                </>
+              ) : (
+                <>
+                  <line x1="210" y1="146" x2="234" y2="148" stroke="#2d3436" strokeWidth="3" strokeLinecap="round" />
+                  <line x1="160" y1="150" x2="178" y2="148" stroke="#2d3436" strokeWidth="2.5" strokeLinecap="round" />
+                </>
+              )}
 
               {/* Nose */}
               <path d="M 210 170 L 235 195 L 220 200" fill="none" stroke="#b2bec3" strokeWidth="2" strokeLinejoin="round" />
@@ -114,9 +141,15 @@ export const CharacterPuppet: React.FC<{
               {/* Stubble */}
               <ellipse cx="210" cy="230" rx="30" ry="12" fill="rgba(45,52,54,0.08)" />
 
-              {/* Mouth */}
+              {/* Mouth — emotion-aware */}
               {isTalking ? (
-                <ellipse cx="215" cy="225" rx="10" ry="14" fill="#e17055" />
+                <ellipse cx="215" cy="225" rx="10" ry={emotion === "angry" ? 16 : emotion === "vulnerable" ? 11 : 14} fill="#e17055" />
+              ) : emotion === "angry" ? (
+                <path d="M 205 228 Q 215 220, 228 228" fill="none" stroke="#e17055" strokeWidth="2.5" strokeLinecap="round" />
+              ) : emotion === "cold" ? (
+                <line x1="205" y1="225" x2="228" y2="225" stroke="#e17055" strokeWidth="2.5" strokeLinecap="round" />
+              ) : emotion === "smug" ? (
+                <path d="M 205 222 Q 215 230, 228 220" fill="none" stroke="#e17055" strokeWidth="2.5" strokeLinecap="round" />
               ) : (
                 <path d="M 205 225 Q 215 232, 228 225" fill="none" stroke="#e17055" strokeWidth="2.5" strokeLinecap="round" />
               )}
@@ -176,9 +209,33 @@ export const CharacterPuppet: React.FC<{
               <path d="M 213 150 L 211 144" stroke="#2d3436" strokeWidth="1.5" />
               <path d="M 160 155 L 158 150" stroke="#2d3436" strokeWidth="1.2" />
 
-              {/* Eyebrows */}
-              <path d="M 208 148 Q 218 140, 232 145" fill="none" stroke="#6d4c41" strokeWidth="2" strokeLinecap="round" />
-              <path d="M 160 152 Q 168 146, 176 150" fill="none" stroke="#6d4c41" strokeWidth="1.5" strokeLinecap="round" />
+              {/* Eyebrows — emotion-aware */}
+              {emotion === "angry" ? (
+                <>
+                  <path d="M 208 152 Q 218 144, 232 148" fill="none" stroke="#6d4c41" strokeWidth="2.5" strokeLinecap="round" />
+                  <path d="M 160 154 Q 168 148, 176 152" fill="none" stroke="#6d4c41" strokeWidth="2" strokeLinecap="round" />
+                </>
+              ) : emotion === "cold" ? (
+                <>
+                  <path d="M 208 148 Q 218 148, 232 148" fill="none" stroke="#6d4c41" strokeWidth="2" strokeLinecap="round" />
+                  <path d="M 160 152 Q 168 152, 176 152" fill="none" stroke="#6d4c41" strokeWidth="1.5" strokeLinecap="round" />
+                </>
+              ) : emotion === "smug" ? (
+                <>
+                  <path d="M 208 144 Q 218 138, 232 145" fill="none" stroke="#6d4c41" strokeWidth="2" strokeLinecap="round" />
+                  <path d="M 160 152 Q 168 148, 176 152" fill="none" stroke="#6d4c41" strokeWidth="1.5" strokeLinecap="round" />
+                </>
+              ) : emotion === "vulnerable" ? (
+                <>
+                  <path d="M 208 144 Q 218 140, 232 148" fill="none" stroke="#6d4c41" strokeWidth="2" strokeLinecap="round" />
+                  <path d="M 160 148 Q 168 144, 176 150" fill="none" stroke="#6d4c41" strokeWidth="1.5" strokeLinecap="round" />
+                </>
+              ) : (
+                <>
+                  <path d="M 208 148 Q 218 140, 232 145" fill="none" stroke="#6d4c41" strokeWidth="2" strokeLinecap="round" />
+                  <path d="M 160 152 Q 168 146, 176 150" fill="none" stroke="#6d4c41" strokeWidth="1.5" strokeLinecap="round" />
+                </>
+              )}
 
               {/* Nose */}
               <path d="M 208 172 L 228 195 L 215 198" fill="none" stroke="#fdcb6e" strokeWidth="1.8" strokeLinejoin="round" />
@@ -187,9 +244,15 @@ export const CharacterPuppet: React.FC<{
               <ellipse cx="235" cy="195" rx="12" ry="7" fill="rgba(253,121,168,0.15)" />
               <ellipse cx="160" cy="197" rx="10" ry="6" fill="rgba(253,121,168,0.12)" />
 
-              {/* Mouth */}
+              {/* Mouth — emotion-aware */}
               {isTalking ? (
-                <ellipse cx="213" cy="222" rx="9" ry="13" fill="#fd79a8" />
+                <ellipse cx="213" cy="222" rx="9" ry={emotion === "angry" ? 15 : emotion === "vulnerable" ? 10 : 13} fill="#fd79a8" />
+              ) : emotion === "angry" ? (
+                <path d="M 203 225 Q 213 218, 224 225" fill="none" stroke="#fd79a8" strokeWidth="2" strokeLinecap="round" />
+              ) : emotion === "cold" ? (
+                <line x1="203" y1="222" x2="224" y2="222" stroke="#fd79a8" strokeWidth="2" strokeLinecap="round" />
+              ) : emotion === "smug" ? (
+                <path d="M 203 220 Q 213 226, 224 218" fill="none" stroke="#fd79a8" strokeWidth="2" strokeLinecap="round" />
               ) : (
                 <path d="M 203 222 Q 213 228, 224 222" fill="none" stroke="#fd79a8" strokeWidth="2" strokeLinecap="round" />
               )}

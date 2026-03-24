@@ -24,6 +24,7 @@ interface TimelineTurn {
     audioFile: string;
     startFrame: number;
     durationFrames: number;
+    emotion: string;
 }
 
 export class SovereignPuppetEngine {
@@ -81,6 +82,20 @@ export class SovereignPuppetEngine {
     }
 
     /**
+     * Maps LLM emotion cues to supported expression types
+     */
+    private mapEmotion(raw: string): string {
+        const lower = raw.toLowerCase().trim();
+        const map: Record<string, string> = {
+            'angry': 'angry', 'furious': 'angry', 'frustrated': 'angry', 'mad': 'angry',
+            'cold': 'cold', 'quiet': 'cold', 'distant': 'cold', 'flat': 'cold', 'stern': 'cold',
+            'smug': 'smug', 'sarcastic': 'smug', 'mocking': 'smug', 'cocky': 'smug',
+            'vulnerable': 'vulnerable', 'sad': 'vulnerable', 'hurt': 'vulnerable', 'soft': 'vulnerable', 'broken': 'vulnerable',
+        };
+        return map[lower] || 'neutral';
+    }
+
+    /**
      * Execute the full puppet dialogue video pipeline.
      */
     public async execute(
@@ -108,8 +123,13 @@ export class SovereignPuppetEngine {
             const turn = turns[i];
             const ttsClient = turn.speaker === 'marco' ? this.maleTts : this.femaleTts;
             
-            console.log(`[Puppet:TTS] Turn ${i + 1}: ${turn.speaker} — "${turn.line.substring(0, 40)}..."`);
-            const ttsResult = await ttsClient.synthesize(turn.line);
+            // Extract emotion cue from line, e.g. "(cold) That's not what I asked."
+            const emotionMatch = turn.line.match(/^\s*\((\w+)\)\s*/);
+            const emotion = emotionMatch ? this.mapEmotion(emotionMatch[1]) : 'neutral';
+            const cleanLine = emotionMatch ? turn.line.replace(emotionMatch[0], '') : turn.line;
+            
+            console.log(`[Puppet:TTS] Turn ${i + 1}: ${turn.speaker} — "${cleanLine.substring(0, 40)}..."${emotion !== 'neutral' ? ` [${emotion}]` : ''}`);
+            const ttsResult = await ttsClient.synthesize(cleanLine);
 
             // Write audio to the Remotion public dir so staticFile() can access it
             const audioFilename = `puppet_${jobId}_turn${i}.mp3`;
@@ -121,10 +141,11 @@ export class SovereignPuppetEngine {
 
             timeline.push({
                 speaker: turn.speaker,
-                line: turn.line,
+                line: cleanLine,
                 audioFile: audioFilename,
                 startFrame: currentFrame,
                 durationFrames,
+                emotion,
             });
 
             console.log(`   → ${durationSec.toFixed(1)}s (${durationFrames} frames, start: ${currentFrame})`);
