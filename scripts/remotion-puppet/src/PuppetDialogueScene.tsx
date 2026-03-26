@@ -1,5 +1,5 @@
 import React from "react";
-import { AbsoluteFill, Audio, Sequence, useCurrentFrame, staticFile, interpolate, spring, useVideoConfig } from "remotion";
+import { AbsoluteFill, Audio, Video, Sequence, useCurrentFrame, staticFile, interpolate, spring, useVideoConfig } from "remotion";
 import { CharacterPuppet, EmotionType } from "./CharacterPuppet";
 
 interface DialogueTurn {
@@ -15,6 +15,8 @@ interface PuppetDialogueProps {
   timeline: DialogueTurn[];
   backgroundUrl: string;
   hook?: string;
+  marcoVideoFile?: string;
+  lunaVideoFile?: string;
 }
 
 const CafeTableScene: React.FC<{
@@ -76,10 +78,8 @@ const CafeTableScene: React.FC<{
   );
 };
 
-export const PuppetDialogueScene: React.FC<PuppetDialogueProps> = ({
-  timeline,
-  hook,
-}) => {
+export const PuppetDialogueScene: React.FC<PuppetDialogueProps> = (props) => {
+  const { timeline, hook, marcoVideoFile, lunaVideoFile } = props;
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
@@ -137,7 +137,43 @@ export const PuppetDialogueScene: React.FC<PuppetDialogueProps> = ({
       {/* === CAFE TABLE SCENE SVG === */}
       <CafeTableScene activeSpeaker={activeSpeaker} frame={frame} />
 
-      {/* === MARCO (sitting left, facing right) === */}
+      {/* === HYBRID MODE: Kie.ai Avatar Videos === */}
+      {props.marcoVideoFile && props.lunaVideoFile ? (
+        <>
+          {/* Marco avatar video — positioned left */}
+          <div style={{
+            position: "absolute", left: 30, bottom: 650,
+            width: 480, height: 640,
+            borderRadius: 24, overflow: "hidden",
+            opacity: activeSpeaker === "luna" ? 0.6 : 1,
+            transform: `scale(${activeSpeaker === "marco" ? 1.05 : 1})`,
+            transition: "opacity 0.3s, transform 0.3s",
+            boxShadow: activeSpeaker === "marco" ? "0 0 30px rgba(126,214,223,0.3)" : "none",
+          }}>
+            <Video
+              src={staticFile(props.marcoVideoFile)}
+              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+            />
+          </div>
+
+          {/* Luna avatar video — positioned right */}
+          <div style={{
+            position: "absolute", right: 30, bottom: 650,
+            width: 480, height: 640,
+            borderRadius: 24, overflow: "hidden",
+            opacity: activeSpeaker === "marco" ? 0.6 : 1,
+            transform: `scale(${activeSpeaker === "luna" ? 1.05 : 1})`,
+            transition: "opacity 0.3s, transform 0.3s",
+            boxShadow: activeSpeaker === "luna" ? "0 0 30px rgba(253,121,168,0.3)" : "none",
+          }}>
+            <Video
+              src={staticFile(props.lunaVideoFile)}
+              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+            />
+          </div>
+        </>
+      ) : (
+        <>
       {marcoTurns.map((turn, i) => (
         <Sequence key={`marco-puppet-${i}`} from={turn.startFrame} durationInFrames={turn.durationFrames}>
           <CharacterPuppet
@@ -192,6 +228,8 @@ export const PuppetDialogueScene: React.FC<PuppetDialogueProps> = ({
           character="luna"
         />
       </div>
+      </>
+      )}
 
       {/* === SPEAKER HIGHLIGHT === */}
       {activeSpeaker === "marco" && (

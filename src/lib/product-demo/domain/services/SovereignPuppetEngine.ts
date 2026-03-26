@@ -5,6 +5,7 @@ import { execSync } from 'child_process';
 import { FishAudioTtsClient } from '../../../../infrastructure/tts/FishAudioTtsClient';
 import Replicate from 'replicate';
 import { PuppetDialogueTurn } from '../../../../application/services/PuppetDialogueGenerator';
+import { KieAvatarClient } from '../../../../infrastructure/video/KieAvatarClient';
 
 export interface PuppetEngineConfig {
     fishApiKey: string;
@@ -16,6 +17,8 @@ export interface PuppetEngineConfig {
     cloudinaryApiSecret: string;
     makeWebhookUrl: string;
     makeApiKey: string;
+    kieApiKey?: string;
+    kieApiBaseUrl?: string;
 }
 
 interface TimelineTurn {
@@ -34,6 +37,7 @@ export class SovereignPuppetEngine {
     private readonly femaleTts: FishAudioTtsClient;
     private readonly tmpDir = '/tmp/sovereign_puppet';
     private readonly remotionDir: string;
+    private readonly kieAvatar: KieAvatarClient | null;
 
     constructor(config: PuppetEngineConfig) {
         this.config = config;
@@ -41,6 +45,9 @@ export class SovereignPuppetEngine {
         this.maleTts = new FishAudioTtsClient(config.fishApiKey, config.fishMaleVoiceId);
         this.femaleTts = new FishAudioTtsClient(config.fishApiKey, config.fishFemaleVoiceId);
         this.remotionDir = path.resolve(process.cwd(), 'scripts/remotion-puppet');
+        this.kieAvatar = config.kieApiKey
+            ? new KieAvatarClient(config.kieApiKey, config.kieApiBaseUrl || 'https://api.kie.ai/api/v1')
+            : null;
 
         if (fs.existsSync(this.tmpDir)) {
             fs.rmSync(this.tmpDir, { recursive: true, force: true });
@@ -170,6 +177,87 @@ export class SovereignPuppetEngine {
         fs.writeFileSync(bgPath, bgRes.data);
         console.log(`[Puppet:FLUX] Background saved: ${bgFilename}`);
 
+        // 2b. Hybrid Mode: Generate Kie.ai Avatar lip-sync videos
+        let marcoVideoFile: string | null = null;
+        let lunaVideoFile: string | null = null;
+
+        if (this.kieAvatar) {
+            console.log(`\n--- Step 2b: Generating Kie.ai Avatar lip-sync ---`);
+
+            const cloudinary = require('cloudinary').v2;
+            cloudinary.config({
+                cloud_name: this.config.cloudinaryCloudName,
+                api_key: this.config.cloudinaryApiKey,
+                api_secret: this.config.cloudinaryApiSecret,
+            });
+
+            // Concat per-speaker audio files
+            const marcoAudioFiles = timeline.filter(t => t.speaker === 'marco').map(t => path.join(publicDir, t.audioFile));
+            const lunaAudioFiles = timeline.filter(t => t.speaker === 'luna').map(t => path.join(publicDir, t.audioFile));
+
+            const concatAudio = (files: string[], outName: string): string => {
+                const outPath = path.join(this.tmpDir, outName);
+                if (files.length === 1) {
+                    fs.copyFileSync(files[0], outPath);
+                } else {
+                    const listFile = path.join(this.tmpDir, `${outName}_list.txt`);
+                    fs.writeFileSync(listFile, files.map(f => `file '${f}'`).join('\n'));
+                    execSync(`ffmpeg -y -f concat -safe 0 -i "${listFile}" -c copy "${outPath}" -loglevel error`);
+                }
+                return outPath;
+            };
+
+            const marcoConcat = concatAudio(marcoAudioFiles, `${jobId}_marco_audio.mp3`);
+            const lunaConcat = concatAudio(lunaAudioFiles, `${jobId}_luna_audio.mp3`);
+
+            // Upload audio + portraits to Cloudinary for public URLs
+            const marcoPortrait = path.resolve(process.cwd(), 'src/assets/characters/marco_portrait.png');
+            const lunaPortrait = path.resolve(process.cwd(), 'src/assets/characters/luna_portrait.png');
+
+            try {
+                const [marcoImgRes, lunaImgRes, marcoAudioRes, lunaAudioRes] = await Promise.all([
+                    cloudinary.uploader.upload(marcoPortrait, { public_id: `avatar_marco_${jobId}`, resource_type: 'image' }),
+                    cloudinary.uploader.upload(lunaPortrait, { public_id: `avatar_luna_${jobId}`, resource_type: 'image' }),
+                    cloudinary.uploader.upload(marcoConcat, { public_id: `avatar_marco_audio_${jobId}`, resource_type: 'video' }),
+                    cloudinary.uploader.upload(lunaConcat, { public_id: `avatar_luna_audio_${jobId}`, resource_type: 'video' }),
+                ]);
+
+                console.log(`[KieAvatar] Assets uploaded. Generating avatars...`);
+
+                // Generate both avatar videos in parallel
+                const [marcoResult, lunaResult] = await Promise.all([
+                    this.kieAvatar.generateAvatar({ imageUrl: marcoImgRes.secure_url, audioUrl: marcoAudioRes.secure_url }),
+                    this.kieAvatar.generateAvatar({ imageUrl: lunaImgRes.secure_url, audioUrl: lunaAudioRes.secure_url }),
+                ]);
+
+                // Download avatar videos to Remotion public dir
+                marcoVideoFile = `puppet_${jobId}_marco_avatar.mp4`;
+                lunaVideoFile = `puppet_${jobId}_luna_avatar.mp4`;
+
+                const [marcoVidRes, lunaVidRes] = await Promise.all([
+                    axios.get(marcoResult.videoUrl, { responseType: 'arraybuffer' }),
+                    axios.get(lunaResult.videoUrl, { responseType: 'arraybuffer' }),
+                ]);
+
+                fs.writeFileSync(path.join(publicDir, marcoVideoFile), marcoVidRes.data);
+                fs.writeFileSync(path.join(publicDir, lunaVideoFile), lunaVidRes.data);
+
+                console.log(`[KieAvatar] ✅ Both avatar videos downloaded`);
+
+                // Cleanup temp Cloudinary uploads
+                await Promise.all([
+                    cloudinary.uploader.destroy(`avatar_marco_${jobId}`, { resource_type: 'image' }).catch(() => {}),
+                    cloudinary.uploader.destroy(`avatar_luna_${jobId}`, { resource_type: 'image' }).catch(() => {}),
+                    cloudinary.uploader.destroy(`avatar_marco_audio_${jobId}`, { resource_type: 'video' }).catch(() => {}),
+                    cloudinary.uploader.destroy(`avatar_luna_audio_${jobId}`, { resource_type: 'video' }).catch(() => {}),
+                ]);
+            } catch (err: any) {
+                console.error(`[KieAvatar] ⚠️ Failed: ${err.message}. Falling back to SVG puppets.`);
+                marcoVideoFile = null;
+                lunaVideoFile = null;
+            }
+        }
+
         // 3. Write timeline.json for the composition
         const timelineFile = path.join(publicDir, `puppet_${jobId}_timeline.json`);
         fs.writeFileSync(timelineFile, JSON.stringify(timeline, null, 2));
@@ -177,11 +265,20 @@ export class SovereignPuppetEngine {
         // 4. Render via Remotion CLI
         console.log(`\n--- Step 3: Rendering via Remotion CLI ---`);
         const outputPath = path.join(this.tmpDir, `${jobId}_puppet_raw.mp4`);
-        const inputProps = {
+        const inputProps: Record<string, any> = {
             timeline,
             backgroundUrl: bgFilename,
             hook: hook || '',
         };
+
+        // If hybrid avatar videos are available, pass them to Remotion
+        if (marcoVideoFile && lunaVideoFile) {
+            inputProps.marcoVideoFile = marcoVideoFile;
+            inputProps.lunaVideoFile = lunaVideoFile;
+            console.log(`[Puppet:Remotion] 🎭 Using HYBRID mode (Kie.ai avatars)`);
+        } else {
+            console.log(`[Puppet:Remotion] Using SVG puppet mode`);
+        }
 
         // Write props to a file to avoid shell quoting issues
         const propsFile = path.join(this.tmpDir, `${jobId}_props.json`);

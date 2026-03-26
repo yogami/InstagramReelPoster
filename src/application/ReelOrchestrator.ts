@@ -384,6 +384,8 @@ export class ReelOrchestrator {
                 cloudinaryApiSecret: config.cloudinaryApiSecret,
                 makeWebhookUrl: config.makeWebhookUrl,
                 makeApiKey: process.env.MAKE_API_KEY || "",
+                kieApiKey: config.multiModelApiKey || undefined,
+                kieApiBaseUrl: config.multiModelVideoBaseUrl || undefined,
             });
 
             const finalVideoUrl = await engine.execute(
