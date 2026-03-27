@@ -1,0 +1,26 @@
+[
+  {
+    "speaker": "guy",
+    "file": "guy_line1.wav",
+    "line": "You know what I love about this place? No deadlines. No emails. Just the waves.",
+    "startFrame": 0,
+    "durationFrames": 209,
+    "durationSeconds": 6.965986
+  },
+  {
+    "speaker": "girl",
+    "file": "girl_line1.wav",
+    "line": "Mmm. I could stay here forever. Play me that song again, the one from last night.",
+    "startFrame": 221,
+    "durationFrames": 203,
+    "durationSeconds": 6.780227
+  },
+  {
+    "speaker": "guy",
+    "file": "guy_line2.wav",
+    "line": "This one? I actually wrote it this morning. Inspired by the sunrise.",
+    "startFrame": 436,
+    "durationFrames": 171,
+    "durationSeconds": 5.712109
+  }
+]

@@ -48,6 +48,7 @@ export class SovereignPuppetEngine {
         this.kieAvatar = config.kieApiKey
             ? new KieAvatarClient(config.kieApiKey, config.kieApiBaseUrl || 'https://api.kie.ai/api/v1')
             : null;
+        console.log(`[PuppetEngine] kieApiKey present: ${!!config.kieApiKey}, hybrid mode: ${this.kieAvatar ? 'ENABLED' : 'DISABLED'}`);
 
         if (fs.existsSync(this.tmpDir)) {
             fs.rmSync(this.tmpDir, { recursive: true, force: true });

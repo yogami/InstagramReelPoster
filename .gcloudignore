@@ -1,0 +1,45 @@
+# Ignore everything not needed for Docker build
+.git
+.github
+node_modules
+coverage
+test-results
+tests
+docs
+recordings
+output
+output_german
+pitch_segments*
+verified_segments
+judge_panel_results
+vercel_accelerator_panel
+tmp
+temp_sim
+
+# Large files
+*.mp4
+*.mp3
+*.log
+*.txt
+*.json.bak
+all_tasks.json
+flux_tasks.json
+flux_test_result.json
+
+# Logs and debug
+*.log
+*_log*.txt
+*_output*.txt
+verification_*.txt
+server.log
+
+# Dev files
+.env.example
+.cursorrules
+.windsurfrules
+.clinerules
+.beamignore
+CLAUDE.md
+debug_*.ts
+verify_*.ts
+end_card_debug.html

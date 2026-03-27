@@ -5,3 +5,12 @@ coverage/
 *.log
 .DS_Store
 data/jobs.json
+
+# Agent Context Injections
+.agent_rules.md
+.agent_catalog.md
+
+# Remotion Projects
+remotion-kundalini/node_modules
+remotion-kundalini/out
+

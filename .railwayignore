@@ -1,0 +1,16 @@
+node_modules/
+dist/
+public/
+remotion-kundalini/
+semaproof_pitch/
+pitch_segments_*/
+verified_segments/
+tests/
+logs/
+run_output/
+*.mp4
+*.mp3
+*.wav
+railway_vars.json
+.env.railway
+.env

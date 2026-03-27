@@ -39,8 +39,11 @@ export class ImageGenerationService {
                 });
                 imageUrl = uploadResult.url;
             } catch (err) {
-                console.warn(`Failed to persist turbo frame to Cloudinary:`, err);
+                console.warn(`Failed to persist turbo frame to Cloudinary fallback to local:`, err);
+                imageUrl = await this.saveLocally(imageUrl, `turbo_${Date.now()}.png`);
             }
+        } else {
+            imageUrl = await this.saveLocally(imageUrl, `turbo_${Date.now()}.png`);
         }
 
         return imageUrl;
@@ -95,7 +98,7 @@ export class ImageGenerationService {
             finalImageUrl = imageUrl;
         }
 
-        // Upload to Cloudinary for persistence
+        // Upload to Cloudinary or save locally
         if (this.storageClient) {
             try {
                 const uploadResult = await this.storageClient.uploadImage(finalImageUrl, {
@@ -104,10 +107,43 @@ export class ImageGenerationService {
                 });
                 finalImageUrl = uploadResult.url;
             } catch (uploadError) {
-                console.warn(`Failed to upload segment ${index} to Cloudinary:`, uploadError);
+                console.warn(`Failed to upload segment ${index} to Cloudinary fallback to local:`, uploadError);
+                finalImageUrl = await this.saveLocally(finalImageUrl, `segment_${jobId}_${index}.png`);
             }
+        } else {
+            finalImageUrl = await this.saveLocally(finalImageUrl, `segment_${jobId}_${index}.png`);
+        }
+        return { ...segment, imageUrl: finalImageUrl };
+    }
+
+    private async saveLocally(imageUrl: string, filename: string): Promise<string> {
+        if (!imageUrl.startsWith('data:') && !imageUrl.startsWith('http')) {
+            return imageUrl;
         }
 
-        return { ...segment, imageUrl: finalImageUrl };
+        console.log(`[ImageGeneration] Saving image locally: ${filename}`);
+        try {
+            const fs = require('fs');
+            const path = require('path');
+            const axios = require('axios');
+            const rendersDir = path.join(process.cwd(), 'public', 'renders');
+            if (!fs.existsSync(rendersDir)) {
+                fs.mkdirSync(rendersDir, { recursive: true });
+            }
+            const filePath = path.join(rendersDir, filename);
+
+            if (imageUrl.startsWith('data:')) {
+                const base64Data = imageUrl.split(';base64,').pop();
+                fs.writeFileSync(filePath, base64Data, { encoding: 'base64' });
+            } else {
+                const response = await axios({ url: imageUrl, responseType: 'arraybuffer' });
+                fs.writeFileSync(filePath, Buffer.from(response.data));
+            }
+
+            return `/renders/${filename}`;
+        } catch (e: any) {
+            console.error(`[ImageGeneration] Local save failed: ${e.message}`);
+            return imageUrl;
+        }
     }
 }

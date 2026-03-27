@@ -1,0 +1,7 @@
+file '/Users/user1000/gitprojects/InstagramReelPoster/semaproof_pitch/norm_1.mp4'
+file '/Users/user1000/gitprojects/InstagramReelPoster/semaproof_pitch/norm_2.mp4'
+file '/Users/user1000/gitprojects/InstagramReelPoster/semaproof_pitch/norm_3.mp4'
+file '/Users/user1000/gitprojects/InstagramReelPoster/semaproof_pitch/norm_4.mp4'
+file '/Users/user1000/gitprojects/InstagramReelPoster/semaproof_pitch/norm_5.mp4'
+file '/Users/user1000/gitprojects/InstagramReelPoster/semaproof_pitch/norm_6.mp4'
+file '/Users/user1000/gitprojects/InstagramReelPoster/semaproof_pitch/norm_7.mp4'

@@ -280,4 +280,8 @@ Respond with JSON:
             return false;
         }
     }
+
+    async generateText(prompt: string): Promise<string> {
+        return this.callOllama(prompt);
+    }
 }

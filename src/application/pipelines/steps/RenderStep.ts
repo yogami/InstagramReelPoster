@@ -55,6 +55,7 @@ export class RenderStep implements PipelineStep {
 
         const updatedJob = await this.jobManager.updateJob(job.id, {
             finalVideoUrl,
+            localVideoPath: result.localVideoPath,
             status: 'completed',
         });
 

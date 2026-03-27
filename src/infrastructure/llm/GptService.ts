@@ -1,6 +1,7 @@
 import axios from 'axios';
+import { IChatService } from '../../domain/ports/IChatService';
 
-export class GptService {
+export class GptService implements IChatService {
     private readonly apiKey: string;
     private readonly baseUrl: string;
     private readonly model: string;
@@ -67,6 +68,8 @@ export class GptService {
                 headers: {
                     Authorization: `Bearer ${this.apiKey}`,
                     'Content-Type': 'application/json',
+                    'HTTP-Referer': 'https://github.com/yogami/InstagramReelPoster',
+                    'X-Title': 'Instagram Reel Poster',
                 },
             }
         );

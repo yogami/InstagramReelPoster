@@ -140,6 +140,39 @@ export class MediaStorageClient {
         return this.uploadFromUrl(url, { ...options, resourceType: 'video' });
     }
 
+    /**
+     * Uploads a buffer directly to Cloudinary.
+     */
+    async uploadBuffer(
+        buffer: Buffer,
+        options: {
+            folder?: string;
+            publicId?: string;
+            resourceType?: 'image' | 'video' | 'raw' | 'auto';
+            tags?: string[];
+        } = {}
+    ): Promise<{ url: string; publicId: string }> {
+        const resourceType = options.resourceType || 'auto';
+        const uploadOptions = {
+            folder: options.folder || 'instagram-reels',
+            public_id: options.publicId,
+            resource_type: resourceType,
+            overwrite: true,
+            tags: options.tags,
+        };
+
+        return new Promise((resolve, reject) => {
+            const uploadStream = cloudinary.uploader.upload_stream(
+                uploadOptions,
+                (error, result) => {
+                    if (error) reject(error);
+                    else resolve({ url: result!.secure_url, publicId: result!.public_id });
+                }
+            );
+            uploadStream.end(buffer);
+        });
+    }
+
     async uploadImage(url: string, options: { folder?: string; publicId?: string; tags?: string[]; context?: Record<string, string | number | boolean> } = {}) {
         return this.uploadFromUrl(url, { ...options, resourceType: 'image' });
     }

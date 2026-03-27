@@ -1,0 +1,5 @@
+file '/Users/user1000/gitprojects/InstagramReelPoster/assets/koi-stoic-test/wide_intro_anim.mp4'
+file '/Users/user1000/gitprojects/InstagramReelPoster/assets/koi-stoic-test/lipsync_0_scaled.mp4'
+file '/Users/user1000/gitprojects/InstagramReelPoster/assets/koi-stoic-test/lipsync_1_scaled.mp4'
+file '/Users/user1000/gitprojects/InstagramReelPoster/assets/koi-stoic-test/lipsync_2_scaled.mp4'
+file '/Users/user1000/gitprojects/InstagramReelPoster/assets/koi-stoic-test/wide_outro_anim.mp4'

@@ -101,4 +101,8 @@ export class FallbackLlmClient implements ILlmClient {
     async generateScriptFromBlueprint(blueprint: import('../../domain/entities/Intelligence').VideoBlueprint, language?: string): Promise<PromoScriptPlan> {
         return this.tryCall('generateScriptFromBlueprint', (c) => c.generateScriptFromBlueprint!(blueprint, language));
     }
+
+    async generateText(prompt: string): Promise<string> {
+        return this.tryCall('generateText', (c) => c.generateText(prompt));
+    }
 }

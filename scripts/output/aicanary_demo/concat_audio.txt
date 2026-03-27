@@ -1,0 +1,7 @@
+file 'segments/audio_1.mp3'
+file 'segments/audio_2.mp3'
+file 'segments/audio_3.mp3'
+file 'segments/audio_4.mp3'
+file 'segments/audio_5.mp3'
+file 'segments/audio_6.mp3'
+file 'segments/audio_7.mp3'

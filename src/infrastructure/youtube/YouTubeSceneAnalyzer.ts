@@ -6,9 +6,8 @@
  * and generate ultra-detailed prompts for accurate visual generation.
  */
 
-import axios from 'axios';
+import { ILlmClient } from '../../domain/ports/ILlmClient';
 import { YouTubeScene } from '../../domain/entities/YouTubeShort';
-import { getConfig } from '../../config';
 
 /**
  * Visual specification for a scene.
@@ -98,14 +97,7 @@ Narration: {NARRATION}
 Respond ONLY with valid JSON, no markdown.`;
 
 export class YouTubeSceneAnalyzer {
-    private readonly apiKey: string;
-    private readonly model: string;
-
-    constructor() {
-        const config = getConfig();
-        this.apiKey = config.llmApiKey;
-        this.model = 'gpt-4o'; // Use GPT-4o for best visual understanding
-    }
+    constructor(private readonly llmClient: ILlmClient) { }
 
     /**
      * Analyzes all scenes in a YouTube Short script.
@@ -161,26 +153,7 @@ export class YouTubeSceneAnalyzer {
             .replace('{VISUAL_PROMPT}', scene.visualPrompt)
             .replace('{NARRATION}', scene.narration);
 
-        const response = await axios.post(
-            'https://api.openai.com/v1/chat/completions',
-            {
-                model: this.model,
-                messages: [
-                    { role: 'system', content: 'You are a video production expert. Respond only with valid JSON.' },
-                    { role: 'user', content: prompt }
-                ],
-                temperature: 0.3,
-                max_tokens: 1000,
-            },
-            {
-                headers: {
-                    'Authorization': `Bearer ${this.apiKey}`,
-                    'Content-Type': 'application/json',
-                },
-            }
-        );
-
-        const responseText = response.data.choices[0]?.message?.content || '';
+        const responseText = await this.llmClient.generateText(prompt);
         const parsed = this.parseAnalysisResponse(responseText);
 
         return {

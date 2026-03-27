@@ -31,6 +31,13 @@ export class RemoteTranscriptionClient implements ITranscriptionClient {
             throw new Error('Audio URL is required');
         }
 
+        // If the URL is actually a direct user text prompt override, return it immediately
+        if (audioUrl.startsWith('user_prompt:')) {
+            const decoded = decodeURIComponent(audioUrl.substring(12));
+            console.log(`[Remote] Bypassing transcription for direct text prompt.`);
+            return decoded.trim();
+        }
+
         try {
             console.log(`[Remote] Transcribing source (${this.model}): ${audioUrl}`);
 

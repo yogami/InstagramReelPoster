@@ -8,11 +8,12 @@ export interface RenderResult {
     videoUrl: string;
     /** Render job ID for reference */
     renderId?: string;
+    /** The absolute local path for the video if rendered locally */
+    localVideoPath?: string;
 }
 
 /**
- * IVideoRenderer - Port for video rendering services.
- * Implementations: TimelineVideoRenderer, FFmpegVideoRenderer
+ * Implementations: RemotionVideoRenderer
  */
 export interface IVideoRenderer {
     /**

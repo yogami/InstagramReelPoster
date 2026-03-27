@@ -21,8 +21,9 @@
       "@infrastructure/*": ["infrastructure/*"],
       "@presentation/*": ["presentation/*"],
       "@config/*": ["config/*"]
-    }
+    },
+    "jsx": "react-jsx"
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "tests"]
+  "exclude": ["node_modules", "dist", "tests", "src/lib/product-demo/presentation/remotion"]
 }

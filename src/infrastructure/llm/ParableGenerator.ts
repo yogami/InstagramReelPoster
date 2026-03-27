@@ -10,8 +10,9 @@ import {
 } from '../../domain/entities/Parable';
 import { CaptionAndTags } from '../../domain/entities/Growth';
 import { getConfig } from '../../config';
-import { GptService } from './GptService';
+import { IChatService } from '../../domain/ports/IChatService';
 import {
+    getSystemPromptForChannel,
     PARABLE_SCRIPT_PROMPT,
     PARABLE_CAPTION_PROMPT,
 } from './Prompts';
@@ -20,10 +21,10 @@ import {
  * Handles generation of parable-style content for reels.
  */
 export class ParableGenerator {
-    private readonly openAI: GptService;
+    private readonly chatService: IChatService;
 
-    constructor(openAI: GptService) {
-        this.openAI = openAI;
+    constructor(chatService: IChatService) {
+        this.chatService = chatService;
     }
 
     /**
@@ -63,9 +64,10 @@ Respond with JSON:
 }`;
 
         try {
-            const systemPrompt = 'You are an intent detection assistant. Analyze user input and return structured JSON responses. Be precise and factual.';
-            const response = await this.openAI.chatCompletion(prompt, systemPrompt, { jsonMode: true, temperature: 0.3 });
-            const parsed = this.openAI.parseJSON<{ contentMode?: string; reason?: string }>(response);
+            const config = getConfig();
+            const systemPrompt = getSystemPromptForChannel(config.reelChannel);
+            const response = await this.chatService.chatCompletion(prompt, systemPrompt, { jsonMode: true, temperature: 0.3 });
+            const parsed = this.chatService.parseJSON<{ contentMode?: string; reason?: string }>(response);
 
             const contentMode: ContentMode = parsed.contentMode === 'parable' ? 'parable' : 'direct-message';
             return {
@@ -123,8 +125,8 @@ Respond with JSON:
 }`;
 
         const systemPrompt = 'You are an intent extraction assistant. Extract structured data from the transcript.';
-        const response = await this.openAI.chatCompletion(prompt, systemPrompt, { jsonMode: true });
-        const parsed = this.openAI.parseJSON<ParableIntent>(response);
+        const response = await this.chatService.chatCompletion(prompt, systemPrompt, { jsonMode: true });
+        const parsed = this.chatService.parseJSON<ParableIntent>(response);
 
         return {
             sourceType: parsed.sourceType === 'provided-story' ? 'provided-story' : 'theme-only',
@@ -173,8 +175,8 @@ Respond with JSON:
 }`;
 
         const systemPrompt = 'You are a creative story curator. Choose the best cultural setting and archetype for a story.';
-        const response = await this.openAI.chatCompletion(prompt, systemPrompt, { jsonMode: true });
-        const parsed = this.openAI.parseJSON<ParableSourceChoice>(response);
+        const response = await this.chatService.chatCompletion(prompt, systemPrompt, { jsonMode: true });
+        const parsed = this.chatService.parseJSON<ParableSourceChoice>(response);
 
         return {
             culture: parsed.culture || 'generic-eastern',
@@ -196,10 +198,10 @@ Respond with JSON:
         const totalWords = Math.floor(effectiveDuration * config.speakingRateWps * 0.97);
 
         const prompt = this.buildParableScriptPrompt(intent, sourceChoice, effectiveDuration, totalWords);
-        const systemPrompt = 'You are a master storyteller for short-form video. Create a 4-beat parable script.';
+        const systemPrompt = getSystemPromptForChannel(config.reelChannel);
 
-        const response = await this.openAI.chatCompletion(prompt, systemPrompt, { jsonMode: true });
-        const parsed = this.openAI.parseJSON<ParableScriptPlan>(response);
+        const response = await this.chatService.chatCompletion(prompt, systemPrompt, { jsonMode: true });
+        const parsed = this.chatService.parseJSON<ParableScriptPlan>(response);
 
         if (!isParableScriptPlan(parsed)) {
             throw new Error('Invalid parable script structure from LLM');
@@ -284,8 +286,8 @@ Respond with JSON:
 }`;
 
         const systemPrompt = 'You are a viral hook expert for social media.';
-        const response = await this.openAI.chatCompletion(prompt, systemPrompt, { jsonMode: true });
-        const parsed = this.openAI.parseJSON<{ hooks: string[] }>(response);
+        const response = await this.chatService.chatCompletion(prompt, systemPrompt, { jsonMode: true });
+        const parsed = this.chatService.parseJSON<{ hooks: string[] }>(response);
 
         return parsed.hooks || [hookBeat?.narration || 'A story of spiritual awakening.'];
     }
@@ -299,8 +301,8 @@ Respond with JSON:
     ): Promise<CaptionAndTags> {
         const prompt = this.buildParableCaptionPrompt(parableScript, summary);
         const systemPrompt = 'You are an Instagram caption expert.';
-        const response = await this.openAI.chatCompletion(prompt, systemPrompt, { jsonMode: true });
-        const parsed = this.openAI.parseJSON<{ captionBody: string; hashtags: string[] | string }>(response);
+        const response = await this.chatService.chatCompletion(prompt, systemPrompt, { jsonMode: true });
+        const parsed = this.chatService.parseJSON<{ captionBody: string; hashtags: string[] | string }>(response);
 
         return this.processParableCaptionResponse(parsed, parableScript);
     }

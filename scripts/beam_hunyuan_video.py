@@ -37,7 +37,7 @@ cache_volume = Volume(name="hunyuan-video-cache", mount_path="/cache")
     cpu=8,
     timeout=1800,  # 30 minutes max
     volumes=[model_volume, cache_volume],
-    keep_warm_seconds=3600,  # Keep warm for 1 hour to ensure zero-latency for production sessions
+    keep_warm_seconds=60,  # Reduced for on-demand only cost savings
     secrets=["CLOUDINARY_URL"],
 )
 def generate_video(

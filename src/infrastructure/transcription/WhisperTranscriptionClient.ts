@@ -75,7 +75,7 @@ export class WhisperTranscriptionClient implements ITranscriptionClient {
                 const ffmpegPath = 'ffmpeg'; // default
 
                 // We'll just run 'ffmpeg' and hope it's in path, or use our verified path
-                const cmd = `/opt/homebrew/bin/ffmpeg -i "${inputPath}" -vn -ar 16000 -ac 1 -b:a 64k "${outputPath}" -y`;
+                const cmd = `ffmpeg -i "${inputPath}" -vn -ar 16000 -ac 1 -b:a 64k "${outputPath}" -y`;
 
                 console.log(`[Whisper] Running: ${cmd}`);
                 await execAsync(cmd);

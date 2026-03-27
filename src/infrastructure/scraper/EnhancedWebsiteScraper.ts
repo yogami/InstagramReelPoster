@@ -22,6 +22,24 @@ export class EnhancedWebsiteScraper implements IWebsiteScraperClient {
         this.httpScraper = new WebsiteScraperClient();
     }
 
+    /**
+     * Creates a new Playwright page for external use.
+     * Useful for recording or custom scraping.
+     */
+    async createPage(): Promise<Page> {
+        if (!this.browser) {
+            this.browser = await chromium.launch({
+                headless: true,
+                args: ['--no-sandbox', '--disable-setuid-sandbox']
+            });
+        }
+        const context = await this.browser.newContext({
+            userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            viewport: { width: 1920, height: 1080 }
+        });
+        return context.newPage();
+    }
+
     async scrapeWebsite(url: string, options?: ScrapeOptions): Promise<WebsiteAnalysis> {
         console.log(`[EnhancedScraper] Starting hybrid scrape for ${url}`);
 

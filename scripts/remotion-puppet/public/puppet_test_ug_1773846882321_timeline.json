@@ -1,0 +1,100 @@
+[
+  {
+    "speaker": "marco",
+    "line": "It just… feels like work now. Like something we *should* do.",
+    "audioFile": "puppet_test_ug_1773846882321_turn0.mp3",
+    "startFrame": 15,
+    "durationFrames": 138
+  },
+  {
+    "speaker": "luna",
+    "line": "Work? That's a nice way to put it. I feel like we're just checking boxes.",
+    "audioFile": "puppet_test_ug_1773846882321_turn1.mp3",
+    "startFrame": 165,
+    "durationFrames": 165
+  },
+  {
+    "speaker": "marco",
+    "line": "Remember how it was before? Always someone new, always… different. It was exciting.",
+    "audioFile": "puppet_test_ug_1773846882321_turn2.mp3",
+    "startFrame": 342,
+    "durationFrames": 190
+  },
+  {
+    "speaker": "luna",
+    "line": "Exciting, or just… empty? We kept needing more, didn't we? A different face, a different story.",
+    "audioFile": "puppet_test_ug_1773846882321_turn3.mp3",
+    "startFrame": 544,
+    "durationFrames": 263
+  },
+  {
+    "speaker": "marco",
+    "line": "Maybe that's all it ever was. Just the newness. And now… it's gone.",
+    "audioFile": "puppet_test_ug_1773846882321_turn4.mp3",
+    "startFrame": 819,
+    "durationFrames": 147
+  },
+  {
+    "speaker": "luna",
+    "line": "We tried to fix it. All those… techniques. Tantra, slowing down… It didn't help.",
+    "audioFile": "puppet_test_ug_1773846882321_turn5.mp3",
+    "startFrame": 978,
+    "durationFrames": 236
+  },
+  {
+    "speaker": "marco",
+    "line": "It felt forced. Like we were trying to *make* something happen, instead of letting it be.",
+    "audioFile": "puppet_test_ug_1773846882321_turn6.mp3",
+    "startFrame": 1226,
+    "durationFrames": 214
+  },
+  {
+    "speaker": "luna",
+    "line": "I think… I think we were looking for that old feeling. The chase. But it wasn't about *us* anymore.",
+    "audioFile": "puppet_test_ug_1773846882321_turn7.mp3",
+    "startFrame": 1452,
+    "durationFrames": 294
+  },
+  {
+    "speaker": "marco",
+    "line": "Do you think we ever really saw each other? Or just… the idea of each other?",
+    "audioFile": "puppet_test_ug_1773846882321_turn8.mp3",
+    "startFrame": 1758,
+    "durationFrames": 176
+  },
+  {
+    "speaker": "luna",
+    "line": "God, that's awful to say… but maybe. I loved the *idea* of you being this… free spirit. And you loved my… strength, I guess.",
+    "audioFile": "puppet_test_ug_1773846882321_turn9.mp3",
+    "startFrame": 1946,
+    "durationFrames": 341
+  },
+  {
+    "speaker": "marco",
+    "line": "And now? Now we just see… flaws. And disappointment.",
+    "audioFile": "puppet_test_ug_1773846882321_turn10.mp3",
+    "startFrame": 2299,
+    "durationFrames": 133
+  },
+  {
+    "speaker": "luna",
+    "line": "It's scary, isn't it? To realize you built something on a lie. A beautiful lie, maybe, but still…",
+    "audioFile": "puppet_test_ug_1773846882321_turn11.mp3",
+    "startFrame": 2444,
+    "durationFrames": 233
+  },
+  {
+    "speaker": "marco",
+    "line": "Yeah. Really scary. I don't know what to do with that.",
+    "audioFile": "puppet_test_ug_1773846882321_turn12.mp3",
+    "startFrame": 2689,
+    "durationFrames": 113
+  },
+  {
+    "speaker": "luna",
+    "line": "Me neither. Just… me neither.",
+    "audioFile": "puppet_test_ug_1773846882321_turn13.mp3",
+    "startFrame": 2814,
+    "durationFrames": 84
+  }
+]

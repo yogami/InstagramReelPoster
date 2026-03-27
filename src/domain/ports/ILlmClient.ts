@@ -27,6 +27,8 @@ export interface ReelPlan {
     musicPrompt: string;
     /** Mood/tone for the reel */
     mood: string;
+    /** Suggested audio mood for music selection (e.g., 'Dark Phonk', 'Ethereal') */
+    audioMood?: string;
     /** Brief summary of the reel concept */
     summary: string;
     /** The primary, viral-style caption for the final video post */
@@ -295,4 +297,10 @@ export interface ILlmClient {
         blueprint: import('../entities/Intelligence').VideoBlueprint,
         language?: string
     ): Promise<PromoScriptPlan>;
+    /**
+     * Generates raw text from a prompt.
+     * @param prompt The prompt string
+     * @returns Generated text
+     */
+    generateText(prompt: string): Promise<string>;
 }

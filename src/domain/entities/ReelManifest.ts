@@ -120,8 +120,8 @@ export function createReelManifest(params: {
 
         manifestSegments = params.segments.map(seg => ({
             index: seg.index,
-            start: seg.startSeconds,
-            end: seg.endSeconds,
+            start: seg.startSeconds ?? (seg as any).startTime ?? (seg as any).start ?? 0,
+            end: seg.endSeconds ?? (seg as any).endTime ?? (seg as any).end ?? 0,
             imageUrl: seg.imageUrl || '', // Allow empty if animated
             caption: seg.caption,
             zoomEffect: seg.zoomEffect, // Pass through segment-level zoom

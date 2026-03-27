@@ -1,0 +1,4 @@
+file '/Users/user1000/gitprojects/InstagramReelPoster/assets/koi-stoic-test/silence.mp3'
+file '/Users/user1000/gitprojects/InstagramReelPoster/assets/koi-stoic-test/dialogue_0_female.mp3'
+file '/Users/user1000/gitprojects/InstagramReelPoster/assets/koi-stoic-test/dialogue_1_male.mp3'
+file '/Users/user1000/gitprojects/InstagramReelPoster/assets/koi-stoic-test/dialogue_2_female.mp3'

@@ -84,7 +84,11 @@ export class VoiceoverService {
     }
 
     private async uploadIfDataUrl(audioUrl: string): Promise<string> {
-        if (audioUrl.startsWith('data:') && this.storageClient) {
+        if (!audioUrl.startsWith('data:')) {
+            return audioUrl;
+        }
+
+        if (this.storageClient) {
             console.log('[Voiceover] Uploading base64 audio to Cloudinary...');
             try {
                 const uploadResult = await this.storageClient.uploadAudio(audioUrl, {
@@ -94,9 +98,31 @@ export class VoiceoverService {
                 console.log('[Voiceover] Uploaded successfully:', uploadResult.url);
                 return uploadResult.url;
             } catch (uploadError) {
-                console.error('[Voiceover] Cloudinary upload failed:', uploadError);
+                console.error('[Voiceover] Cloudinary upload failed fallback to local:', uploadError);
             }
         }
-        return audioUrl;
+
+        // Local fallback or primary (if no storage client)
+        console.log('[Voiceover] Saving base64 audio locally...');
+        try {
+            const fs = require('fs');
+            const path = require('path');
+            const rendersDir = path.join(process.cwd(), 'public', 'renders');
+            if (!fs.existsSync(rendersDir)) {
+                fs.mkdirSync(rendersDir, { recursive: true });
+            }
+            const filename = `voiceover_${Date.now()}.mp3`;
+            const filePath = path.join(rendersDir, filename);
+
+            const base64Data = audioUrl.split(';base64,').pop();
+            fs.writeFileSync(filePath, base64Data, { encoding: 'base64' });
+
+            const localUrl = `/renders/${filename}`;
+            console.log('[Voiceover] Saved locally:', localUrl);
+            return localUrl;
+        } catch (e: any) {
+            console.error('[Voiceover] Local save failed:', e.message);
+            return audioUrl; // Last resort: keep data URL
+        }
     }
 }

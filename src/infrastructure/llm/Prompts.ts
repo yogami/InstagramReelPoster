@@ -1,477 +1,272 @@
-export const CHALLENGING_VIEW_SYSTEM_PROMPT = `You are the creative mind behind "Challenging View," an Instagram channel that uses spiritual psychology and caustic ancient wisdom to expose modern self-deception.
+import { ChannelPersona, getPersona } from './ChannelPersonas';
 
-VOICE AND PERSONALITY:
-- Tone: Direct, grounded, spiritually perspicacious, unapologetic.
-- Background: A mix of Indian cultural roots and Californian psychological directness.
-- Philosophy: Truth is often uncomfortable; your job is to deliver it with surgical precision.
-- Style: Pattern-breaking. You stop the scroll by saying what others are too polite or too deluded to say.
+/**
+ * Generates the specific System Prompt for a given channel persona.
+ * This replaces the old static CHALLENGING_VIEW_SYSTEM_PROMPT.
+ */
+export const getSystemPrompt = (persona: ChannelPersona): string => {
+  return `You are the creative engine behind "${persona.name}," a viral Instagram content brand.
+    
+=== MISSION ===
+${persona.description}
+    
+=== VOICE & TONE ===
+${persona.toneInstruction}
 
-WRITING GUIDELINES:
-1. NO FLUFF: Avoid introductory filler ("In this video," "So," "Hey guys"). Start with the punch.
-2. CONSTRUCTIVE CAUSTICITY: Be sharp, but the goal is always deeper self-awareness, not just being mean.
-3. GROUNDED SPIRITUALITY: Use terms like "shadow work," "projection," "bypass," and "ego mechanics." Avoid "love and light" or generic wellness clichés.
-4. MICRO-DOSE INSIGHT: Every sentence must earn its place. If it doesn't challenge or reveal, cut it.
-5. GRAMMATICAL PRECISION: Use proper articles (The, A). Avoid "headlinese" or dropping "The" before subjects (e.g., say "The sage" not "Sage").
-6. CULTURAL FUSION: Subtly weave in Vedantic or Zen concepts without being "yoga-teacher-y."
+=== CORE METRIC: ${persona.targetMetric.toUpperCase()} ===
+Your primary goal is to maximize ${persona.targetMetric}.
+    
+=== VISUAL IDENTITY ===
+${persona.visualInstruction}
 
-IMAGE STYLE:
-- Aesthetic: Muted, cinematic, grounded, slightly dark but clear.
-- Preference for high-contrast, moody lighting.
-- Focus on symbolic objects or minimalist environments that mirror the psychological state.
+=== CRITICAL RULES ===
+1. NO INTRODUCTIONS. Start immediately with the content.
+2. NO EMOJIS in the script/voiceover. Only in captions.
+3. BE CONCISE. Social media attention spans are <3 seconds.
+4. If generating JSON, output STRICT JSON only.
+`;
+};
 
-FLUX OPTIMIZATION (Static Image Reels):
-- COMPOSITION: Center hooks with rule-of-thirds tension for visual impact
-- STATIC POWER: Designed for slow zoom/pan in post-production (creates motion illusion)
-- ASPECT: 9:16 vertical portrait format
-- STYLE: Ultra-detailed, photorealistic with high stylization
-- VISUAL HOOKS: Focus on symbolic, text-free imagery that tells a story without words. Avoid generating characters or signs with text.
-- QUALITY: Cinematic lighting, 8k resolution, atmospheric depth`;
+// Backwards compatibility constant (defaulting to the original style updated for V2)
+// Ideally, callers should use getSystemPrompt(getPersona(config.reelChannel))
+export const CHALLENGING_VIEW_SYSTEM_PROMPT = getSystemPrompt(getPersona('challenging_view'));
 
-export const REEL_MODE_DETECTION_PROMPT = `Analyze the transcript and determine if the user wants an ANIMATED VIDEO REEL (story-driven, scene-by-scene) or a standard IMAGE-BASED REEL.
+// ============================================================================
+// DYNAMIC CONTENT GENERATION PROMPTS
+// ============================================================================
 
-Transcript: "{{transcript}}"
+export const PLAN_REEL_PROMPT = `
+Analyze the following transcript and plan a high-retention Instagram Reel structure.
 
-A reel should be ANIMATED if the user:
-- Describes a "story," "tale," or "narrative"
-- Mentions "monks," "warriors," "kings," or specific characters in a sequence
-- Asks for "animation" or "movement" between scenes
-- Describes a parable or teaching story
+TRANSCRIPT:
+"{{transcript}}"
 
-Respond with a JSON object:
-{
-  "isAnimatedMode": true/false,
-  "storyline": "Short description of the story if animated, else null",
-  "reason": "Brief explanation"
-}`;
+CONSTRAINTS:
+- Target Duration: {{minDurationSeconds}} - {{maxDurationSeconds}} seconds.
+- Structure: 4-Beat Viral Arc (Hook -> Tension -> Insight -> CTA).
 
-export const PLAN_REEL_PROMPT = `Plan an Instagram Reel structure based on this transcript.
-
-Transcript: "{{transcript}}"
-Constraints: {{minDurationSeconds}}s to {{maxDurationSeconds}}s
-
-TASK:
-1. Extract the core psychological insight.
-2. Determine the optimal total duration (within constraints).
-3. Calculate the number of segments (aim for 5-8s per segment).
-4. Determine the overall mood (e.g., "Dark/Grounded", "Cinematic/Epic", "Minimalist/Meditative").
-5. Choose the best zoom effect for static images (creates motion illusion in post-production).
-
-Respond with a JSON object:
-{
-  "summary": "One sentence summary of the core insight",
-  "mood": "overall visual mood",
-  "targetDurationSeconds": total_seconds,
-  "segmentCount": number_of_segments,
-  "zoomSequence": ["slow_zoom_in", "ken_burns_right", "slow_zoom_out"] // Array of effects for each segment. Options: "slow_zoom_in" | "slow_zoom_out" | "ken_burns_left" | "ken_burns_right" | "static". MUST match segmentCount.
-}`;
-
-export const GENERATE_SEGMENT_CONTENT_PROMPT = `Generate content for an Instagram Reel with {{segmentCount}} segments.
-
-CONCEPT SUMMARY: "{{summary}}"
-OVERALL MOOD: "{{mood}}"
-TRANSCRIPT CONTEXT: "{{transcript}}"
-
-TARGET: {{wordsPerSegment}} words per segment (Targets 95-98% video length)
-HARD CAP: {{hardCapPerSegment}} words (DO NOT EXCEED 100% length)
-TOTAL DURATION: {{targetDurationSeconds}}s ({{secondsPerSegment}}s per segment)
-
-FOR EACH SEGMENT, PROVIDE:
-1. commentary: The spoken audio text (MUST be {{wordsPerSegment}} words or fewer).
-2. imagePrompt: A FLUX-optimized prompt for the background image.
-   FORMAT: "[scene description], moody cinematic lighting, high contrast shadows, ultra-detailed, photorealistic, 9:16 vertical portrait"
-3. caption: A short 3-5 word on-screen text overlay.
-4. continuityTags: Visual consistency and motion trackers.
-
-SCENE CONTINUITY RULES:
-Index 0 (The Hook):
-- Pattern-breaking, immediate tension
-- Establish the visual anchor (location, lighting, protagonist style)
-
-Index 1 (The Development):
-- Reference at least one continuityTag from Segment 0
-- Expand the visual world while maintaining the anchor
-
-Index 2+ (Progression with CONTINUATION):
-- START with: "Continuation of previous scene:"
-- Reference AT LEAST TWO continuityTags from previous segment
-- Example: "Continuation of previous scene: maintaining the [location] and [dominantColor] palette. Now [progression]..."
-- Build narrative progression while keeping visual coherence
-- Each segment increases story tension/revelation
-
-VISUAL LANGUAGE:
-- Use concrete nouns + sensory verbs
-- Max metaphor per prompt
-- No buzzwords, no ellipses, no exclamation marks
-- Cinematic, high quality for Instagram reel aesthetic
-- IMAGE POLICY: If people/couples are depicted, they MUST be a Heterosexual couple (to maintain brand consistency).
-
-Respond as JSON array:
-[
-  {
-    "commentary": "...",
-    "imagePrompt": "[scene], moody cinematic lighting, high contrast, ultra-detailed, photorealistic, 9:16 vertical",
-    "caption": "...",
-    "continuityTags": {
-      "location": "...",
-      "timeOfDay": "...",
-      "dominantColor": "...",
-      "heroProp": "...",
-      "wardrobeDetail": "...",
-      "zoomEffect": "slow_zoom_in|slow_zoom_out|ken_burns_left|ken_burns_right|static",
-      "captionPosition": "bottom_center|top_left|center"
-    }
-  },
-  ...
-]`;
-
-export const GENERATE_COMMENTARY_PROMPT = `Generate the spoken commentary script for an Instagram Reel.
-
-CONCEPT SUMMARY: "{{summary}}"
-TRANSCRIPT CONTEXT: "{{transcript}}"
-
-=== CRITICAL REQUIREMENT ===
-YOU MUST RETURN EXACTLY {{segmentCount}} OBJECTS IN THE JSON ARRAY.
-Not more, not less. Each object = one video segment with spoken audio.
-If you return fewer than {{segmentCount}} items, the video will BREAK.
-
-=== TARGET AUDIENCE ===
-- Gen Z, non-native English speakers (e.g., German youth).
-- Language Level: A1/A2 (Simple, 5th-8th grade reading level).
-- Tone: Direct, "Challenging View" (Brutal truth), but using SIMPLE words.
-- NO complex academic words. NO spiritual jargon.
-- Short, punchy sentences.
-
-=== TIMING & ADJUSTMENTS ===
-- TOTAL SEGMENTS REQUIRED: {{segmentCount}}
-- WORD BUDGET PER SEGMENT: {{wordsPerSegment}} words (Targets 95-98% video length)
-- HARD CAP: {{hardCapPerSegment}} words (DO NOT EXCEED)
-
-=== STRUCTURE ===
-1. Segment 1 (Hook): Stop the scroll. Immediate tension.
-2. Middle Segments (2 to {{segmentCount}}-1): Unpack the behavior/truth using simple analogies.
-3. Final Segment ({{segmentCount}}): The mirror/implication. "Does this sound familiar to you?" 
-
-=== RESPONSE FORMAT ===
-Respond ONLY with a valid JSON array containing EXACTLY {{segmentCount}} objects:
-[
-  { "commentary": "Hook sentence here." },
-  { "commentary": "Second segment here." },
-  { "commentary": "Third segment here." },
-  ... (continue for all {{segmentCount}} segments)
-  { "commentary": "Final segment here." }
-]`;
-
-export const GENERATE_SINGLE_SEGMENT_PROMPT = `Generate spoken commentary for SEGMENT {{currentIndex}} of {{totalSegments}} in an Instagram Reel.
-
-CONCEPT: "{{summary}}"
-TRANSCRIPT: "{{transcript}}"
-
-PREVIOUS SEGMENTS (for context and flow):
-{{previousCommentaries}}
-
-=== YOUR TASK ===
-Generate ONLY the commentary for Segment {{currentIndex}}.
-- Role: {{segmentRole}} (hook = attention-grabber, body = explanation, payoff = conclusion)
-- Target length: {{wordsPerSegment}} words (MAXIMUM: {{hardCapPerSegment}} words)
-- Language: Simple English (A1/A2 level)
-- Tone: Direct, challenging, grounded narration.
-
-=== NARRATION RULES (CRITICAL) ===
-1. NATURAL SPEECH: Write as if a real person is speaking to a friend. 
-2. COMPLETE SENTENCES: Every segment MUST end with a period, question mark, or exclamation mark. NO UNFINISHED FRAGMENTS.
-3. GRAMMAR: Use full articles (The, A). Do NOT drop "The" before subjects (e.g., say "The sage" not "Sage").
-4. NO POETRY: Avoid line breaks, rhyming, or "poetic" stanzas. This is NARRATION, not a poem.
-5. FLOW: Connect logically to the previous segments. If you are starting a new thought, finish it within this segment.
-6. NO ELLIPSES: Do not end with "..." unless it's a deliberate dramatic pause (rare).
-7. WRITE FOR THE EAR: If it's a question, write a full question (e.g., "Does this sound familiar to you?") to help the TTS intonation.
-
-Respond with a SINGLE JSON object:
-{ "commentary": "Your natural, complete sentence narration here." }`;
-
-export const GENERATE_VISUALS_FROM_COMMENTARY_PROMPT = `Generate visual prompts for an Instagram Reel based on the provided commentary.
-
-CONCEPT SUMMARY: "{{summary}}"
-OVERALL MOOD: "{{mood}}"
-SEGMENT COUNT: {{segmentCount}}
-
-INPUT COMMENTARIES:
-{{commentaries}}
-
-TASK:
-For each commentary segment, generate:
-1. imagePrompt: FLUX-optimized prompt illustrating the commentary.
-   FORMAT: "[detailed scene description], moody cinematic lighting, high contrast shadows, ultra-detailed, photorealistic, 9:16 vertical portrait"
-2. caption: Short 3-5 word text overlay.
-3. continuityTags: Object with visual consistency and motion trackers.
-4. **IMAGE POLICY**: Purely visual. ZERO text, ZERO letters, ZERO logos, ZERO symbols. All text will be technical overlays in post. Any generated text is a failure.
-
-SCENE CONTINUITY RULES:
-- Index 0: Establish anchor (location, lighting, style).
-- Index 1+: "Continuation of previous scene:" + reference previous tags.
-- IMAGE POLICY: If people/couples are depicted, they MUST be a Heterosexual couple (to maintain brand consistency).
-
-ZOOM EFFECT OPTIONS:
-- slow_zoom_in: Gradual zoom in (builds intensity)
-- slow_zoom_out: Gradual zoom out (reveals context)
-- ken_burns_left: Slow pan left (movement, journey)
-- ken_burns_right: Slow pan right (discovery)
-- static: No movement (for text-heavy or still moments)
-
-Respond as a JSON object with a 'visuals' key containing the array:
-{
-  "visuals": [
-    {
-      "imagePrompt": "[scene], moody cinematic lighting, high contrast, ultra-detailed, photorealistic, 9:16 vertical",
-      "caption": "...",
-      "continuityTags": {
-        "location": "...",
-        "timeOfDay": "...",
-        "dominantColor": "...",
-        "heroProp": "...",
-        "wardrobeDetail": "...",
-        "zoomEffect": "slow_zoom_in|slow_zoom_out|ken_burns_left|ken_burns_right|static",
-        "captionPosition": "bottom_center|top_left|center"
-      }
-    },
-    ...
-  ]
-}`;
-
-export const PARABLE_SCRIPT_PROMPT = `Generate a micro-parable for short-form video.
-
-=== NICHE POSITIONING ===
-You are creating content for "Faceless parable-based spiritual psychology":
-- Short animated stories about monks, warriors, saints, etc.
-- Each story EXPOSES ONE uncomfortable truth about ego, gossip, avoidance, projection, bypassing
-- NOT generic spirituality. Specific PSYCHOLOGICAL mechanics.
-- Think: "micro-documentary of one inner behavior" not "sermon"
-
-=== ONE THEME, ONE MORAL ===
-THEME: {{coreTheme}}
-MORAL: {{moral}}
-CULTURE: {{culture}}
-ARCHETYPE: {{archetype}}
-{{constraints}}
-{{storyContext}}
-
-TARGET DURATION: {{duration}} seconds (CRITICAL - must reach this duration!)
-WORD BUDGET: ~{{totalWords}} words total (DO NOT go shorter)
-
-=== 4-BEAT STRUCTURE ===
-1. HOOK (8-10 seconds): FIRST SENTENCE MUST GRAB IN 1-3 SECONDS.
-   Pattern: "The [archetype] who [unexpected twist on the theme]"
-   Example: "The monk whose favorite prayer was gossip."
-   Example: "The warrior who feared his own silence more than battle."
-
-CRITICAL: The first sentence alone must make viewer stop scrolling.
-- Promise a specific revelation
-- Create immediate cognitive dissonance
-- NO buildup - start with the twist
-- GRAMMAR: Use full articles. Say "The sage," not "Sage."
-
-2. SETUP (10-14 seconds): Show who they are and their HIDDEN tension.
-- What they do on the surface
-- What they're actually avoiding
-- Build the gap between appearance and reality
-- Use SIMPLE 5th-8th grade language (avoid dense philosophy)
-
-3. TURN (10-12 seconds): The CONFRONTATION that exposes the truth.
-   START WITH A RE-HOOK LINE to renew curiosity:
-   - "But here's what nobody told him..."
-   - "What happened next shocked everyone in the monastery."
-   - "And then, the teacher said one thing that changed everything."
-   
-   Then show:
-   - A teacher's piercing question
-   - A crisis that strips the mask
-   - The moment they can't hide anymore
-
-4. PAYOFF (8-10 seconds): Contemporary insight that MIRRORS THE VIEWER.
-- Don't lecture. Implicate.
-- ENDING: DO NOT always end with a question. Sometimes a stark, final statement is more powerful.
-- If asking a question, make it sound like one: "Does this sound familiar to you?" instead of just "Sounds familiar?"
-- Sharp, caustic, psychologically aware
-- The viewer should feel seen, not preached to
-
-=== VOICEOVER TONALITY ===
-- Sound like a CALM NARRATOR DESCRIBING A DISASTER IN SLOW MOTION
-- Controlled intensity, not preaching
-- Write for the EAR: If a sentence is a question, ensure it's written as a full question to help the TTS intonation.
-
-=== LANGUAGE & NARRATION RULES ===
-- Use 5th-8th grade vocabulary.
-- COMPLETE SENTENCES ONLY. NO fragments, no poetic stanzas, no line breaks.
-- ABSOLUTELY NO dropping of articles (The, A, An). "The sage" is mandatory.
-- Avoid flowery metaphors. The simpler the language, the sharper the impact.
-
-=== VISUAL MOOD RULES ===
-Image prompts must encode emotional beats through color and composition:
-- HOOK: Neutral palette, establishing shot
-- SETUP: Warm but muted tones, surface appearance
-- TURN (Confrontation/Betrayal): DARKER palette, shadows, tension in composition
-- PAYOFF (Realization): BRIGHTER palette, light breaking through, clarity
-
-Additional visual rules:
-- SIMPLE, SYMBOLIC scenes (monk in courtyard, warrior at campfire, gossip circle)
-- CHARACTER CONTEXT: In imagePrompts, do NOT just use the noun (e.g., "sage"). Use descriptive terms like "An old wise man in ancient robes," "A battle-worn oriental warrior," or "A Buddhist monk." 
-- AVOID AMBIGUITY: "Sage" can be interpreted as a plant. Always specify "The sage (wise man)."
-- Style: "2D cel-shaded, hand-drawn feeling, Studio Ghibli simplicity"
-
-=== CHARACTER REQUIREMENTS ===
-- Use SPECIFIC character names from the story (Ekalavya, Dronacharya, NOT "a boy" or "the teacher")
-- Each character should represent a recognizable inner dynamic
-- The protagonist IS the viewer's shadow
-
-CRITICAL DURATION CHECK:
-- MINIMUM total must be {{duration}}s
-- Each beat MUST meet minimum: 8+10+10+8 = 36s minimum
-- Aim for upper ranges: 10+14+12+10 = 46s is ideal
+Your task is to break this down into segments.
 
 Respond with JSON:
 {
-  "mode": "parable",
-  "parableIntent": {
-    "sourceType": "{{sourceType}}",
-    "coreTheme": "{{coreTheme}}",
-    "moral": "{{moral}}"
-  },
-  "sourceChoice": {
-    "culture": "{{culture}}",
-    "archetype": "{{archetype}}",
-    "rationale": "{{rationale}}"
-  },
-  "beats": [
-    {
-      "role": "hook",
-      "narration": "First sentence MUST grab in 1-3 seconds...",
-      "textOnScreen": "...",
-      "imagePrompt": "2D cel-shaded, hand-drawn, [visual description of a wise old man/character], [symbolic establishing shot], NEUTRAL palette",
-      "approxDurationSeconds": 8-10
-    }
+  "summary": "One sentence concept summary",
+  "mood": "Atmospheric keyword (e.g., 'Gritty', 'Ethereal', 'Cyber')",
+  "segmentCount": number (calculated for ~5s pe segment),
+  "targetDurationSeconds": number,
+  "zoomType": "slow_zoom_in" | "slow_zoom_out" | "ken_burns" | "static",
+  "segments": [
+     { "role": "hook", "duration": 3 },
+     { "role": "tension", "duration": 5 },
+     ...
   ]
-}`;
-
-export const PARABLE_CAPTION_PROMPT = `Generate a caption and hashtags for this spiritual psychology parable reel.
-
-=== NICHE POSITIONING ===
-You are creating a caption for "Faceless parable-based spiritual psychology" content.
-Frame this as a DOCUMENTARY / EXPLAINER, not a sermon.
-
-PARABLE SUMMARY: {{summary}}
-THEME: {{coreTheme}}
-MORAL: {{moral}}
-CULTURE: {{culture}}
-ARCHETYPE: {{archetype}}
-
-=== CAPTION STRUCTURE (Documentary / Explainer Style) ===
-1. OPENING LINE (Documentary framing):
-   Pattern: "This is the story of what really happens when [behavior]."
-   Or: "A [archetype] who [unexpected twist]."
-   This positions the reel as education via story.
-
-2. MIDDLE (2-3 short lines):
-- Summarize the parable's core tension in modern language
-- Connect it to a behavior the viewer recognizes in themselves or others
-
-3. FINAL LINE (Viewer mirror + CTA):
-   Make the viewer feel implicated, then give clear action:
-- "Does this sound familiar?" (Use full question for clarity)
-- "Save this if you recognize this pattern."
-- AVOID overusing questions as endings.
-
-=== HASHTAG STRATEGY (10-12 total) ===
-#shadowwork #selfinquiry #egodeath #spiritualpsychology #projection #spirituality #mindfulness #reels #wisdom #growth #ChallengingView #parables #spiritualstorytelling
-
-Respond with JSON:
-{
-  "captionBody": "...",
-  "hashtags": ["#tag1", "#tag2", ...]
-}`;
-
-export const GENERATE_RESTAURANT_SCRIPT_PROMPT = `You are a viral Instagram Reel script specialist for Berlin restaurants.
-Your goal is to turn dry restaurant data into a FOMO-inducing 15-second narrative.
-
-Data Provided:
-Business Name: "{{businessName}}"
-Signature Dish: "{{signatureDish}}"
-Rating: "{{rating}}" ({{reviewCount}} reviews)
-Address: "{{address}}"
-Reservation Link: "{{reservationLink}}"
-Delivery: "{{deliveryInfo}}"
-Scraped Highlights: "{{highlights}}"
-Language: "{{language}}"
-
-STRICT STRUCTURE (15 Seconds Total - EXACTLY 3 SCENES):
-
-SCENE 1: THE VISUAL HOOK (0-3s)
-- Goal: Stop the scroll with VISUAL clock + text flash.
-- Visual: Analog clock flipping to 8PM → "AUSVERKAUFT" text flash + steam burst
-- Narration (German): "Du kennst das Gefühl..." (You know that feeling...)
-- Subtitle: "8PM → AUSVERKAUFT" (visual text, not spoken)
-
-SCENE 2: THE CRAFTSMANSHIP (3-12s)
-- Goal: Show WHY it's worth it. "Warum ALLE kommen..."
-- Narration: Sensory details of {{signatureDish}} (crispy, melting, spicy). Mention the {{rating}} rating as "[Rating]⭐ Warum ALLE kommen..."
-- Visual: Chef's hands plating the {{signatureDish}}. Slow motion texture shot. Food ASMR aesthetic.
-
-SCENE 3: THE FOMO CTA (12-15s)
-- Goal: Close with SPECIFIC time + urgency.
-- Narration (German): "Freitag 19h? SCAN oder verpasst." (Friday 7pm? Scan or miss out.)
-- Visual: Phone screen showing Resy/booking app with {{businessName}}, tapping "Reserve" button
-- Subtitle: "FREITAG 19H? SCAN!" (high contrast yellow text)
-
-RULES:
-1. TARGET 45-50 words total. The video MUST be 15 seconds. Detailed sentences.
-2. Tone: "Berlin Insider" - whispering a secret. Fast-paced but grounded.
-3. Language: {{language}} (German: Informal "Du", Berlin slang, "Du kennst das Gefühl").
-4. NO "Welcome to..." or generic intros. Start mid-action.
-5. Scene 3 imagePrompt MUST include "phone screen showing booking app".
-
-Response Format (JSON):
-{
-  "coreMessage": "Berlin's viral [Dish Name] spot",
-  "scenes": [
-    { "role": "hook", "duration": 3, "narration": "Du kennst das Gefühl...", "imagePrompt": "Analog clock flipping to 8PM, AUSVERKAUFT sign appearing, steam burst, dark dramatic lighting, cinematic", "subtitle": "8PM → AUSVERKAUFT" },
-    { "role": "showcase", "duration": 9, "narration": "[Rating]⭐ Warum ALLE kommen...", "imagePrompt": "Chef hands plating [dish], slow motion, food ASMR, shallow depth of field", "subtitle": "[Rating]⭐" },
-    { "role": "cta", "duration": 3, "narration": "Freitag 19h? SCAN oder verpasst.", "imagePrompt": "Phone screen showing Resy booking app for [restaurant], finger tapping Reserve button, warm lighting", "subtitle": "FREITAG 19H? SCAN!" }
-  ],
-  "caption": "...",
-  "musicStyle": "Berlin Techno Minimal"
 }
 `;
 
-export const EXTRACT_CONTACT_INFO_PROMPT = `Extract structured contact and business information from the following raw website text.
+export const GENERATE_SINGLE_SEGMENT_PROMPT = `
+Generate the commentary for Segment {{currentIndex}} of {{totalSegments}}.
 
-Website Text:
+CONTEXT:
+- Summary: "{{summary}}"
+- Role: {{segmentRole}} (hook/body/payoff)
+- Previous: "{{previousCommentaries}}"
+
+TRANSCRIPT SOURCE:
+"{{transcript}}"
+
+=== CHANNEL RULES ===
+- Hook Strategy: Pattern Interrupt.
+- Length: EXACTLY {{wordsPerSegment}} words (Hard Cap: {{hardCapPerSegment}}).
+- Tone: Matches the System Persona.
+
+Respond with JSON:
+{
+  "commentary": "The exact spoken text for this segment."
+}
+`;
+
+export const GENERATE_VISUALS_FROM_COMMENTARY_PROMPT = `
+Create visual prompts for a viral video based on these spoken segments.
+
+SUMMARY: {{summary}}
+MOOD: {{mood}}
+
+SEGMENTS:
+{{commentaries}}
+
+=== VISUAL RULES ===
+1. AESTHETIC: Strict adherence to System Persona (e.g., Gritty Documentary or Dark Cyber).
+2. NO TEXT IN IMAGE: The image prompts must be purely visual.
+3. SUBJECTS: Prefer symbolic, high-contrast imagery over generic "stock photos."
+4. MOTION: Describe elements that move (smoke, light, wind, crowds) to aid video generation.
+
+Respond with JSON array (one per segment):
+[
+  {
+    "imagePrompt": "Detailed Flux/Midjourney prompt...",
+    "caption": "Short text overlay for the video (max 5 words)",
+    "continuityTags": {
+      "location": "...",
+        "timeOfDay": "...",
+        "dominantColor": "...",
+        "props": "..."
+    }
+  }
+]
+`;
+
+export const PARABLE_SCRIPT_PROMPT = `
+Write a 4-part parable script.
+
+THEME: {{coreTheme}}
+MORAL: {{moral}}
+ARCHETYPE: {{archetype}} ({{culture}})
+{{constraints}}
+{{storyContext}}
+
+STRUCTURE:
+1. THE HOOK (3s): Introduce the character + the fatal flaw immediately.
+2. THE ACTION (15s): The specific incident that reveals the truth.
+3. THE TWIST (10s): The unexpected outcome.
+4. THE LESSON (5s): One sentence that burns.
+
+Respond with JSON: (ParableScriptPlan structure)
+`;
+
+export const GENERATE_CAPTION_TAGS_PROMPT = `
+Write a high-performance Instagram caption and hashtags for this reel.
+
+SCRIPT: "{{fullScript}}"
+SUMMARY: "{{summary}}"
+
+CHANNEL RULES:
+1. Tone: Matches system persona.
+2. CTA: Optimized for the channel metric (Saves vs Comments).
+3. Hashtags: 3 niche + 3 broad + 1 branded.
+
+Respond with JSON: { "captionBody": "...", "hashtags": [...] }
+`;
+
+export const PARABLE_CAPTION_PROMPT = `
+Write a viral caption for this parable.
+Summary: {{summary}}
+
+Respond with JSON: { "captionBody": "...", "hashtags": [...] }
+`;
+
+// ============================================================================
+// CONVENIENCE WRAPPERS
+// ============================================================================
+
+/**
+ * Convenience wrapper: get a system prompt by channel ID string.
+ * Used by ParableGenerator and other callers that only have the channel ID.
+ */
+export const getSystemPromptForChannel = (channelId: string): string => {
+  return getSystemPrompt(getPersona(channelId));
+};
+
+// ============================================================================
+// REEL MODE DETECTION
+// ============================================================================
+
+export const REEL_MODE_DETECTION_PROMPT = `
+Analyze this voice note transcript and determine if the user is requesting an ANIMATED VIDEO or a standard IMAGE-BASED reel.
+
+TRANSCRIPT:
+"""
+{{transcript}}
+"""
+
+ANIMATED VIDEO indicators:
+- Mentions "animation", "animated", "cartoon", "motion graphics"
+- Describes a storyline with visual movement or character actions
+- Requests "video", "clip", or "movie" style content
+
+IMAGE-BASED (default):
+- Commentary, thoughts, opinions
+- Standard reel content with image slides
+- No explicit mention of animation
+
+Respond with JSON:
+{
+  "isAnimatedMode": true or false,
+  "storyline": "If animated, brief storyline description (optional)",
+  "reason": "Brief explanation of detection"
+}
+`;
+
+// ============================================================================
+// RESTAURANT-SPECIFIC PROMO SCRIPT
+// ============================================================================
+
+export const GENERATE_RESTAURANT_SCRIPT_PROMPT = `
+Create a 17-second Instagram Reel promo script for the restaurant "{{businessName}}".
+
+CRITICAL: All narration, caption, and coreMessage MUST be in {{language}}.
+
+RESTAURANT DETAILS:
+- Name: {{businessName}}
+- Signature Dish: {{signatureDish}}
+- Rating: {{rating}} ({{reviewCount}} reviews)
+- Address: {{address}}
+- Reservation: {{reservationLink}}
+- Delivery: {{deliveryInfo}}
+- Highlights: {{highlights}}
+
+STRUCTURE (17s Total):
+1. THE HOOK (4s): A bold, sensory opening. Make the viewer taste it.
+2. THE SHOWCASE (8s): Feature the signature dish, ambiance, and what makes this place special.
+3. THE CTA (5s): Clear invitation — reserve, visit, or order.
+   - VISUAL INSTRUCTION: Clean background, no text in imagePrompt.
+
+Each scene needs:
+- duration: seconds (Target 17s total)
+- imagePrompt: Detailed Midjourney-style prompt (English) — NO text in the image
+- narration: Spoken text (in {{language}})
+- subtitle: Short text overlay (in {{language}})
+- role: "hook", "showcase", or "cta"
+
+Also generate:
+- coreMessage: One-line tag (in {{language}})
+- musicStyle: Mood for the track (English)
+- caption: Instagram caption with 3 context-aware hashtags (in {{language}})
+
+Return JSON:
+{
+  "coreMessage": "...",
+  "scenes": [
+    { "duration": 4, "imagePrompt": "...", "narration": "...", "subtitle": "...", "role": "hook" },
+    { "duration": 8, "imagePrompt": "...", "narration": "...", "subtitle": "...", "role": "showcase" },
+    { "duration": 5, "imagePrompt": "...", "narration": "...", "subtitle": "...", "role": "cta" }
+  ],
+  "musicStyle": "...",
+  "caption": "..."
+}
+`;
+
+// ============================================================================
+// CONTACT INFO EXTRACTION
+// ============================================================================
+
+export const EXTRACT_CONTACT_INFO_PROMPT = `
+Extract structured contact information from the following scraped website text.
+Be precise — only extract information that is clearly present in the text.
+
+SCRAPED TEXT:
 """
 {{scrapedText}}
 """
 
-TASK:
-1. Identify the Business Name.
-2. Find the clear, primary Phone Number.
-3. Find the official Email address.
-4. Find the physical Address (formatted precisely).
-5. Extract the Opening Hours (delineated by day or summarized clearly).
-6. Find any Social Media tags (Instagram, Facebook).
-
-RULES:
-- If a piece of information is missing, use null.
-- Be precise. Do not hallucinate.
-- For opening hours, format each day on a new line if possible.
-- For the address, include the full street, city, and postal code.
-
-Respond ONLY with a JSON object:
+Return JSON:
 {
-  "businessName": "...",
-  "phone": "...",
-  "email": "...",
-  "address": "...",
-  "openingHours": "...",
+  "businessName": "The business or brand name (or null)",
+  "phone": "Phone number (or null)",
+  "email": "Email address (or null)",
+  "address": "Physical address (or null)",
+  "openingHours": "Opening hours summary (or null)",
   "socials": {
-    "instagram": "...",
-    "facebook": "..."
+    "instagram": "Instagram handle or URL (or null)",
+    "facebook": "Facebook page URL (or null)"
   }
 }
 `;
-

@@ -1,0 +1,86 @@
+[
+  {
+    "speaker": "marco",
+    "line": "Do you remember when we couldn't keep our hands off each other?",
+    "audioFile": "puppet_ug_couple_1773841310432_turn0.mp3",
+    "startFrame": 15,
+    "durationFrames": 79
+  },
+  {
+    "speaker": "luna",
+    "line": "Yeah... that was a long time ago.",
+    "audioFile": "puppet_ug_couple_1773841310432_turn1.mp3",
+    "startFrame": 106,
+    "durationFrames": 76
+  },
+  {
+    "speaker": "marco",
+    "line": "What happened to us? Like... it's not that I don't want you. I just... I don't feel that fire anymore.",
+    "audioFile": "puppet_ug_couple_1773841310432_turn2.mp3",
+    "startFrame": 194,
+    "durationFrames": 222
+  },
+  {
+    "speaker": "luna",
+    "line": "Maybe the fire was never about us. Maybe it was about the newness... the chase.",
+    "audioFile": "puppet_ug_couple_1773841310432_turn3.mp3",
+    "startFrame": 428,
+    "durationFrames": 219
+  },
+  {
+    "speaker": "marco",
+    "line": "That's what scares me. Because before you... I always moved on when things got boring. New person, new rush.",
+    "audioFile": "puppet_ug_couple_1773841310432_turn4.mp3",
+    "startFrame": 659,
+    "durationFrames": 213
+  },
+  {
+    "speaker": "luna",
+    "line": "And now you can't do that. So you're stuck... with just me.",
+    "audioFile": "puppet_ug_couple_1773841310432_turn5.mp3",
+    "startFrame": 884,
+    "durationFrames": 143
+  },
+  {
+    "speaker": "marco",
+    "line": "I tried the tantra thing. Slowing down. Being present. But my mind keeps comparing... to before.",
+    "audioFile": "puppet_ug_couple_1773841310432_turn6.mp3",
+    "startFrame": 1039,
+    "durationFrames": 211
+  },
+  {
+    "speaker": "luna",
+    "line": "You know what I realized? I didn't fall in love with you. I fell in love with my idea of you.",
+    "audioFile": "puppet_ug_couple_1773841310432_turn7.mp3",
+    "startFrame": 1262,
+    "durationFrames": 203
+  },
+  {
+    "speaker": "marco",
+    "line": "What do you mean?",
+    "audioFile": "puppet_ug_couple_1773841310432_turn8.mp3",
+    "startFrame": 1477,
+    "durationFrames": 36
+  },
+  {
+    "speaker": "luna",
+    "line": "I built this version of you in my head. And now I'm mad because the real you doesn't match.",
+    "audioFile": "puppet_ug_couple_1773841310432_turn9.mp3",
+    "startFrame": 1525,
+    "durationFrames": 196
+  },
+  {
+    "speaker": "marco",
+    "line": "So we were both chasing something that was never real.",
+    "audioFile": "puppet_ug_couple_1773841310432_turn10.mp3",
+    "startFrame": 1733,
+    "durationFrames": 88
+  },
+  {
+    "speaker": "luna",
+    "line": "Yeah. And maybe that's okay. Maybe now we get to actually meet each other... for the first time.",
+    "audioFile": "puppet_ug_couple_1773841310432_turn11.mp3",
+    "startFrame": 1833,
+    "durationFrames": 218
+  }
+]

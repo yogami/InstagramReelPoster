@@ -1,0 +1,2 @@
+file '/Users/user1000/gitprojects/InstagramReelPoster/pitch_segments/final_1.mp4'
+file '/Users/user1000/gitprojects/InstagramReelPoster/pitch_segments/final_2.mp4'

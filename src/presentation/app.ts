@@ -1,32 +1,25 @@
 import express, { Application, Request, Response } from 'express';
 import cors from 'cors';
+import path from 'path';
+import fs from 'fs';
 import { Config } from '../config';
 import { JobManager } from '../application/JobManager';
 import { ReelOrchestrator, OrchestratorDependencies } from '../application/ReelOrchestrator';
 import { MusicSelector } from '../application/MusicSelector';
 
-// Infrastructure imports
-import { WhisperTranscriptionClient } from '../infrastructure/transcription/WhisperTranscriptionClient';
+// Infrastructure imports (Google-Free — all LLM via OpenRouter, TTS via Fish Audio)
+import { RemoteTranscriptionClient } from '../infrastructure/transcription/RemoteTranscriptionClient';
 import { GptLlmClient } from '../infrastructure/llm/GptLlmClient';
-import { FallbackLlmClient } from '../infrastructure/llm/FallbackLlmClient';
-import { LocalLlmClient } from '../infrastructure/llm/LocalLlmClient';
+import { GeminiLlmClient } from '../infrastructure/llm/GeminiLlmClient';
 import { CloningTtsClient } from '../infrastructure/tts/CloningTtsClient';
 import { InMemoryMusicCatalogClient } from '../infrastructure/music/InMemoryMusicCatalogClient';
 import { SegmentMusicClient } from '../infrastructure/music/SegmentMusicClient';
-import { MultiModelImageClient } from '../infrastructure/images/MultiModelImageClient';
-import { FluxImageClient } from '../infrastructure/images/FluxImageClient';
-import { FallbackImageClient } from '../infrastructure/images/FallbackImageClient';
-// DalleImageClient available but not currently used
-import { StockImageClient } from '../infrastructure/images/StockImageClient';
+import { StubImageClient } from '../infrastructure/images/StubImageClient';
+
 import { WhisperSubtitlesClient } from '../infrastructure/subtitles/WhisperSubtitlesClient';
-import { TimelineVideoRenderer } from '../infrastructure/video/TimelineVideoRenderer';
-import { FFmpegVideoRenderer } from '../infrastructure/video/FFmpegVideoRenderer';
-import { MultiModelVideoClient } from '../infrastructure/video/MultiModelVideoClient';
-import { HunyuanVideoClient } from '../infrastructure/video/HunyuanVideoClient';
-import { MochiVideoClient } from '../infrastructure/video/MochiVideoClient';
-import { FallbackVideoClient } from '../infrastructure/video/FallbackVideoClient';
-import { RemoteVideoRenderer } from '../infrastructure/video/RemoteVideoRenderer';
-import { FallbackVideoRenderer } from '../infrastructure/video/FallbackVideoRenderer';
+
+import { RemotionVideoRenderer } from '../infrastructure/video/RemotionVideoRenderer';
+import { LocalStorageClient } from '../infrastructure/storage/LocalStorageClient';
 import { MediaStorageClient } from '../infrastructure/storage/MediaStorageClient';
 import { WebsiteScraperClient } from '../infrastructure/scraper/WebsiteScraperClient';
 import { EnhancedWebsiteScraper } from '../infrastructure/scraper/EnhancedWebsiteScraper';
@@ -48,6 +41,11 @@ import { BullMqJobQueueAdapter } from '../lib/website-promo/adapters/BullMqJobQu
 import { WebsitePromoWorker } from '../lib/website-promo/application/WebsitePromoWorker';
 import { PrometheusMetricsAdapter } from '../lib/website-promo/adapters/PrometheusMetricsAdapter';
 import { IMetricsPort } from '../lib/website-promo/ports/IMetricsPort';
+import { ILipSyncClient } from '../domain/ports/ILipSyncClient';
+import { HedraLipSyncClient } from '../infrastructure/lipsync/HedraLipSyncClient';
+import { KieLipSyncClient } from '../infrastructure/lipsync/KieLipSyncClient';
+import { KieVideoClient } from '../infrastructure/video/KieVideoClient';
+import { MockLipSyncClient } from '../infrastructure/lipsync/MockLipSyncClient';
 
 
 import { ChatService } from './services/ChatService';
@@ -61,7 +59,14 @@ import { XttsClient } from '../infrastructure/tts/XttsClient';
 import { GuardianComplianceAdapter } from '../lib/website-promo/adapters/GuardianComplianceAdapter';
 import { GuardianClient } from '../infrastructure/compliance/GuardianClient';
 import { ZeroRetentionService } from '../infrastructure/compliance/ZeroRetentionService';
-import { MockAnimatedVideoClient } from '../infrastructure/video/MockAnimatedVideoClient';
+
+import { createProductDemoSlice } from '../lib/product-demo';
+import axios from 'axios';
+import { SaaSEligibilityAdapter } from '../lib/product-demo/adapters/SaaSEligibilityAdapter';
+import { PlaywrightProductScraperAdapter } from '../lib/product-demo/adapters/PlaywrightProductScraperAdapter';
+import { GitHubScraperAdapter } from '../lib/product-demo/adapters/GitHubScraperAdapter';
+import { PlaywrightDemoRecorderAdapter } from '../lib/product-demo/adapters/PlaywrightDemoRecorderAdapter';
+import { LLMDemoScriptAdapter } from '../lib/product-demo/adapters/LLMDemoScriptAdapter';
 
 // Growth Layer Imports
 import { HookAndStructureService } from '../application/HookAndStructureService';
@@ -92,6 +97,13 @@ export function createApp(config: Config): Application {
     app.use(express.json());
     app.use(express.urlencoded({ extended: true }));
 
+    // Serve static renders locally
+    const rendersDir = path.join(process.cwd(), 'public', 'renders');
+    if (!fs.existsSync(rendersDir)) {
+        fs.mkdirSync(rendersDir, { recursive: true });
+    }
+    app.use('/renders', express.static(rendersDir));
+
     // Health check
     app.get('/health', (req: Request, res: Response) => {
         res.json({
@@ -102,7 +114,7 @@ export function createApp(config: Config): Application {
     });
 
     // Create dependencies
-    const { jobManager, orchestrator, growthInsightsService, metricsPort } = createDependencies(config);
+    const { jobManager, orchestrator, growthInsightsService, metricsPort, productDemoSlice } = createDependencies(config);
 
     // Metrics endpoint
     app.get('/metrics', async (req: Request, res: Response) => {
@@ -122,6 +134,14 @@ export function createApp(config: Config): Application {
 
     // Routes
     app.use('/api', createReelRoutes(jobManager, orchestrator, growthInsightsService));
+
+    // Product Demo Routes (if enabled)
+    if (productDemoSlice) {
+        import('./routes/productDemoRoutes').then(({ createProductDemoRoutes }) => {
+            app.use('/api/product-demo', createProductDemoRoutes(productDemoSlice.orchestrator));
+        });
+    }
+
     app.use(createJobRoutes(jobManager));
     app.use(createTelegramWebhookRoutes(jobManager, orchestrator));
 
@@ -132,7 +152,8 @@ export function createApp(config: Config): Application {
 }
 
 /**
- * Creates all dependencies with proper wiring.
+ * Creates all dependencies — fully Google-free.
+ * LLM via OpenRouter, TTS via Fish Audio, Images via FFmpeg, Subtitles via Whisper/OpenRouter.
  */
 export function createDependencies(config: Config): {
     jobManager: JobManager;
@@ -140,22 +161,53 @@ export function createDependencies(config: Config): {
     growthInsightsService: GrowthInsightsService;
     cloudinaryClient: MediaStorageClient | null;
     metricsPort: IMetricsPort;
+    productDemoSlice?: ReturnType<typeof createProductDemoSlice>;
 } {
-    console.log('🏗️  Creating dependency graph...');
+    console.log('🏗️  Creating dependency graph (Google-Free, OpenRouter + Fish Audio)...');
 
-    // Core infrastructure clients
+    const openRouterKey = config.openRouterApiKey || config.llmApiKey;
+
+    // 1. Storage: Local-First (Zero Cost)
+    const localStorageClient = new LocalStorageClient(`http://localhost:${config.port}`);
     const cloudinaryClient = createCloudinaryClient(config);
+
+    // 2. LLM: OpenRouter (free Gemini model via OpenRouter proxy)
     const llmClient = createLlmClient(config);
-    const ttsClient = createTtsClient(config);
-    const fallbackTtsClient = new StandardTtsClient(config.llmApiKey);
+
+    // 3. TTS: Fish Audio (Primary — no Google TTS fallback)
+    const ttsClient = new CloningTtsClient(
+        config.ttsCloningApiKey,
+        config.ttsCloningVoiceId,
+        config.ttsCloningBaseUrl
+    );
+    const fallbackTtsClient = ttsClient; // Fish Audio is both primary and fallback
+
+    // 4. Images: FFmpeg gradient backgrounds (zero cost, no Google Imagen)
     const { primaryImageClient, fallbackImageClient } = createImageClients(config);
-    const transcriptionClient = new WhisperTranscriptionClient(config.llmApiKey);
+
+    // 5. Transcription: OpenRouter (Gemini Flash via OpenRouter — free)
+    const transcriptionClient = new RemoteTranscriptionClient(
+        openRouterKey,
+        config.openRouterModel || 'google/gemini-2.0-flash-001',
+        'https://openrouter.ai/api/v1'
+    );
+
+    // 6. Subtitles: Whisper via OpenAI (Direct)
     const subtitlesClient = new WhisperSubtitlesClient(config.llmApiKey, cloudinaryClient!);
-    const videoRenderer = createVideoRenderer(config, cloudinaryClient);
-    const animatedVideoClient = createAnimatedVideoClient(config);
+
+    // 7. Rendering: Local Remotion (Replaces FFmpeg, Zero Cost)
+    const videoRenderer = new RemotionVideoRenderer();
+
+    // 8. Music: Local Catalog
     const musicSelector = createMusicSelector(config);
 
-    console.log('📦 Initializing JobManager...');
+    // 9. Lip-Sync: Aggregator Strategy (KIE.ai preferred, Hedra secondary, Mock fallback)
+    const lipSyncClient = createLipSyncClient(config, cloudinaryClient!);
+
+    // 10. Animated Video: Aggregator Strategy (KIE.ai Kling)
+    const animatedVideoClient = createAnimatedVideoClient(config);
+
+    console.log('📦 Initializing JobManager (Local Persistence)...');
     const jobManager = new JobManager(config.minReelSeconds, config.maxReelSeconds, config.redisUrl);
 
     const notificationClient = createNotificationClient(config);
@@ -168,11 +220,17 @@ export function createDependencies(config: Config): {
     const captionService = new CaptionService(llmClient);
     const growthInsightsService = new GrowthInsightsService();
 
-    // Create Website Promo Slice if enabled
+    // Create Website Promo Slice (OpenRouter + Fish Audio)
     const websitePromoSlice = createWebsitePromoSliceIfEnabled(
         config, websiteScraperClient, llmClient, ttsClient,
         primaryImageClient, musicSelector, subtitlesClient,
         cloudinaryClient!, videoRenderer
+    );
+
+    // Create Product Demo Slice (OpenRouter + Fish Audio)
+    const productDemoSlice = createProductDemoSliceIfEnabled(
+        config, llmClient, ttsClient, primaryImageClient,
+        musicSelector, subtitlesClient, cloudinaryClient!, videoRenderer
     );
 
     const deps: OrchestratorDependencies = {
@@ -183,7 +241,6 @@ export function createDependencies(config: Config): {
         fallbackImageClient,
         subtitlesClient,
         videoRenderer,
-        animatedVideoClient,
         musicSelector,
         jobManager,
         hookAndStructureService,
@@ -191,24 +248,26 @@ export function createDependencies(config: Config): {
         growthInsightsService,
         notificationClient,
         fallbackTtsClient,
-        storageClient: cloudinaryClient || undefined,
+        storageClient: (cloudinaryClient as any) || undefined,
         callbackToken: config.callbackToken,
         callbackHeader: config.callbackHeader,
         websiteScraperClient,
         websitePromoSlice,
+        lipSyncClient,
+        animatedVideoClient,
     };
-
-    console.log(`📡 Callback configured: Header = ${deps.callbackHeader}, Token = ${deps.callbackToken ? (deps.callbackToken.substring(0, 5) + '...') : 'None'} `);
 
     console.log('⚙️  Wiring up ReelOrchestrator...');
     const orchestrator = new ReelOrchestrator(deps);
     console.log('✅ Dependency graph complete');
+
     return {
         jobManager,
         orchestrator,
         growthInsightsService,
         cloudinaryClient,
-        metricsPort: (websitePromoSlice as any)?.orchestrator?.deps?.metricsPort || new ConsoleMetricsAdapter()
+        metricsPort: (websitePromoSlice as any)?.orchestrator?.deps?.metricsPort || new ConsoleMetricsAdapter(),
+        productDemoSlice
     };
 }
 
@@ -270,6 +329,95 @@ function createWebsitePromoSliceIfEnabled(
     return websitePromoSlice;
 }
 
+/** Creates ProductDemoSlice with all adapters if feature flag is enabled. */
+function createProductDemoSliceIfEnabled(
+    config: Config,
+    llmClient: any,
+    ttsClient: any,
+    primaryImageClient: any,
+    musicSelector: any,
+    subtitlesClient: any,
+    cloudinaryClient: MediaStorageClient,
+    videoRenderer: IVideoRenderer
+): ReturnType<typeof createProductDemoSlice> | undefined {
+    if (!config.featureFlags.enableProductDemoSlice) {
+        return undefined;
+    }
+
+    console.log('🚀 Initializing ProductDemoSlice (Autonomous Microservice)...');
+
+    const cachePort = config.redisUrl
+        ? new RedisCacheAdapter(config.redisUrl)
+        : new InMemoryCacheAdapter();
+    const metricsPort = new PrometheusMetricsAdapter();
+
+    const productScrapingPort = new PlaywrightProductScraperAdapter({
+        createPage: async () => {
+            const { EnhancedWebsiteScraper } = await import('../infrastructure/scraper/EnhancedWebsiteScraper');
+            const scraper = new EnhancedWebsiteScraper();
+            return (scraper as any).createPage();
+        },
+        uploadImage: async (buffer, filename) => {
+            const result = await cloudinaryClient.uploadBuffer(buffer, { folder: 'product-demo/screenshots', publicId: filename });
+            return result.url;
+        }
+    });
+
+    return createProductDemoSlice({
+        eligibilityPort: new SaaSEligibilityAdapter({
+            llmClient,
+            productScrapingPort
+        }),
+        productScrapingPort,
+        githubScrapingPort: new GitHubScraperAdapter({
+            httpClient: axios,
+            githubToken: config.githubToken
+        }),
+        demoRecordingPort: new PlaywrightDemoRecorderAdapter({
+            tempDir: './tmp/recordings',
+            createRecordingContext: async (outputPath, viewport) => {
+                const { chromium } = await import('playwright');
+                const browser = await chromium.launch({ headless: true });
+                const context = await browser.newContext({
+                    viewport,
+                    recordVideo: {
+                        dir: outputPath,
+                        size: viewport
+                    }
+                });
+                return {
+                    newPage: async () => {
+                        const page = await context.newPage();
+                        return page as any;
+                    },
+                    close: async () => {
+                        await context.close();
+                        await browser.close();
+                    }
+                };
+            },
+            uploadVideo: async (path) => {
+                const result = await cloudinaryClient.uploadVideo(path, { folder: 'product-demo/recordings' });
+                return result.url;
+            }
+        }),
+        scriptGenerationPort: new LLMDemoScriptAdapter({ llmClient }),
+        assetPort: new AssetGenerationAdapter(
+            ttsClient,
+            primaryImageClient,
+            musicSelector,
+            subtitlesClient,
+            cloudinaryClient
+        ),
+        renderingPort: new RenderingAdapter(videoRenderer),
+        cachePort,
+        metricsPort,
+        voiceSpeedMultiplier: config.productDemo.voiceSpeedMultiplier,
+        commentaryLengthPercent: config.productDemo.commentaryLengthPercent,
+        voiceId: config.ttsCloningPromoVoiceId || config.ttsCloningVoiceId
+    });
+}
+
 /** Creates translation adapter with DeepL primary and NoOp fallback. */
 function createTranslationAdapter(config: Config) {
     const primaryTranslation = new DeepLTranslationAdapter(config.deeplApiKey);
@@ -284,15 +432,12 @@ function createTranslationAdapter(config: Config) {
 
 /** Creates avatar adapter based on available configuration. */
 function createAvatarAdapter(config: Config) {
-    if (config.sadTalkerEndpointUrl && config.fluxApiKey) {
-        console.log('🤖 Avatar Strategy: GPU Offloading (SadTalker on Beam.cloud)');
-        return new SadTalkerAvatarAdapter(config.fluxApiKey, config.sadTalkerEndpointUrl);
-    }
+    // Zero-cost: Default to Mock if no managed service is configured
     if (config.heygenApiKey) {
         console.log('🤖 Avatar Strategy: Managed Service (HeyGen V2)');
         return new HeyGenAvatarAdapter(config.heygenApiKey);
     }
-    console.log('🤖 Avatar Strategy: Mock (Development Mode)');
+    console.log('🤖 Avatar Strategy: Mock (Zero Cost Mode)');
     return new MockAvatarAdapter();
 }
 
@@ -321,189 +466,78 @@ function createCloudinaryClient(config: Config): MediaStorageClient | null {
 }
 
 function createLlmClient(config: Config) {
-    if (config.featureFlags.usePersonalCloneLLM) {
-        console.log('🧠 Using Local LLM (Personal Clone mode)');
-        return new LocalLlmClient(
-            config.personalClone.localLLMUrl,
-            'llama3.2',
-            config.personalClone.systemPrompt
-        );
+    // 1. OpenRouter (user has credits — llama-3.3-70b-instruct confirmed working)
+    const openRouterKey = config.openRouterApiKey;
+    if (openRouterKey && config.openRouterBaseUrl) {
+        const model = config.openRouterModel || 'meta-llama/llama-3.3-70b-instruct';
+        console.log(`✅ LLM: OpenRouter (${model})`);
+        const { OpenRouterTextClient } = require('../infrastructure/llm/OpenRouterTextClient');
+        return new OpenRouterTextClient(openRouterKey, model);
     }
 
-    const openAiClient = new GptLlmClient(config.llmApiKey, config.llmModel, config.llmBaseUrl);
-
-    // If OpenRouter is configured, it acts as the automatic safety fallback
-    if (config.openRouterApiKey) {
-        const openRouterClient = new GptLlmClient(config.openRouterApiKey, config.openRouterModel, config.openRouterBaseUrl);
-        console.log(`🤖 LLM Layer: OpenAI (primary) → OpenRouter (automatic fallback: ${config.openRouterModel})`);
-        return new FallbackLlmClient(openAiClient, openRouterClient, 'OpenAI', 'OpenRouter');
+    // 2. OpenAI (may not have billing)
+    if (config.llmApiKey) {
+        const model = config.llmModel || 'gpt-4o-mini';
+        console.log(`✅ LLM: OpenAI (${model})`);
+        return new GptLlmClient(config.llmApiKey, model, config.llmBaseUrl);
     }
 
-    // Only OpenAI
-    console.log(`🤖 LLM Layer: OpenAI (primary only: ${config.llmModel})`);
-    return openAiClient;
-}
-
-function createTtsClient(config: Config) {
-    if (config.featureFlags.usePersonalCloneTTS) {
-        console.log('🎙️ Using XTTS Local TTS (Personal Clone mode)');
-        return new XttsClient(config.personalClone.xttsServerUrl);
+    // 3. Gemini (daily quota may be exhausted)
+    if (config.googleAiApiKey) {
+        const geminiModel = process.env.GEMINI_MODEL || 'gemini-2.0-flash-lite';
+        console.log(`✅ LLM: Google Gemini (${geminiModel})`);
+        return new GeminiLlmClient(config.googleAiApiKey, geminiModel);
     }
-    return new CloningTtsClient(
-        config.ttsCloningApiKey,
-        config.ttsCloningVoiceId,
-        config.ttsCloningBaseUrl
-    );
+
+    throw new Error("Missing LLM API Key — set OPENROUTER_API_KEY, OPENAI_API_KEY, or GOOGLE_AI_API_KEY");
 }
 
 function createImageClients(config: Config): { primaryImageClient: IImageClient; fallbackImageClient: IImageClient } {
-    if (!config.multiModelImageApiKey) {
-        throw new Error('OPENROUTER_API_KEY (multiModelImageApiKey) is required for image generation');
-    }
-
-    const multiModelImageClient = new MultiModelImageClient(
-        config.multiModelImageApiKey,
-        config.multiModelImageModel,
-        config.multiModelImageBaseUrl
-    );
-
-    // Stock is always available as ultimate fallback (if API key exists)
-    const stockClient = config.stockApiKey
-        ? new StockImageClient(config.stockApiKey)
-        : null;
-
-    let primaryImageClient: IImageClient;
-
-    if (config.fluxEnabled && config.fluxApiKey && config.fluxEndpointUrl) {
-        const fluxClient = new FluxImageClient(config.fluxApiKey, config.fluxEndpointUrl);
-
-        // 2-tier chain: Flux -> MultiModel
-        const fluxMultiModelChain = new FallbackImageClient(fluxClient, multiModelImageClient, 'Flux', 'MultiModel');
-
-        // 3-tier chain: (Flux -> MultiModel) -> Stock
-        if (stockClient) {
-            primaryImageClient = new FallbackImageClient(fluxMultiModelChain, stockClient, 'Flux+MultiModel', 'Stock');
-            console.log('✅ Image generation: Flux (primary) → MultiModel → Stock (ultimate fallback)');
-        } else {
-            primaryImageClient = fluxMultiModelChain;
-            console.log('✅ Image generation: Flux (primary) → MultiModel (fallback)');
-        }
-    } else {
-        // No Flux: MultiModel -> Stock
-        if (stockClient) {
-            primaryImageClient = new FallbackImageClient(multiModelImageClient, stockClient, 'MultiModel', 'Stock');
-            console.log('✅ Image generation: MultiModel (primary) → Stock (fallback)');
-        } else {
-            primaryImageClient = multiModelImageClient;
-            console.log('✅ Image generation: MultiModel (primary only)');
-        }
-    }
-
-    // fallbackImageClient is kept for backward compatibility (used by some steps separately)
-    const fallbackImageClient = stockClient || primaryImageClient;
-
-    return { primaryImageClient, fallbackImageClient };
-}
-
-
-function createVideoRenderer(config: Config, cloudinaryClient: MediaStorageClient | null): IVideoRenderer {
-    const timelineRenderer = new TimelineVideoRenderer(config.timelineApiKey, config.timelineBaseUrl);
-    const remoteEnabled = config.remoteRenderEnabled && config.fluxApiKey && config.remoteRenderEndpointUrl;
-    const remoteRenderer = remoteEnabled
-        ? new RemoteVideoRenderer(config.fluxApiKey, config.remoteRenderEndpointUrl)
-        : null;
-
-    if (config.videoRenderer === 'ffmpeg') {
-        if (!cloudinaryClient) throw new Error('FFmpeg renderer requires Cloudinary configuration');
-        const localRenderer = new FFmpegVideoRenderer(cloudinaryClient);
-
-        const primaryChain = remoteRenderer
-            ? new FallbackVideoRenderer(remoteRenderer, localRenderer, 'Remote FFmpeg', 'Local FFmpeg')
-            : localRenderer;
-
-        if (config.timelineApiKey) {
-            console.log('🎬 Video rendering: FFmpeg-Chain (primary) → Timeline (fallback safety)');
-            return new FallbackVideoRenderer(primaryChain, timelineRenderer, 'FFmpeg', 'Timeline');
-        }
-
-        console.log('🎬 Using FFmpeg Video Renderer (Local)');
-        return primaryChain;
-    }
-
-    // Mode: 'shotstack'
-    if (remoteRenderer) {
-        console.log('🎬 Video rendering: Remote (primary) → Timeline (fallback)');
-        return new FallbackVideoRenderer(remoteRenderer, timelineRenderer, 'Remote', 'Timeline');
-    }
-
-    console.log('🎬 Video rendering: Timeline (primary)');
-    return timelineRenderer;
-}
-
-function createAnimatedVideoClient(config: Config) {
-    const mock = new MockAnimatedVideoClient();
-    const beamTimeout = 600000; // 10 minutes is enough/fair for Beam H100s
-
-    // 1. Prepare the MultiModel (Kling-2) as the high-quality fallback
-    let klingFallback: IAnimatedVideoClient = mock;
-    if (config.multiModelApiKey) {
-        klingFallback = new MultiModelVideoClient(
-            config.multiModelApiKey,
-            config.multiModelVideoBaseUrl,
-            config.multiModelVideoModel
-        );
-        // Ensure Kling also has a mock safety net
-        klingFallback = new FallbackVideoClient(klingFallback, mock, 'Kling-KieAI', 'Mock');
-    }
-
-    // 2. Prioritize Remote Video (Hunyuan/Mochi on Beam.cloud)
-    if (config.remoteVideoEnabled && config.fluxApiKey) {
-        const hunyuanUrl = config.remoteVideoEndpointUrl;
-        const mochiUrl = config.remoteMochiEndpointUrl;
-
-        // Chain structure: Hunyuan -> (Mochi) -> Kling -> Mock
-
-        if (hunyuanUrl && mochiUrl) {
-            const hunyuan = new HunyuanVideoClient(config.fluxApiKey, hunyuanUrl, beamTimeout);
-            const mochi = new MochiVideoClient(config.fluxApiKey, mochiUrl, beamTimeout);
-
-            const mochiChain = new FallbackVideoClient(mochi, klingFallback, 'Mochi', 'Kling-Mock');
-            console.log('✅ Video generation: Hunyuan (primary) → Mochi (fallback) → Kling (reliable) → Mock (safety)');
-            return new FallbackVideoClient(hunyuan, mochiChain, 'Hunyuan', 'Mochi-Kling-Mock');
-        }
-
-        if (hunyuanUrl) {
-            const hunyuan = new HunyuanVideoClient(config.fluxApiKey, hunyuanUrl, beamTimeout);
-            console.log('✅ Video generation: Hunyuan (primary) → Kling (reliable) → Mock (safety)');
-            return new FallbackVideoClient(hunyuan, klingFallback, 'Hunyuan', 'Kling-Mock');
-        }
-
-        if (mochiUrl) {
-            const mochi = new MochiVideoClient(config.fluxApiKey, mochiUrl, beamTimeout);
-            console.log('✅ Video generation: Mochi (primary) → Kling (reliable) → Mock (safety)');
-            return new FallbackVideoClient(mochi, klingFallback, 'Mochi', 'Kling-Mock');
-        }
-    }
-
-    // 3. If Beam is disabled or missing endpoints, just use Kling
-    if (config.multiModelApiKey) {
-        console.log('✅ Video generation: Kling (primary) → Mock (fallback)');
-        return klingFallback;
-    }
-
-    console.log('⚠️  Video generation: Mock only (no providers configured)');
-    return mock;
+    const stubClient = new StubImageClient();
+    console.log('✅ Image generation: FFmpeg Gradients (Zero Cost)');
+    return {
+        primaryImageClient: stubClient,
+        fallbackImageClient: stubClient
+    };
 }
 
 function createMusicSelector(config: Config) {
     const internalMusicCatalog = new InMemoryMusicCatalogClient(config.internalMusicCatalogPath);
-    const musicGenerator = config.multiModelApiKey
-        ? new SegmentMusicClient(config.multiModelApiKey, config.multiModelMusicBaseUrl)
-        : null;
-    return new MusicSelector(internalMusicCatalog, null, musicGenerator);
+    return new MusicSelector(internalMusicCatalog, null, null);
 }
 
 function createNotificationClient(config: Config) {
     const telegramService = config.telegramBotToken ? new ChatService(config.telegramBotToken) : null;
     return telegramService ? new ChatNotificationClient(telegramService) : undefined;
+}
+
+function createLipSyncClient(config: Config, storageClient: MediaStorageClient): ILipSyncClient {
+    if (config.multiModelApiKey) {
+        console.log('✅ Lip-Sync: Kie.ai (Aggregator)');
+        return new KieLipSyncClient(
+            config.multiModelApiKey,
+            config.multiModelVideoBaseUrl,
+            storageClient
+        );
+    }
+
+    if (config.hedraApiKey) {
+        console.log('✅ Lip-Sync: Hedra Character-3');
+        return new HedraLipSyncClient(config.hedraApiKey, config.hedraBaseUrl);
+    }
+
+    console.log('⚠️  Lip-Sync: Mock (Zero Cost Mode)');
+    return new MockLipSyncClient();
+}
+
+function createAnimatedVideoClient(config: Config): IAnimatedVideoClient | undefined {
+    if (config.multiModelApiKey) {
+        console.log('✅ Animated Video: Kie.ai (Kling)');
+        return new KieVideoClient(
+            config.multiModelApiKey,
+            config.multiModelVideoBaseUrl,
+            config.multiModelVideoModel
+        );
+    }
+    return undefined;
 }

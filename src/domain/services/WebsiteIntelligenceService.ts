@@ -1,5 +1,5 @@
 import { WebsiteAnalysis } from '../entities/WebsitePromo';
-import { GptService } from '../../infrastructure/llm/GptService';
+import { ILlmClient } from '../ports/ILlmClient';
 import { EXTRACT_CONTACT_INFO_PROMPT } from '../../infrastructure/llm/Prompts';
 
 /**
@@ -7,10 +7,10 @@ import { EXTRACT_CONTACT_INFO_PROMPT } from '../../infrastructure/llm/Prompts';
  * Handles high-accuracy contact extraction and business analysis.
  */
 export class WebsiteIntelligenceService {
-    private readonly gpt: GptService;
+    private readonly llm: ILlmClient;
 
-    constructor(gpt: GptService) {
-        this.gpt = gpt;
+    constructor(llm: ILlmClient) {
+        this.llm = llm;
     }
 
     /**
@@ -27,8 +27,11 @@ export class WebsiteIntelligenceService {
         const prompt = EXTRACT_CONTACT_INFO_PROMPT.replace('{{scrapedText}}', rawText);
 
         try {
-            const response = await this.gpt.chatCompletion(prompt, 'You are an expert data extraction assistant.', { jsonMode: true });
-            const data = this.gpt.parseJSON<any>(response);
+            const response = await this.llm.generateText(prompt);
+            // Heuristic for JSON parsing since Gemini prompt asks for JSON
+            const jsonMatch = response.match(/\{[\s\S]*\}/);
+            if (!jsonMatch) return {};
+            const data = JSON.parse(jsonMatch[0]);
 
             if (!data) return {};
 

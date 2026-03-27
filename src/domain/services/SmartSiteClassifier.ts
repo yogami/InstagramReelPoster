@@ -1,87 +1,43 @@
 import { NormalizedPage, SiteClassification, SiteType, PrimaryIntent } from '../entities/Intelligence';
-import { PythonClassifierAdapter } from '../../infrastructure/intelligence/PythonClassifierAdapter';
-import { HuggingFaceClassifierClient } from '../../infrastructure/intelligence/HuggingFaceClassifierClient';
-import { BeamcloudClassifierClient } from '../../infrastructure/intelligence/BeamcloudClassifierClient';
+import { GeminiClassifierAdapter } from '../../infrastructure/intelligence/GeminiClassifierAdapter';
 
 export class SmartSiteClassifier {
-    private pythonAdapter: PythonClassifierAdapter;
-    private huggingFaceClient: HuggingFaceClassifierClient;
-    private beamcloudClient: BeamcloudClassifierClient;
-    private usePythonClassifier: boolean;
-    private useHuggingFace: boolean;
-    private useBeamcloud: boolean;
+    private geminiAdapter: GeminiClassifierAdapter | null = null;
+    private useGemini: boolean;
 
     constructor() {
-        this.pythonAdapter = new PythonClassifierAdapter();
-        this.huggingFaceClient = new HuggingFaceClassifierClient();
-        this.beamcloudClient = new BeamcloudClassifierClient();
-
-        // Toggle classifiers based on available API keys
-        this.usePythonClassifier = process.env.USE_PYTHON_CLASSIFIER === 'true';
-        this.useHuggingFace = !!process.env.HUGGINGFACE_API_KEY;
-
-        // Beam.cloud GPU classifier - highest accuracy, primary option
-        this.useBeamcloud = !!process.env.BEAM_API_KEY && !!process.env.BEAM_CLASSIFIER_URL;
+        const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY;
+        if (apiKey) {
+            this.geminiAdapter = new GeminiClassifierAdapter(apiKey);
+        }
+        this.useGemini = !!this.geminiAdapter;
     }
 
     public async classify(page: NormalizedPage): Promise<SiteClassification> {
         const mainText = `${page.hero.headline} ${page.hero.subhead} ${page.meta.description} ${page.cta.text}`;
-        const title = page.meta.title || '';
-        const url = page.meta.originalUrl || '';
 
-        // 1. Try Beam.cloud GPU classifier (highest accuracy, ~80-85%)
-        if (this.useBeamcloud) {
+        // 1. Try Gemini classifier (Highest accuracy, Zero cost with Ultra plan/Flash)
+        if (this.useGemini && this.geminiAdapter) {
             try {
-                console.log('🚀 Invoking Beam.cloud GPU classifier...');
-                const result = await this.beamcloudClient.classify(mainText, title, url);
-
-                if (result.confidence > 0.3 && !result.error) {
-                    console.log(`✅ Beam.cloud Result: ${result.type} (${(result.confidence * 100).toFixed(1)}%)`);
-                    return this.mapClassifierResult(result, page);
-                } else if (result.error) {
-                    console.warn('⚠️ Beam.cloud failed:', result.error);
-                }
-            } catch (e) {
-                console.warn('⚠️ Beam.cloud failed, falling back:', e);
-            }
-        }
-
-        // 2. Try HuggingFace Inference API (fast GPU, ~70-75%)
-        if (this.useHuggingFace) {
-            try {
-                console.log('🤗 Invoking HuggingFace Inference API...');
-                const result = await this.huggingFaceClient.classify(mainText);
-
-                // Lower threshold to 0.2 (20%) as zero-shot scores are often distributed
-                if (result.confidence > 0.2 && !result.error) {
-                    console.log(`✅ HuggingFace Result: ${result.type} (${(result.confidence * 100).toFixed(1)}%)`);
-                    return this.mapClassifierResult(result, page);
-                } else if (result.error) {
-                    console.warn('⚠️ HuggingFace failed:', result.error);
-                }
-            } catch (e) {
-                console.warn('⚠️ HuggingFace failed, falling back:', e);
-            }
-        }
-
-        // 2. Try SOTA WebOrganizer (Python) if enabled
-        if (this.usePythonClassifier) {
-            try {
-                console.log('🧠 Invoking WebOrganizer (Python)...');
-                const result = await this.pythonAdapter.classify(mainText, {
-                    contacts: page.contact
+                console.log('✨ Invoking Gemini classifier (Zero Cost)...');
+                const result = await this.geminiAdapter.classify(mainText, {
+                    contacts: page.contact,
+                    title: page.meta.title,
+                    url: page.meta.originalUrl
                 });
 
                 if (result.topic !== 'Unknown' && !result.error) {
-                    console.log('✅ WebOrganizer Result:', result);
+                    console.log('✅ Gemini Result:', result);
                     return this.mapWebOrganizerToSiteClassification(result, page);
+                } else if (result.error) {
+                    console.warn('⚠️ Gemini classification error:', result.error);
                 }
             } catch (e) {
-                console.warn('⚠️ WebOrganizer failed, falling back to heuristics:', e);
+                console.warn('⚠️ Gemini failed, falling back to heuristics:', e);
             }
         }
 
-        // 3. Use Fast Heuristics (fallback)
+        // 2. Use Fast Heuristics (fallback)
         console.log('⚡ Using fast heuristic classifier');
         return this.heuristicClassify(page);
     }
@@ -138,7 +94,7 @@ export class SmartSiteClassifier {
     }
 
     private mapWebOrganizerToSiteClassification(
-        result: import('../../infrastructure/intelligence/PythonClassifierAdapter').WebOrganizerResult,
+        result: any,
         page: NormalizedPage
     ): SiteClassification {
         let type = SiteType.OTHER;

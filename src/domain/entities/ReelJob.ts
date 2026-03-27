@@ -4,6 +4,7 @@ import { HookPlan } from './Growth';
 import { ContentMode, ForceMode, ParableIntent, ParableScriptPlan } from './Parable';
 import { WebsitePromoInput, WebsiteAnalysis, BusinessCategory, PromoScriptPlan } from './WebsitePromo';
 import { YouTubeShortInput, YouTubeShortScriptPlan } from './YouTubeShort';
+import { ScenarioInput, ScenarioScript } from './ScenarioScript';
 
 /**
  * Possible statuses for a ReelJob.
@@ -19,6 +20,8 @@ export type ReelJobStatus =
     | 'selecting_music'
     | 'generating_images'
     | 'generating_animated_video'
+    | 'generating_voiceover'
+    | 'generating_background'
     | 'generating_subtitles'
     | 'building_manifest'
     | 'rendering'
@@ -31,7 +34,7 @@ export type ReelJobStatus =
  * - 'discovery': Optimized for reach (10-20s), higher completion rates
  * - 'deep-dive': Longer format (25-40s), for series and complex topics
  */
-export type ReelMode = 'discovery' | 'deep-dive';
+export type ReelMode = 'discovery' | 'deep-dive' | 'scenario';
 
 /**
  * Input parameters for creating a new reel job.
@@ -79,6 +82,8 @@ export interface ReelJobInput {
     description?: string;
     /** YouTube Short input (alternative to transcript/audio for YouTube content) */
     youtubeShortInput?: YouTubeShortInput;
+    /** Scenario input (for relationship dialogue reels) */
+    scenarioInput?: ScenarioInput;
 }
 
 /**
@@ -139,6 +144,8 @@ export interface ReelJob {
     manifest?: ReelManifest;
     /** URL to the final rendered video */
     finalVideoUrl?: string;
+    /** The absolute local path to the rendered video before upload */
+    localVideoPath?: string;
 
     /** Whether this reel uses animated video instead of images */
     isAnimatedVideoMode?: boolean;
@@ -190,6 +197,12 @@ export interface ReelJob {
     /** YouTube Short script plan */
     youtubeScriptPlan?: YouTubeShortScriptPlan;
 
+    // Scenario Mode:
+    /** Scenario input (if scenario mode) */
+    scenarioInput?: ScenarioInput;
+    /** Generated scenario script */
+    scenarioScript?: ScenarioScript;
+
     /** Timestamps */
     createdAt: Date;
     updatedAt: Date;
@@ -223,9 +236,10 @@ export function createReelJob(
     const hasTranscript = input.transcript && input.transcript.trim().length > 0;
     const hasWebsitePromo = input.websitePromoInput && input.websitePromoInput.websiteUrl.trim().length > 0;
     const hasYouTubeShort = input.youtubeShortInput && input.youtubeShortInput.scenes.length > 0;
+    const hasScenario = input.scenarioInput !== undefined || input.forceMode === 'scenario';
 
-    if (!hasAudio && !hasTranscript && !hasWebsitePromo && !hasYouTubeShort) {
-        throw new Error('ReelJob requires either sourceAudioUrl, transcript, websitePromoInput, or youtubeShortInput');
+    if (!hasAudio && !hasTranscript && !hasWebsitePromo && !hasYouTubeShort && !hasScenario) {
+        throw new Error('ReelJob requires either sourceAudioUrl, transcript, websitePromoInput, youtubeShortInput, or scenarioInput');
     }
 
     // Validate consent for website promo
@@ -259,6 +273,7 @@ export function createReelJob(
         forceMode: input.forceMode,
         websitePromoInput: hasWebsitePromo ? input.websitePromoInput : undefined,
         youtubeShortInput: hasYouTubeShort ? input.youtubeShortInput : undefined,
+        scenarioInput: hasScenario ? (input.scenarioInput || {}) : undefined,
         language: input.language || 'en',
         voiceId: input.voiceId,
         providedCommentary: input.providedCommentary,

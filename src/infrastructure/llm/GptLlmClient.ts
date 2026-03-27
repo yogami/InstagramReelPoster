@@ -518,4 +518,8 @@ Return JSON:
             throw new Error(`Failed to generate script from blueprint: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
     }
+
+    async generateText(prompt: string): Promise<string> {
+        return this.llmService.chatCompletion(prompt, 'You are a helpful assistant.');
+    }
 }

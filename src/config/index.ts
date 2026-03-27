@@ -10,12 +10,13 @@ export interface Config {
     // Server
     port: number;
     environment: string;
-    testMode: boolean; // When true, use fixtures instead of real HTTP
+    testMode: boolean;
 
-    // Gpt-based LLM & Services
+    // LLM (Gpt)
     llmApiKey: string;
     llmModel: string;
     llmBaseUrl?: string;
+    googleAiApiKey: string;
 
     // OpenRouter (Primary LLM option)
     openRouterApiKey: string;
@@ -27,6 +28,13 @@ export interface Config {
     ttsCloningBaseUrl: string;
     ttsCloningVoiceId: string;
     ttsCloningPromoVoiceId: string;
+    scenarioMaleVoiceId: string;
+    scenarioFemaleVoiceId: string;
+
+    // Music Catalog
+    musicCatalogApiKey: string;
+    musicCatalogBaseUrl: string;
+    internalMusicCatalogPath: string;
 
     // Telegram & Callbacks
     telegramBotToken: string;
@@ -43,11 +51,6 @@ export interface Config {
     multiModelImageApiKey: string;
     multiModelImageBaseUrl: string;
     multiModelImageModel: string;
-
-    // Music Catalog
-    musicCatalogApiKey: string;
-    musicCatalogBaseUrl: string;
-    internalMusicCatalogPath: string;
 
     // Multi-Model (Video/Music)
     multiModelApiKey: string;
@@ -84,31 +87,44 @@ export interface Config {
     fluxEnabled: boolean;
 
     // Remote Video (Mochi/Hunyuan)
-    remoteVideoEndpointUrl: string; // Primary (Hunyuan)
-    remoteMochiEndpointUrl: string; // Fallback (Mochi)
+    remoteVideoEndpointUrl: string;
+    remoteMochiEndpointUrl: string;
     remoteVideoEnabled: boolean;
 
     // Remote FFmpeg Render
     remoteRenderEndpointUrl: string;
     remoteRenderEnabled: boolean;
 
-    // Remote Avatar (SadTalker on Beam.cloud)
+    // Remote Avatar (SadTalker)
     sadTalkerEndpointUrl: string;
+
+    // Hedra Lip-Sync
+    hedraApiKey: string;
+    hedraBaseUrl: string;
+    useLipSync: boolean;
+    lipSyncTestDuration: number; // seconds — use 3-5s for free tier testing, 0 = full length
 
     // Replicate
     replicateApiToken: string;
 
     // Personal Clone Feature Flags
     featureFlags: {
-        usePersonalCloneTTS: boolean;  // Use local XTTS v2 instead of Fish Audio
-        usePersonalCloneLLM: boolean;  // Use local fine-tuned LLM instead of Gpt
-        personalCloneTrainingMode: boolean; // Collect data for training
-        enableUserApproval: boolean;  // Human-in-the-loop approval checkpoints
-        usePlaywrightScraper: boolean; // Toggle for enhanced scraper
-        enableWebsitePromoSlice: boolean; // Independent Website Promo slice
+        usePersonalCloneTTS: boolean;
+        usePersonalCloneLLM: boolean;
+        personalCloneTrainingMode: boolean;
+        enableUserApproval: boolean;
+        usePlaywrightScraper: boolean;
+        enableWebsitePromoSlice: boolean;
+        enableProductDemoSlice: boolean;
     };
 
-    // Guardian API (ConvoGuard compliance service)
+    // Product Demo Configuration
+    productDemo: {
+        voiceSpeedMultiplier: number;
+        commentaryLengthPercent: number;
+    };
+
+    // Guardian API
     guardianApiUrl: string;
     guardianApiKey: string;
 
@@ -121,7 +137,7 @@ export interface Config {
     avatarImeldaCasual: string;
     avatarImeldaSuit: string;
 
-    // Localized Voice IDs (Fish Audio overrides)
+    // Localized Voice IDs
     voiceFriendlyId?: string;
     voiceEnergeticId?: string;
     voiceAuthoritativeId?: string;
@@ -132,16 +148,22 @@ export interface Config {
     voiceSpanishId?: string;
     voiceJapaneseId?: string;
 
-    // Personal Clone Configuration (only used when feature flags are enabled)
+    // Personal Clone Configuration
     personalClone: {
-        xttsServerUrl: string;  // Local XTTS inference server URL
-        localLLMUrl: string;    // Local LLM server URL (e.g., Ollama)
-        trainingDataPath: string; // Path to store training data
-        systemPrompt: string;   // The default personality for the Personal Twin
+        xttsServerUrl: string;
+        localLLMUrl: string;
+        trainingDataPath: string;
+        systemPrompt: string;
     };
 
     // Agent Cloud Hub
     cloudHubUrl: string;
+
+    // GitHub
+    githubToken?: string;
+
+    // Channel Identity (Viral Factory)
+    reelChannel: string;
 }
 
 function getEnvVar(key: string, defaultValue?: string): string {
@@ -198,6 +220,7 @@ export function loadConfig(): Config {
         llmApiKey: getEnvVar('OPENAI_API_KEY', ''),
         llmModel: getEnvVar('OPENAI_MODEL', 'gpt-4o'),
         llmBaseUrl: getEnvVar('OPENAI_BASE_URL', 'https://api.openai.com/v1'),
+        googleAiApiKey: getEnvVar('GOOGLE_AI_API_KEY', ''),
 
         // OpenRouter (Primary LLM)
         openRouterApiKey: getEnvVar('OPENROUTER_API_KEY', ''),
@@ -209,6 +232,9 @@ export function loadConfig(): Config {
         ttsCloningBaseUrl: getEnvVar('FISH_AUDIO_BASE_URL', 'https://api.fish.audio'),
         ttsCloningVoiceId: getEnvVar('FISH_AUDIO_VOICE_ID', ''),
         ttsCloningPromoVoiceId: getEnvVar('FISH_AUDIO_PROMO_VOICE_ID', '88b18e0d81474a0ca08e2ea6f9df5ff4'),
+        // Scenario dialogue voices (male/female)
+        scenarioMaleVoiceId: getEnvVar('FISH_AUDIO_SCENARIO_MALE_VOICE_ID', ''),
+        scenarioFemaleVoiceId: getEnvVar('FISH_AUDIO_SCENARIO_FEMALE_VOICE_ID', ''),
 
         // Music Catalog
         musicCatalogApiKey: getEnvVar('MUSIC_CATALOG_API_KEY', ''),
@@ -278,6 +304,12 @@ export function loadConfig(): Config {
         // Remote Avatar (SadTalker)
         sadTalkerEndpointUrl: getEnvVar('BEAMCLOUD_SADTALKER_ENDPOINT_URL', ''),
 
+        // Hedra Lip-Sync
+        hedraApiKey: getEnvVar('HEDRA_API_KEY', ''),
+        hedraBaseUrl: getEnvVar('HEDRA_BASE_URL', 'https://api.hedra.com/web-app/public'),
+        useLipSync: getEnvVarBoolean('USE_LIP_SYNC', false),
+        lipSyncTestDuration: getEnvVarNumber('LIP_SYNC_TEST_DURATION', 0),
+
         // Replicate (Promo Engine)
         replicateApiToken: getEnvVar('REPLICATE_API_TOKEN', ''),
 
@@ -289,6 +321,13 @@ export function loadConfig(): Config {
             enableUserApproval: getEnvVarBoolean('ENABLE_USER_APPROVAL', false), // Human-in-the-loop approval checkpoints
             usePlaywrightScraper: getEnvVarBoolean('USE_PLAYWRIGHT_SCRAPER', false), // Toggle for enhanced scraper
             enableWebsitePromoSlice: getEnvVarBoolean('ENABLE_WEBSITE_PROMO_SLICE', false), // Independent slice
+            enableProductDemoSlice: getEnvVarBoolean('ENABLE_PRODUCT_DEMO_SLICE', false), // Product Demo slice
+        },
+
+        // Product Demo Configuration
+        productDemo: {
+            voiceSpeedMultiplier: getEnvVarNumber('PRODUCT_DEMO_VOICE_SPEED', 1.25),
+            commentaryLengthPercent: getEnvVarNumber('PRODUCT_DEMO_COMMENTARY_PERCENT', 0.92)
         },
 
         // Guardian API (ConvoGuard compliance service)
@@ -325,6 +364,12 @@ export function loadConfig(): Config {
 
         // Agent Cloud Hub
         cloudHubUrl: getEnvVar('CLOUD_HUB_URL', 'http://localhost:4000'),
+
+        // GitHub
+        githubToken: process.env.GITHUB_TOKEN,
+
+        // Multi-Channel Strategy
+        reelChannel: getEnvVar('REEL_CHANNEL', 'challenging_view'),
     };
 }
 
@@ -334,23 +379,20 @@ export function loadConfig(): Config {
 export function validateConfig(config: Config): string[] {
     const errors: string[] = [];
 
-    if (!config.llmApiKey) {
-        errors.push('OPENAI_API_KEY (llmApiKey) is required for transcription, LLM, images, and subtitles');
+    const hasGoogle = !!config.googleAiApiKey;
+
+    if (!config.llmApiKey && !hasGoogle) {
+        errors.push('Either OPENAI_API_KEY or GOOGLE_AI_API_KEY is required for the project');
     }
-    if (!config.ttsCloningApiKey) {
-        errors.push('FISH_AUDIO_API_KEY (ttsCloningApiKey) is required for TTS');
-    }
-    if (!config.ttsCloningVoiceId) {
-        errors.push('FISH_AUDIO_VOICE_ID (ttsCloningVoiceId) is required for TTS');
-    }
-    if (config.videoRenderer === 'shotstack' && !config.timelineApiKey) {
-        errors.push('SHOTSTACK_API_KEY (timelineApiKey) is required when videoRenderer is "shotstack"');
+
+    if (!hasGoogle) {
+        if (!config.ttsCloningApiKey) {
+            errors.push('FISH_AUDIO_API_KEY is required if GOOGLE_AI_API_KEY is not provided');
+        }
     }
 
     if (config.videoRenderer === 'ffmpeg') {
-        if (!config.cloudinaryCloudName || !config.cloudinaryApiKey || !config.cloudinaryApiSecret) {
-            errors.push('Cloudinary credentials are required when videoRenderer is "ffmpeg"');
-        }
+        // Cloudinary is no longer strictly required if we save locally
     }
 
 
