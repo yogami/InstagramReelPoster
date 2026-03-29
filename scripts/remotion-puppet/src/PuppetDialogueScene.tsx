@@ -112,19 +112,10 @@ export const PuppetDialogueScene: React.FC<PuppetDialogueProps> = (props) => {
     return slice;
   });
 
-  // === CAMERA ZOOM — subtle focus on active speaker, both stay in frame ===
-  const zoomProgress = activeSpeaker
-    ? spring({ frame: frame - turnStartFrame, fps, config: { damping: 80, stiffness: 60 } })
-    : 0;
-
-  const ZOOM_SCALE = 1.12; // Subtle zoom — both characters stay visible
-  // Gentle shift toward speaker — not enough to cut the other person out
-  const targetX = activeSpeaker === "marco" ? 60 : activeSpeaker === "luna" ? -60 : 0;
-  const targetY = -50; // Slight upward to focus on face area
-
-  const cameraScale = interpolate(zoomProgress, [0, 1], [1, ZOOM_SCALE]);
-  const cameraX = interpolate(zoomProgress, [0, 1], [0, targetX]);
-  const cameraY = interpolate(zoomProgress, [0, 1], [0, targetY]);
+  // === CAMERA ZOOM — Disabled because lip sync makes it obvious ===
+  const cameraScale = 1;
+  const cameraX = 0;
+  const cameraY = 0;
 
   return (
     <AbsoluteFill>
@@ -149,7 +140,9 @@ export const PuppetDialogueScene: React.FC<PuppetDialogueProps> = (props) => {
       }} />
 
       {/* === CAFE TABLE SCENE SVG === */}
-      <CafeTableScene activeSpeaker={activeSpeaker} frame={frame} />
+      {!(props.marcoVideoFile && props.lunaVideoFile) && (
+        <CafeTableScene activeSpeaker={activeSpeaker} frame={frame} />
+      )}
 
       {/* === HYBRID MODE: Kie.ai Avatar Videos === */}
       {props.marcoVideoFile && props.lunaVideoFile ? (
@@ -159,10 +152,8 @@ export const PuppetDialogueScene: React.FC<PuppetDialogueProps> = (props) => {
             position: "absolute", left: 30, bottom: 650,
             width: 480, height: 640,
             borderRadius: 24, overflow: "hidden",
-            opacity: activeSpeaker === "luna" ? 0.6 : 1,
-            transform: `scale(${activeSpeaker === "marco" ? 1.05 : 1})`,
-            transition: "opacity 0.3s, transform 0.3s",
-            boxShadow: activeSpeaker === "marco" ? "0 0 30px rgba(126,214,223,0.3)" : "none",
+            transition: "opacity 0.3s",
+            boxShadow: "none",
           }}>
             {marcoVideoSlices.map((turn, i) => (
               <Sequence key={`marco-vid-${i}`} from={turn.startFrame} durationInFrames={turn.durationFrames}>
@@ -186,10 +177,8 @@ export const PuppetDialogueScene: React.FC<PuppetDialogueProps> = (props) => {
             position: "absolute", right: 30, bottom: 650,
             width: 480, height: 640,
             borderRadius: 24, overflow: "hidden",
-            opacity: activeSpeaker === "marco" ? 0.6 : 1,
-            transform: `scale(${activeSpeaker === "luna" ? 1.05 : 1})`,
-            transition: "opacity 0.3s, transform 0.3s",
-            boxShadow: activeSpeaker === "luna" ? "0 0 30px rgba(253,121,168,0.3)" : "none",
+            transition: "opacity 0.3s",
+            boxShadow: "none",
           }}>
             {lunaVideoSlices.map((turn, i) => (
               <Sequence key={`luna-vid-${i}`} from={turn.startFrame} durationInFrames={turn.durationFrames}>
