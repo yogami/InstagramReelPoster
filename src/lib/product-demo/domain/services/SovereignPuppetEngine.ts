@@ -263,6 +263,12 @@ export class SovereignPuppetEngine {
         const timelineFile = path.join(publicDir, `puppet_${jobId}_timeline.json`);
         fs.writeFileSync(timelineFile, JSON.stringify(timeline, null, 2));
 
+        // Copy portraits to public dir for idle state displays in Remotion
+        const marcoPortrait = path.resolve(process.cwd(), 'src/assets/characters/marco_portrait.png');
+        const lunaPortrait = path.resolve(process.cwd(), 'src/assets/characters/luna_portrait.png');
+        if (fs.existsSync(marcoPortrait)) fs.copyFileSync(marcoPortrait, path.join(publicDir, 'marco_portrait.png'));
+        if (fs.existsSync(lunaPortrait)) fs.copyFileSync(lunaPortrait, path.join(publicDir, 'luna_portrait.png'));
+
         // 4. Render via Remotion CLI
         console.log(`\n--- Step 3: Rendering via Remotion CLI ---`);
         const outputPath = path.join(this.tmpDir, `${jobId}_puppet_raw.mp4`);

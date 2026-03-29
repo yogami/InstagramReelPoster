@@ -1,5 +1,5 @@
 import React from "react";
-import { AbsoluteFill, Audio, Video, Sequence, useCurrentFrame, staticFile, interpolate, spring, useVideoConfig } from "remotion";
+import { AbsoluteFill, Audio, Video, Sequence, useCurrentFrame, staticFile, interpolate, spring, useVideoConfig, Img } from "remotion";
 import { CharacterPuppet, EmotionType } from "./CharacterPuppet";
 
 interface DialogueTurn {
@@ -79,7 +79,7 @@ const CafeTableScene: React.FC<{
 };
 
 export const PuppetDialogueScene: React.FC<PuppetDialogueProps> = (props) => {
-  const { timeline, hook, marcoVideoFile, lunaVideoFile } = props;
+  const { timeline, hook } = props;
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
@@ -97,6 +97,20 @@ export const PuppetDialogueScene: React.FC<PuppetDialogueProps> = (props) => {
 
   const marcoTurns = timeline.filter((t) => t.speaker === "marco");
   const lunaTurns = timeline.filter((t) => t.speaker === "luna");
+
+  let marcoVideoOffset = 0;
+  const marcoVideoSlices = marcoTurns.map(turn => {
+    const slice = { ...turn, videoStartFrom: marcoVideoOffset };
+    marcoVideoOffset += turn.durationFrames;
+    return slice;
+  });
+
+  let lunaVideoOffset = 0;
+  const lunaVideoSlices = lunaTurns.map(turn => {
+    const slice = { ...turn, videoStartFrom: lunaVideoOffset };
+    lunaVideoOffset += turn.durationFrames;
+    return slice;
+  });
 
   // === CAMERA ZOOM — subtle focus on active speaker, both stay in frame ===
   const zoomProgress = activeSpeaker
@@ -140,7 +154,7 @@ export const PuppetDialogueScene: React.FC<PuppetDialogueProps> = (props) => {
       {/* === HYBRID MODE: Kie.ai Avatar Videos === */}
       {props.marcoVideoFile && props.lunaVideoFile ? (
         <>
-          {/* Marco avatar video — positioned left */}
+          {/* Marco avatar handling (Active Video Slices + Idle Portrait) */}
           <div style={{
             position: "absolute", left: 30, bottom: 650,
             width: 480, height: 640,
@@ -150,13 +164,24 @@ export const PuppetDialogueScene: React.FC<PuppetDialogueProps> = (props) => {
             transition: "opacity 0.3s, transform 0.3s",
             boxShadow: activeSpeaker === "marco" ? "0 0 30px rgba(126,214,223,0.3)" : "none",
           }}>
-            <Video
-              src={staticFile(props.marcoVideoFile)}
-              style={{ width: "100%", height: "100%", objectFit: "cover" }}
-            />
+            {marcoVideoSlices.map((turn, i) => (
+              <Sequence key={`marco-vid-${i}`} from={turn.startFrame} durationInFrames={turn.durationFrames}>
+                <Video
+                  src={staticFile(props.marcoVideoFile!)}
+                  startFrom={turn.videoStartFrom}
+                  endAt={turn.videoStartFrom + turn.durationFrames}
+                  muted={true}
+                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                />
+              </Sequence>
+            ))}
+            {/* Show static portrait when Marco is NOT active */}
+            {activeSpeaker !== "marco" && (
+                <Img src={staticFile("marco_portrait.png")} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            )}
           </div>
 
-          {/* Luna avatar video — positioned right */}
+          {/* Luna avatar handling (Active Video Slices + Idle Portrait) */}
           <div style={{
             position: "absolute", right: 30, bottom: 650,
             width: 480, height: 640,
@@ -166,10 +191,21 @@ export const PuppetDialogueScene: React.FC<PuppetDialogueProps> = (props) => {
             transition: "opacity 0.3s, transform 0.3s",
             boxShadow: activeSpeaker === "luna" ? "0 0 30px rgba(253,121,168,0.3)" : "none",
           }}>
-            <Video
-              src={staticFile(props.lunaVideoFile)}
-              style={{ width: "100%", height: "100%", objectFit: "cover" }}
-            />
+            {lunaVideoSlices.map((turn, i) => (
+              <Sequence key={`luna-vid-${i}`} from={turn.startFrame} durationInFrames={turn.durationFrames}>
+                <Video
+                  src={staticFile(props.lunaVideoFile!)}
+                  startFrom={turn.videoStartFrom}
+                  endAt={turn.videoStartFrom + turn.durationFrames}
+                  muted={true}
+                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                />
+              </Sequence>
+            ))}
+            {/* Show static portrait when Luna is NOT active */}
+            {activeSpeaker !== "luna" && (
+                <Img src={staticFile("luna_portrait.png")} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            )}
           </div>
         </>
       ) : (
