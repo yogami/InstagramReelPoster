@@ -57,12 +57,13 @@ export class KieAvatarClient {
         return { videoUrl, taskId };
     }
 
-    private async createTask(model: string, imageUrl: string, audioUrl: string): Promise<string> {
+    private async createTask(model: string, imageUrl: string, audioUrl: string, prompt?: string): Promise<string> {
         const payload = {
             model,
             input: {
                 image_url: imageUrl,
                 audio_url: audioUrl,
+                prompt: prompt || 'A person talking naturally with expressive facial movements and lip sync',
             },
         };
 
