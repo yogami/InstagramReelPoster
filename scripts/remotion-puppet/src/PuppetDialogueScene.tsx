@@ -179,6 +179,7 @@ export const PuppetDialogueScene: React.FC<PuppetDialogueProps> = (props) => {
             borderRadius: 24, overflow: "hidden",
             transition: "opacity 0.3s",
             boxShadow: "none",
+            transform: "scaleX(-1)",
           }}>
             {lunaVideoSlices.map((turn, i) => (
               <Sequence key={`luna-vid-${i}`} from={turn.startFrame} durationInFrames={turn.durationFrames}>
