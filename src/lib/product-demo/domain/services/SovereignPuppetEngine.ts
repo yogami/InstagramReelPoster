@@ -240,8 +240,20 @@ export class SovereignPuppetEngine {
                     axios.get(lunaResult.videoUrl, { responseType: 'arraybuffer' }),
                 ]);
 
-                fs.writeFileSync(path.join(publicDir, marcoVideoFile), marcoVidRes.data);
-                fs.writeFileSync(path.join(publicDir, lunaVideoFile), lunaVidRes.data);
+                const rawMarco = path.join(publicDir, `raw_${marcoVideoFile}`);
+                const rawLuna = path.join(publicDir, `raw_${lunaVideoFile}`);
+                const finalMarco = path.join(publicDir, marcoVideoFile);
+                const finalLuna = path.join(publicDir, lunaVideoFile);
+
+                fs.writeFileSync(rawMarco, marcoVidRes.data);
+                fs.writeFileSync(rawLuna, lunaVidRes.data);
+
+                // Transcode to h264 for Remotion to prevent DECODER_ERROR_NOT_SUPPORTED
+                console.log(`[KieAvatar] Transcoding avatars to Remotion-supported H.264 format...`);
+                execSync(`ffmpeg -y -i "${rawMarco}" -c:v libx264 -preset fast -crf 23 -c:a aac -b:a 128k -pix_fmt yuv420p "${finalMarco}" -loglevel error`);
+                execSync(`ffmpeg -y -i "${rawLuna}" -c:v libx264 -preset fast -crf 23 -c:a aac -b:a 128k -pix_fmt yuv420p "${finalLuna}" -loglevel error`);
+                fs.unlinkSync(rawMarco);
+                fs.unlinkSync(rawLuna);
 
                 console.log(`[KieAvatar] ✅ Both avatar videos downloaded`);
 
