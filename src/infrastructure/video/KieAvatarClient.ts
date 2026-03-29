@@ -61,8 +61,8 @@ export class KieAvatarClient {
         const payload = {
             model,
             input: {
-                imageUrl,
-                audioUrl,
+                image_url: imageUrl,
+                audio_url: audioUrl,
             },
         };
 
