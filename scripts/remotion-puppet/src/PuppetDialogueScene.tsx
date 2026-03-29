@@ -85,12 +85,10 @@ export const PuppetDialogueScene: React.FC<PuppetDialogueProps> = (props) => {
 
   let activeSpeaker: string | null = null;
   let activeLine: string | null = null;
-  let turnStartFrame = 0;
   for (const turn of timeline) {
     if (frame >= turn.startFrame && frame < turn.startFrame + turn.durationFrames) {
       activeSpeaker = turn.speaker;
       activeLine = turn.line;
-      turnStartFrame = turn.startFrame;
       break;
     }
   }
@@ -136,7 +134,9 @@ export const PuppetDialogueScene: React.FC<PuppetDialogueProps> = (props) => {
       {/* === BACKGROUND === */}
       <div style={{
         width: "100%", height: "100%",
-        background: "linear-gradient(180deg, #2d2820 0%, #3d3530 60%, #3d3427 100%)",
+        background: (props.marcoVideoFile && props.lunaVideoFile) 
+          ? "#050505" 
+          : "linear-gradient(180deg, #2d2820 0%, #3d3530 60%, #3d3427 100%)",
       }} />
 
       {/* === CAFE TABLE SCENE SVG === */}
@@ -256,8 +256,8 @@ export const PuppetDialogueScene: React.FC<PuppetDialogueProps> = (props) => {
       </>
       )}
 
-      {/* === SPEAKER HIGHLIGHT === */}
-      {activeSpeaker === "marco" && (
+      {/* === SPEAKER HIGHLIGHT (SVG Puppets only) === */}
+      {!(props.marcoVideoFile && props.lunaVideoFile) && activeSpeaker === "marco" && (
         <div style={{
           position: "absolute", left: 50, bottom: 770,
           width: 350, height: 450,
@@ -265,7 +265,7 @@ export const PuppetDialogueScene: React.FC<PuppetDialogueProps> = (props) => {
           pointerEvents: "none",
         }} />
       )}
-      {activeSpeaker === "luna" && (
+      {!(props.marcoVideoFile && props.lunaVideoFile) && activeSpeaker === "luna" && (
         <div style={{
           position: "absolute", left: 680, bottom: 770,
           width: 350, height: 450,
@@ -311,7 +311,7 @@ export const PuppetDialogueScene: React.FC<PuppetDialogueProps> = (props) => {
       )}
 
       {/* === SPEAKER NAME TAG (outside camera zoom so it stays readable) === */}
-      {activeSpeaker && (
+      {!(props.marcoVideoFile && props.lunaVideoFile) && activeSpeaker && (
         <div style={{
           position: "absolute", bottom: 260, left: 0, right: 0,
           display: "flex", justifyContent: "center",
