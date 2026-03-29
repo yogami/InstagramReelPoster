@@ -11,7 +11,7 @@
  * - 'direct-message': Current behavior - direct commentary/rant style
  * - 'parable': Story-driven micro-parables with 4-beat narrative structure
  */
-export type ContentMode = 'direct-message' | 'parable';
+export type ContentMode = 'direct-message' | 'parable' | 'puppet-dialogue';
 
 /**
  * Forced mode from job input (explicit user choice).

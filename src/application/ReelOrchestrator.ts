@@ -169,12 +169,34 @@ export class ReelOrchestrator {
      */
     async processJob(jobId: string): Promise<ReelJob> {
         this.logMemoryUsage('Start processJob (Pipeline)');
-        const job = await this.deps.jobManager.getJob(jobId);
+        let job = await this.deps.jobManager.getJob(jobId);
         if (!job) throw new Error(`Job not found: ${jobId}`);
 
         await this.sendInitialNotification(job);
 
         try {
+            // Early Pre-flight Transcription & Dynamic Routing for Agentic Defaults
+            if (!job.forceMode && !job.scenarioInput && !job.websitePromoInput && !job.youtubeShortInput) {
+                // Determine transcript (if not provided, transcribe source audio)
+                let tempTranscript = job.transcript;
+                if (!tempTranscript && job.sourceAudioUrl) {
+                    await this.updateJobStatus(jobId, 'planning', 'Transcribing audio for dynamic routing...');
+                    tempTranscript = await this.deps.transcriptionClient.transcribe(job.sourceAudioUrl);
+                    const updated = await this.deps.jobManager.updateJob(jobId, { transcript: tempTranscript });
+                    if (updated) job = updated;
+                }
+                
+                // Heuristic: Auto-route to Marco/Luna relational dialogue
+                if (tempTranscript) {
+                    const combined = tempTranscript.toLowerCase();
+                    if (combined.includes('marco') || combined.includes('luna') || combined.includes('relationship')) {
+                        console.log(`[${jobId}] 🧠 Dynamic routing heuristic: detected 'marco/luna/relationship', forcing PUPPET DIALOGUE mode`);
+                        const routedJob = await this.deps.jobManager.updateJob(jobId, { forceMode: 'puppet-dialogue' });
+                        if (routedJob) job = routedJob;
+                    }
+                }
+            }
+
             // Route to appropriate pipeline
             const finalJob = await this.routeJobToPipeline(jobId, job);
             return finalJob;

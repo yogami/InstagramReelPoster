@@ -33,7 +33,8 @@ export class ContentModeStep implements PipelineStep {
         } else if (this.llmClient.detectContentMode) {
             const combinedText = `${context.job.description || ''}\n${context.transcript || ''}`.toLowerCase().trim();
 
-            // Heuristic upgrade: If they explicitly ask for an "animation video" or "full video", push to parable
+            // Heuristic upgrade: If they explicitly ask for Marco/Luna or an animation video
+            const isPuppetRequested = combinedText.includes('marco') || combinedText.includes('luna');
             const isComplexVideoRequested = (
                 combinedText.includes('animation video') ||
                 combinedText.includes('full video') ||
@@ -41,7 +42,11 @@ export class ContentModeStep implements PipelineStep {
                 combinedText.includes('cinematic video')
             );
 
-            if (isComplexVideoRequested) {
+            if (isPuppetRequested) {
+                // @ts-ignore - Temporary cast if ContentMode wasn't perfectly typed everywhere
+                contentMode = 'puppet-dialogue';
+                console.log(`[${context.jobId}] Content Mode: PUPPET-DIALOGUE (heuristic: marco/luna detected)`);
+            } else if (isComplexVideoRequested) {
                 contentMode = 'parable';
                 console.log(`[${context.jobId}] Content Mode: PARABLE (heuristic: animation video requested)`);
             } else {
