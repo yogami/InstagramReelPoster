@@ -75,6 +75,7 @@ export class KieAvatarClient {
                     'Authorization': `Bearer ${this.apiKey}`,
                     'Content-Type': 'application/json',
                 },
+                timeout: 15000, // Prevent indefinitely hanging requests
             }
         );
 
@@ -97,6 +98,7 @@ export class KieAvatarClient {
                     {
                         params: { taskId },
                         headers: { 'Authorization': `Bearer ${this.apiKey}` },
+                        timeout: 10000, // Aggressive timeout to prevent zombie polling
                     }
                 );
 
@@ -129,8 +131,14 @@ export class KieAvatarClient {
                 if (state === 'fail') {
                     throw new Error(`Kie.ai avatar failed: ${data?.failMsg || 'Unknown error'}`);
                 }
-            } catch (err) {
-                if (axios.isAxiosError(err) && err.response?.status === 404) continue;
+            } catch (err: any) {
+                if (axios.isAxiosError(err)) {
+                    if (err.response?.status === 404) continue;
+                    if (err.code === 'ECONNABORTED' || err.code === 'ETIMEDOUT' || err.message?.includes('timeout')) {
+                        console.warn(`[KieAvatar] Network request timed out. Retrying in next poll cycle...`);
+                        continue;
+                    }
+                }
                 throw err;
             }
         }
